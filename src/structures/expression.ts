@@ -1,10 +1,13 @@
 import {
+  Term,
   Triple,
   IriTerm,
   QuadTerm,
   BlankTerm,
   LiteralTerm,
   VariableTerm,
+  PropertyPath,
+  TermOrPrimitive,
   VariableExpression,
   ExpressionOrPrimitive,
 } from '../struct';
@@ -14,12 +17,16 @@ import { DataFactory, DirectionalLanguage } from '@rdfjs/types';
 
 const factory = DataModelFactory as DataFactory;
 
-type Object = Triple['object'];
-type Subject = Triple['subject'];
-type Predicate = Triple['predicate'];
-type PredicateObjectArray = Array<[Predicate, Object]>;
+export function processPrimitiveExpression(e: ExpressionOrPrimitive) {
+  if (typeof e !== 'object') {
+    return processPrimitiveTerm(e);
+  }
+  return e;
+}
 
-export function processLiteralExpression(e: ExpressionOrPrimitive) {
+export function processPrimitiveTerm<T extends TermOrPrimitive>(
+  t: T
+): T extends Term ? T : LiteralTerm {
   const urls = {
     integer: 'http://www.w3.org/2001/XMLSchema#integer',
     float: 'http://www.w3.org/2001/XMLSchema#decimal',
@@ -27,22 +34,27 @@ export function processLiteralExpression(e: ExpressionOrPrimitive) {
     boolean: 'http://www.w3.org/2001/XMLSchema#boolean',
   };
 
-  if (typeof e === 'number') {
-    if (Number.isInteger(e)) {
-      return literal(e.toString(), iri(urls['integer']));
+  if (typeof t === 'number') {
+    if (Number.isInteger(t)) {
+      return literal(t.toString(), iri(urls['integer'])) as any;
     } else {
-      return literal(e.toString(), iri(urls['float']));
+      return literal(t.toString(), iri(urls['float'])) as any;
     }
-  } else if (typeof e === 'bigint') {
-    return literal(e.toString(), iri(urls['integer']));
-  } else if (typeof e === 'boolean') {
-    return literal(e ? 'true' : 'false', iri(urls['boolean']));
-  } else if (typeof e === 'string') {
-    return literal(e);
+  } else if (typeof t === 'bigint') {
+    return literal(t.toString(), iri(urls['integer'])) as any;
+  } else if (typeof t === 'boolean') {
+    return literal(t ? 'true' : 'false', iri(urls['boolean'])) as any;
+  } else if (typeof t === 'string') {
+    return literal(t) as any;
   }
 
-  return e;
+  return t as any;
 }
+
+type Subject = IriTerm | BlankTerm | VariableTerm | QuadTerm;
+type Predicate = IriTerm | VariableTerm | PropertyPath;
+type Object = TermOrPrimitive;
+type PredicateObjectArray = Array<[Predicate, Object]>;
 
 export function triple(
   subject: Subject,
@@ -52,7 +64,7 @@ export function triple(
   return {
     subject: subject,
     predicate: predicate,
-    object: object,
+    object: processPrimitiveTerm(object),
   };
 }
 
@@ -91,12 +103,12 @@ export function triples(
 }
 
 export function quad(
-  subject: QuadTerm['subject'],
-  predicate: QuadTerm['predicate'],
-  object: QuadTerm['object'],
+  subject: Subject,
+  predicate: Exclude<Predicate, PropertyPath>,
+  object: Object,
   graph?: QuadTerm['graph']
 ): QuadTerm {
-  return factory.quad(subject, predicate, object, graph);
+  return factory.quad(subject, predicate, processPrimitiveTerm(object), graph);
 }
 
 export function variable(value: string): VariableTerm {
@@ -122,5 +134,5 @@ export function as(
   expression: ExpressionOrPrimitive,
   value: VariableTerm
 ): VariableExpression {
-  return { variable: value, expression: processLiteralExpression(expression) };
+  return { variable: value, expression: processPrimitiveExpression(expression) };
 }

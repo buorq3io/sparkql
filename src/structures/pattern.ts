@@ -17,7 +17,7 @@ import {
   PatternOrTriple,
   ExpressionOrPrimitive,
 } from '../struct';
-import { processLiteralExpression } from './expression';
+import { processPrimitiveExpression } from './expression';
 
 export function createBgpPatterns(patterns: PatternOrTriple[]) {
   const isPatternNotTriple = (v: any): v is Pattern => {
@@ -120,7 +120,7 @@ export function serviceSilent(
 export function filter(expression: ExpressionOrPrimitive): FilterPattern {
   return {
     type: 'filter',
-    expression: processLiteralExpression(expression),
+    expression: processPrimitiveExpression(expression),
   };
 }
 
@@ -130,7 +130,7 @@ export function bind(
 ): BindPattern {
   return {
     type: 'bind',
-    expression: processLiteralExpression(expression),
+    expression: processPrimitiveExpression(expression),
     variable: variable,
   };
 }

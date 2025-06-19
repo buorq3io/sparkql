@@ -59,8 +59,14 @@ import type {
 
 export type PropertySet = Exclude<PropertyPath, NegatedPropertySet>;
 
-export type PatternOrTriple = Pattern | Triple
-export type ExpressionOrPrimitive = Expression | number | string | bigint | boolean;
+export type PatternOrTriple = Pattern | Triple;
+export type TermOrPrimitive = Term | number | string | bigint | boolean;
+export type ExpressionOrPrimitive =
+  | Expression
+  | number
+  | string
+  | bigint
+  | boolean;
 
 export {
   Term,

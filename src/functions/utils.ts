@@ -7,7 +7,7 @@ import {
   AggregateExpression,
   FunctionCallExpression,
 } from '../struct';
-import { processLiteralExpression } from '../structures';
+import { processPrimitiveExpression } from '../structures';
 
 function isPatternOrExpressionAndPrimitives(
   o: ExpressionOrPrimitive | Pattern
@@ -27,7 +27,7 @@ export function op(
     if (isPatternOrExpressionAndPrimitives(a)) {
       return a;
     }
-    return processLiteralExpression(a);
+    return processPrimitiveExpression(a);
   });
 
   return {
@@ -44,7 +44,7 @@ export function func(
   return {
     type: 'functionCall',
     function: func,
-    args: args.map(a => processLiteralExpression(a)),
+    args: args.map(a => processPrimitiveExpression(a)),
   };
 }
 
@@ -63,7 +63,7 @@ export function agg(
   if (isWildCardOrExpressionAndPrimitives(expression)) {
     proper_expression = expression;
   } else {
-    proper_expression = processLiteralExpression(expression);
+    proper_expression = processPrimitiveExpression(expression);
   }
 
   return {

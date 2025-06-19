@@ -9,7 +9,7 @@ import {
 } from '../struct';
 import { Generator } from 'sparqljs';
 import SparqlClient from 'sparql-http-client';
-import { createBgpPatterns, processLiteralExpression } from '../structures';
+import { createBgpPatterns, processPrimitiveExpression } from '../structures';
 
 export class SelectQueryBuilderBase<T> implements PromiseLike<T[]> {
   private readonly config: SelectQuery;
@@ -58,7 +58,7 @@ export class SelectQueryBuilderBase<T> implements PromiseLike<T[]> {
 
   having(...havings: ExpressionOrPrimitive[]) {
     if (havings.length !== 0) {
-      this.config.having = havings.map(e => processLiteralExpression(e));
+      this.config.having = havings.map(e => processPrimitiveExpression(e));
     }
     return this;
   }
@@ -75,7 +75,7 @@ export class SelectQueryBuilderBase<T> implements PromiseLike<T[]> {
         this.config.group.push(grouping);
       } else {
         this.config.group.push({
-          expression: processLiteralExpression(grouping),
+          expression: processPrimitiveExpression(grouping),
         });
       }
     }
@@ -94,7 +94,7 @@ export class SelectQueryBuilderBase<T> implements PromiseLike<T[]> {
         this.config.order.push(ordering);
       } else {
         this.config.order.push({
-          expression: processLiteralExpression(ordering),
+          expression: processPrimitiveExpression(ordering),
         });
       }
     }

@@ -1,13 +1,13 @@
-import { processLiteralExpression } from './expression';
+import { processPrimitiveExpression } from './expression';
 import { Ordering, ExpressionOrPrimitive } from '../struct';
 
 export function asc(expression: ExpressionOrPrimitive): Required<Ordering> {
   return {
-    expression: processLiteralExpression(expression),
+    expression: processPrimitiveExpression(expression),
     descending: false,
   };
 }
 
 export function desc(expression: ExpressionOrPrimitive): Required<Ordering> {
-  return { expression: processLiteralExpression(expression), descending: true };
+  return { expression: processPrimitiveExpression(expression), descending: true };
 }
