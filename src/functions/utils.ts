@@ -6,26 +6,31 @@ import {
   OperationExpression,
   AggregateExpression,
   FunctionCallExpression,
+  PatternOrTriple,
 } from '../struct';
-import { processPrimitiveExpression } from '../structures';
+import { createBgpPatterns, processPrimitiveExpression } from '../structures';
 
-function isPatternOrExpressionAndPrimitives(
-  o: ExpressionOrPrimitive | Pattern
-): o is Pattern {
+function isGeneralPatternOrExpression(
+  o: ExpressionOrPrimitive | PatternOrTriple
+): o is PatternOrTriple {
   return (
     typeof o === 'object' &&
-    'type' in o &&
-    !['operation', 'functionCall', 'aggregate'].includes(o.type)
+    (('type' in o &&
+      !['operation', 'functionCall', 'aggregate'].includes(o.type)) ||
+      'subject' in o)
   );
 }
 
 export function op(
   operator: string,
-  args: (ExpressionOrPrimitive | Pattern)[]
+  args: (ExpressionOrPrimitive | ExpressionOrPrimitive[] | PatternOrTriple)[]
 ): OperationExpression {
   const proper_args = args.map(a => {
-    if (isPatternOrExpressionAndPrimitives(a)) {
-      return a;
+    if (Array.isArray(a)) {
+      return a.map(v => processPrimitiveExpression(v))
+    }
+    if (isGeneralPatternOrExpression(a)) {
+      return createBgpPatterns([a])[0];
     }
     return processPrimitiveExpression(a);
   });

@@ -1,13 +1,11 @@
 import { op } from './utils';
 import {
-  Tuple,
-  Pattern,
+  PatternOrTriple,
   OperationExpression,
   ExpressionOrPrimitive,
 } from '../struct';
 
-type T = Tuple;
-type P = Pattern;
+type P = PatternOrTriple;
 type E = ExpressionOrPrimitive;
 
 export function eq<T extends E>(...args: [T, T]): OperationExpression {
@@ -70,11 +68,11 @@ export function uminus<T extends E>(...args: [T]): OperationExpression {
   return op('uminus', args);
 }
 
-export function inArray<K extends E>(...args: [K, T]): OperationExpression {
+export function inArray<K extends E>(...args: [K, E[]]): OperationExpression {
   return op('in', args);
 }
 
-export function notinArray<K extends E>(...args: [K, T]): OperationExpression {
+export function notinArray<K extends E>(...args: [K, E[]]): OperationExpression {
   return op('notin', args);
 }
 
