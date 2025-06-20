@@ -1,18 +1,23 @@
-import { PropertyPath, PropertySet, NegatedPropertySet } from '../struct';
+import {
+  IriTerm,
+  PropertySet,
+  PropertyPath,
+  NegatedPropertySet,
+} from '../struct';
 
 export function path(
-  pathType: NegatedPropertySet['pathType'],
-  items: NegatedPropertySet['items']
+  pathType: '!',
+  items: (IriTerm | InvPropertyPath<IriTerm>)[]
 ): NegatedPropertySet;
 
 export function path(
-  pathType: PropertySet['pathType'],
-  items: PropertySet['items']
+  pathType: '|' | '/' | '^' | '+' | '*' | '?',
+  items: (IriTerm | PropertyPath)[]
 ): PropertySet;
 
 export function path(
-  pathType: PropertyPath['pathType'],
-  items: PropertyPath['items']
+  pathType: '|' | '/' | '^' | '+' | '*' | '?' | '!',
+  items: (IriTerm | PropertyPath)[] | (IriTerm | InvPropertyPath<IriTerm>)[]
 ): PropertyPath {
   return {
     type: 'path',
@@ -21,6 +26,40 @@ export function path(
   } as PropertyPath;
 }
 
-export function sequence(...items: PropertyPath['items']): PropertyPath {
+export function seq(...items: (IriTerm | PropertyPath)[]) {
   return path('/', items);
+}
+
+export function alt(...items: (IriTerm | PropertyPath)[]) {
+  return path('|', items);
+}
+
+type InvPropertyPath<T extends IriTerm | PropertyPath> = {
+  type: 'path';
+  pathType: '^';
+  items: [T];
+};
+
+export function inv<T extends IriTerm>(item: T): InvPropertyPath<T>;
+export function inv<T extends PropertyPath>(item: T): InvPropertyPath<T>;
+export function inv(item: IriTerm | PropertySet) {
+  return path('^', [item]);
+}
+
+export function zeroOrMore(item: IriTerm | PropertyPath): PropertySet {
+  return path('*', [item]);
+}
+
+export function oneOrMore(item: IriTerm | PropertyPath): PropertySet {
+  return path('+', [item]);
+}
+
+export function zeroOrOne(item: IriTerm | PropertyPath): PropertySet {
+  return path('?', [item]);
+}
+
+export function neg(
+  ...items: (IriTerm | InvPropertyPath<IriTerm>)[]
+): NegatedPropertySet {
+  return path('!', items);
 }
