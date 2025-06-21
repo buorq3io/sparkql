@@ -79,23 +79,46 @@ export function triples(
   predicateObjectList: PredicateObjectArray
 ): Triple[];
 
+// TODO: FIX FACTORY BEHAVIOR
+export function triples(
+  subject: Subject,
+  predicate: Predicate,
+  predicateObjectList: PredicateObjectArray
+): Triple[];
+
 export function triples(
   subject: Subject,
   arg2: Predicate | PredicateObjectArray,
-  arg3?: Object[]
+  arg3?: Object[] | PredicateObjectArray
 ): Triple[] {
-  // @overload 1 -> Subject, Predicate, Object[]
-  if (arg3 && Array.isArray(arg3)) {
-    const predicate = arg2 as Predicate;
-    return arg3.map(obj => triple(subject, predicate, obj));
-  }
-
-  // @overload 2 -> Subject, PredicateObjectList
+  // @overload 1 -> Subject, PredicateObjectArray
   if (Array.isArray(arg2)) {
     const predicateObjectList = arg2 as PredicateObjectArray;
     return predicateObjectList.map(([predicate, obj]) =>
       triple(subject, predicate, obj)
     );
+  }
+
+  function isObjectOrPredicateObjectList(
+    arr: Object[] | PredicateObjectArray
+  ): arr is Object[] {
+    return !arr.some(value => Array.isArray(value));
+  }
+
+  // @overload 2 -> Subject, Predicate, Object[]
+  if (arg3 && Array.isArray(arg3) && isObjectOrPredicateObjectList(arg3)) {
+    const predicate = arg2 as Predicate;
+    return arg3.map(obj => triple(subject, predicate, obj));
+  }
+
+  // @overload 3 -> Subject, Predicate, PredicateObjectArray
+  if (arg3) {
+    const blank_node = blank();
+    const predicate = arg2 as Predicate;
+    return [
+      triple(subject, predicate, blank_node),
+      ...arg3.map(p => triple(blank_node, p[0], p[1])),
+    ];
   }
 
   // Throw an error for invalid arguments to ensure type safety
@@ -134,5 +157,8 @@ export function as(
   expression: ExpressionOrPrimitive,
   value: VariableTerm
 ): VariableExpression {
-  return { variable: value, expression: processPrimitiveExpression(expression) };
+  return {
+    variable: value,
+    expression: processPrimitiveExpression(expression),
+  };
 }
