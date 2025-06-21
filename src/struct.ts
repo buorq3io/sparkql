@@ -57,6 +57,18 @@ import type {
   GraphReference,
 } from 'sparqljs';
 
+export type VariableReturnType =
+  | LiteralTerm
+  | IriTerm
+  | number
+  | string
+  | bigint
+  | boolean;
+
+export type VariableWithReturnType<T extends VariableReturnType> = Variable & {
+  _brand: T;
+};
+
 export type PropertySet = Exclude<PropertyPath, NegatedPropertySet>;
 
 export type PatternOrTriple = Pattern | Triple;

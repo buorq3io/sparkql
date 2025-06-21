@@ -6,16 +6,30 @@ import {
   SparqlGenerator,
   VariableExpression,
   ExpressionOrPrimitive,
+  Variable,
+  LiteralTerm,
+  IriTerm,
+  VariableWithReturnType,
 } from '../struct';
 import { Generator } from 'sparqljs';
 import SparqlClient from 'sparql-http-client';
 import { createBgpPatterns, processPrimitiveExpression } from '../structures';
 
-export class SelectQueryBuilderBase<T> implements PromiseLike<T[]> {
+export type SelectReturn<T> = {
+  [K in keyof T]: T[K] extends VariableWithReturnType<infer X>
+    ? X
+    : T[K] extends Variable
+    ? LiteralTerm | IriTerm // Default for untyped variables
+    : never;
+};
+
+export class SelectQueryBuilderBase<T>
+  implements PromiseLike<SelectReturn<T>[]>
+{
   private readonly config: SelectQuery;
   private readonly endpointUrl: string;
   private readonly sparqlGenerator: SparqlGenerator;
-  private _promise: Promise<T[]> | null = null;
+  private _promise: Promise<SelectReturn<T>[]> | null = null;
 
   constructor(
     variables: SelectQuery['variables'],
@@ -119,7 +133,7 @@ export class SelectQueryBuilderBase<T> implements PromiseLike<T[]> {
     return this.sparqlGenerator.stringify(this.getSPARQL());
   }
 
-  private execute(): Promise<T[]> {
+  private execute(): Promise<SelectReturn<T>[]> {
     if (this._promise) {
       return this._promise;
     }
@@ -129,9 +143,9 @@ export class SelectQueryBuilderBase<T> implements PromiseLike<T[]> {
         const client = new SparqlClient({ endpointUrl: this.endpointUrl });
         const stream = client.query.select(this.toSPARQL());
 
-        const items: T[] = [];
+        const items: SelectReturn<T>[] = [];
         for await (const binding of stream) {
-          items.push(binding as T);
+          items.push(binding as SelectReturn<T>);
         }
         return items;
       } catch (error) {
@@ -143,8 +157,10 @@ export class SelectQueryBuilderBase<T> implements PromiseLike<T[]> {
     return this._promise;
   }
 
-  public then<TResult1 = T[], TResult2 = never>(
-    onfulfilled?: ((value: T[]) => TResult1 | PromiseLike<TResult1>) | null,
+  public then<TResult1 = SelectReturn<T>[], TResult2 = never>(
+    onfulfilled?:
+      | ((value: SelectReturn<T>[]) => TResult1 | PromiseLike<TResult1>)
+      | null,
     onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
   ): Promise<TResult1 | TResult2> {
     return this.execute().then(onfulfilled, onrejected);

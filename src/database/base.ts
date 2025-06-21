@@ -11,7 +11,7 @@ import { Variable } from '../struct';
 import { SelectQueryBuilderBase } from './select';
 
 export type SelectFields<T> = {
-  [K in keyof T]: Variable;
+  [K in keyof T]: T[K] extends Variable ? T[K] : never ;
 };
 
 export class SparqlDatabase<T extends IriManagerConfig> {

@@ -3,6 +3,7 @@ import {
   Triple,
   IriTerm,
   QuadTerm,
+  Variable,
   BlankTerm,
   LiteralTerm,
   VariableTerm,
@@ -10,6 +11,8 @@ import {
   TermOrPrimitive,
   VariableExpression,
   ExpressionOrPrimitive,
+  VariableWithReturnType,
+  VariableReturnType,
 } from '../struct';
 // @ts-ignore
 import DataModelFactory from '@rdfjs/data-model';
@@ -161,4 +164,10 @@ export function as(
     variable: value,
     expression: processPrimitiveExpression(expression),
   };
+}
+
+export function cast<T extends VariableReturnType>(
+  variable: Variable
+): VariableWithReturnType<T> {
+  return variable as VariableWithReturnType<T>;
 }
