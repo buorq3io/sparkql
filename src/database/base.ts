@@ -6,7 +6,6 @@ import {
   createVariableManager,
   transformIntoPrefixObject,
 } from '../structures';
-import { Wildcard } from 'sparqljs';
 import { Variable } from '../struct';
 import { SelectQueryBuilderBase } from './select';
 
@@ -22,15 +21,12 @@ export class SparqlDatabase<T extends IriManagerConfig> {
   }
 
   select<T>(variables?: SelectFields<T>): SelectQueryBuilderBase<T> {
-    return new SelectQueryBuilderBase(
-      variables ? <Variable[]>Object.values(variables) : [new Wildcard()],
-      this.queryPrefixes
-    );
+    return new SelectQueryBuilderBase(variables, this.queryPrefixes);
   }
 
   selectDistinct<T>(variables?: SelectFields<T>): SelectQueryBuilderBase<T> {
     return new SelectQueryBuilderBase(
-      variables ? <Variable[]>Object.values(variables) : [new Wildcard()],
+      variables,
       this.queryPrefixes,
       true,
       undefined
@@ -39,7 +35,7 @@ export class SparqlDatabase<T extends IriManagerConfig> {
 
   selectReduced<T>(variables?: SelectFields<T>): SelectQueryBuilderBase<T> {
     return new SelectQueryBuilderBase(
-      variables ? <Variable[]>Object.values(variables) : [new Wildcard()],
+      variables,
       this.queryPrefixes,
       undefined,
       true

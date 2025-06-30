@@ -9,11 +9,13 @@ import {
   Variable,
   LiteralTerm,
   IriTerm,
+  VariableTerm,
   VariableWithReturnType,
 } from '../struct';
-import { Generator } from 'sparqljs';
+import { Generator, Wildcard } from 'sparqljs';
 import SparqlClient from 'sparql-http-client';
 import { createBgpPatterns, processPrimitiveExpression } from '../structures';
+import { SelectFields } from './base';
 
 export type SelectReturn<T> = {
   [K in keyof T]: T[K] extends VariableWithReturnType<infer X>
@@ -30,9 +32,10 @@ export class SelectQueryBuilderBase<T>
   private readonly endpointUrl: string;
   private readonly sparqlGenerator: SparqlGenerator;
   private _promise: Promise<SelectReturn<T>[]> | null = null;
+  private lookup: Record<string, string> = {};
 
   constructor(
-    variables: SelectQuery['variables'],
+    variables: SelectFields<T> | undefined,
     prefixes: SelectQuery['prefixes'],
     distict: SelectQuery['distinct'] = undefined,
     reduced: SelectQuery['reduced'] = undefined
@@ -44,13 +47,43 @@ export class SelectQueryBuilderBase<T>
       );
     }
 
+    function isVariableTerm(obj: any): obj is VariableTerm {
+      return (
+        typeof obj === 'object' &&
+        obj !== null &&
+        'termType' in obj &&
+        obj.termType === 'Variable'
+      );
+    }
+
+    for (const key in variables) {
+      if (Object.prototype.hasOwnProperty.call(variables, key)) {
+        const value = variables[key];
+        // Case 1: The value is a Variable directly
+        if (isVariableTerm(value)) {
+          this.lookup[value.value] = key;
+        }
+        // Case 2: The value is an object that contains a 'variable' property
+        else if (
+          typeof value === 'object' &&
+          value !== null &&
+          'variable' in value &&
+          isVariableTerm((value as any).variable)
+        ) {
+          this.lookup[(value as any).variable.value] = key;
+        }
+      }
+    }
+
     this.endpointUrl = process.env.DATABASE_URL;
     this.sparqlGenerator = new Generator();
 
     this.config = {
       type: 'query',
       queryType: 'SELECT',
-      variables: variables,
+      variables: variables
+        ? <Variable[]>Object.values(variables)
+        : [new Wildcard()],
       prefixes: prefixes,
     };
 
@@ -145,7 +178,11 @@ export class SelectQueryBuilderBase<T>
 
         const items: SelectReturn<T>[] = [];
         for await (const binding of stream) {
-          items.push(binding as SelectReturn<T>);
+          const temp = Object.entries(this.lookup).reduce((acc, curr) => {
+            acc[curr[1]] = binding[curr[0]]
+            return acc;
+          }, {} as Record<string, any>)
+          items.push(temp as SelectReturn<T>);
         }
         return items;
       } catch (error) {
@@ -153,7 +190,6 @@ export class SelectQueryBuilderBase<T>
         throw error;
       }
     })();
-
     return this._promise;
   }
 
