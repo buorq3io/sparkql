@@ -3,6 +3,10 @@ import {
   Triple,
   IriTerm,
   QuadTerm,
+  QuadGraph,
+  QuadObject,
+  QuadSubject,
+  QuadPredicate,
   Variable,
   BlankTerm,
   LiteralTerm,
@@ -10,10 +14,9 @@ import {
   PropertyPath,
   TermOrPrimitive,
   VariableExpression,
-  ExpressionOrPrimitive,
-  VariableWithReturnType,
   VariableReturnType,
-} from '../struct';
+  ExpressionOrPrimitive,
+} from '../generic';
 // @ts-ignore
 import DataModelFactory from '@rdfjs/data-model';
 import { DataFactory, DirectionalLanguage } from '@rdfjs/types';
@@ -54,7 +57,7 @@ export function processPrimitiveTerm<T extends TermOrPrimitive>(
   return t as any;
 }
 
-type Subject = IriTerm | BlankTerm | VariableTerm | QuadTerm;
+type Subject = IriTerm | BlankTerm | VariableTerm;
 type Predicate = IriTerm | VariableTerm | PropertyPath;
 type Object = TermOrPrimitive;
 type PredicateObjectArray = Array<[Predicate, Object]>;
@@ -129,10 +132,10 @@ export function triples(
 }
 
 export function quad(
-  subject: Subject,
-  predicate: Exclude<Predicate, PropertyPath>,
-  object: Object,
-  graph?: QuadTerm['graph']
+  subject: QuadSubject,
+  predicate: QuadPredicate,
+  object: QuadObject,
+  graph?: QuadGraph
 ): QuadTerm {
   return factory.quad(subject, predicate, processPrimitiveTerm(object), graph);
 }
@@ -168,6 +171,6 @@ export function as(
 
 export function cast<T extends VariableReturnType>(
   variable: Variable
-): VariableWithReturnType<T> {
-  return variable as VariableWithReturnType<T>;
+): Variable<T> {
+  return variable as Variable<T>;
 }

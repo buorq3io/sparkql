@@ -2,23 +2,22 @@ import {
   Triple,
   Pattern,
   Ordering,
+  IriTerm,
+  Variable,
+  LiteralTerm,
+  VariableTerm,
   SelectQuery,
   SparqlGenerator,
   VariableExpression,
   ExpressionOrPrimitive,
-  Variable,
-  LiteralTerm,
-  IriTerm,
-  VariableTerm,
-  VariableWithReturnType,
-} from '../struct';
+} from '../generic';
 import { Generator, Wildcard } from 'sparqljs';
 import SparqlClient from 'sparql-http-client';
 import { createBgpPatterns, processPrimitiveExpression } from '../structures';
 import { SelectFields } from './base';
 
 export type SelectReturn<T> = {
-  [K in keyof T]: T[K] extends VariableWithReturnType<infer X>
+  [K in keyof T]: T[K] extends Variable<infer X>
     ? X
     : T[K] extends Variable
     ? LiteralTerm | IriTerm // Default for untyped variables
@@ -76,6 +75,7 @@ export class SelectQueryBuilderBase<T>
     }
 
     this.endpointUrl = process.env.DATABASE_URL;
+    // @ts-ignore
     this.sparqlGenerator = new Generator();
 
     this.config = {

@@ -1,5 +1,5 @@
 import { processPrimitiveExpression } from './expression';
-import { Ordering, ExpressionOrPrimitive } from '../struct';
+import { Ordering, ExpressionOrPrimitive } from '../generic';
 
 export function asc(expression: ExpressionOrPrimitive): Required<Ordering> {
   return {

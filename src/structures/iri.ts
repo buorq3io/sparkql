@@ -1,5 +1,5 @@
 import { iri } from './expression';
-import { IriTerm, SparqlQuery } from '../struct';
+import { IriTerm, SparqlQuery } from '../generic';
 
 export type IriManagerConfig = Record<
   string,

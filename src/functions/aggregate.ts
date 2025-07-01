@@ -1,6 +1,6 @@
 import { agg } from './utils';
 import { Wildcard } from 'sparqljs';
-import { AggregateExpression, ExpressionOrPrimitive } from '../struct';
+import { AggregateExpression, ExpressionOrPrimitive } from '../generic';
 
 export function count(): AggregateExpression;
 export function count(expression: ExpressionOrPrimitive): AggregateExpression;

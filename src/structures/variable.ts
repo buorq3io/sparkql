@@ -1,5 +1,5 @@
 import { variable } from './expression';
-import { VariableTerm } from '../struct';
+import { VariableTerm } from '../generic';
 
 export type VariableProxy = Record<string, VariableTerm>;
 

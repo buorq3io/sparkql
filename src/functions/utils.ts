@@ -1,13 +1,12 @@
 import {
-  Pattern,
   IriTerm,
   Wildcard,
-  ExpressionOrPrimitive,
+  PatternOrTriple,
   OperationExpression,
   AggregateExpression,
+  ExpressionOrPrimitive,
   FunctionCallExpression,
-  PatternOrTriple,
-} from '../struct';
+} from '../generic';
 import { createBgpPatterns, processPrimitiveExpression } from '../structures';
 
 function isGeneralPatternOrExpression(
@@ -21,10 +20,10 @@ function isGeneralPatternOrExpression(
   );
 }
 
-export function op(
+export function op<K>(
   operator: string,
   args: (ExpressionOrPrimitive | ExpressionOrPrimitive[] | PatternOrTriple)[]
-): OperationExpression {
+): OperationExpression<K> {
   const proper_args = args.map(a => {
     if (Array.isArray(a)) {
       return a.map(v => processPrimitiveExpression(v))
@@ -42,10 +41,10 @@ export function op(
   };
 }
 
-export function func(
+export function func<K>(
   func: string | IriTerm,
   args: ExpressionOrPrimitive[]
-): FunctionCallExpression {
+): FunctionCallExpression<K> {
   return {
     type: 'functionCall',
     function: func,
@@ -59,11 +58,11 @@ function isWildCardOrExpressionAndPrimitives(
   return typeof o === 'object' && 'termType' in o && o.termType === 'Wildcard';
 }
 
-export function agg(
+export function agg<K>(
   expression: ExpressionOrPrimitive | Wildcard,
   aggregation: string,
   separator?: string | undefined
-): AggregateExpression {
+): AggregateExpression<K> {
   let proper_expression;
   if (isWildCardOrExpressionAndPrimitives(expression)) {
     proper_expression = expression;
@@ -80,7 +79,7 @@ export function agg(
 }
 
 export function distinct<
-  T extends OperationExpression | FunctionCallExpression | AggregateExpression
+  K, T extends OperationExpression<K> | FunctionCallExpression<K> | AggregateExpression<K>
 >(expression: T): T {
   return { ...expression, distinct: true };
 }

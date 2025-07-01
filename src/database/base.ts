@@ -6,7 +6,7 @@ import {
   createVariableManager,
   transformIntoPrefixObject,
 } from '../structures';
-import { Variable } from '../struct';
+import { Variable } from '../generic';
 import { SelectQueryBuilderBase } from './select';
 
 export type SelectFields<T> = {

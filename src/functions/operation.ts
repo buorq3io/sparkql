@@ -3,7 +3,7 @@ import {
   PatternOrTriple,
   OperationExpression,
   ExpressionOrPrimitive,
-} from '../struct';
+} from '../generic';
 
 type P = PatternOrTriple;
 type E = ExpressionOrPrimitive;
