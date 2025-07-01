@@ -159,10 +159,10 @@ export function literal(
   return factory.literal(value, lang);
 }
 
-export function as(
-  expression: ExpressionOrPrimitive,
+export function as<T extends VariableReturnType>(
+  expression: ExpressionOrPrimitive<T>,
   value: VariableTerm
-): VariableExpression {
+): VariableExpression<T> {
   return {
     variable: value,
     expression: processPrimitiveExpression(expression),

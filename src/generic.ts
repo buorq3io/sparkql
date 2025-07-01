@@ -257,7 +257,9 @@ export type Expression<T extends ExpressionReturnType = ExpressionReturnType> =
   | VariableTerm<T>
   | LiteralTerm;
 
-export type ExpressionOrPrimitive = Expression | Primitive;
+export type ExpressionOrPrimitive<
+  T extends ExpressionReturnType = ExpressionReturnType
+> = Expression<T> | Primitive;
 
 export interface Tuple extends Array<Expression> {}
 

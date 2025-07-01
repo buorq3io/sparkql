@@ -2,9 +2,7 @@ import {
   Triple,
   Pattern,
   Ordering,
-  IriTerm,
   Variable,
-  LiteralTerm,
   VariableTerm,
   SelectQuery,
   SparqlGenerator,
@@ -17,11 +15,7 @@ import { createBgpPatterns, processPrimitiveExpression } from '../structures';
 import { SelectFields } from './base';
 
 export type SelectReturn<T> = {
-  [K in keyof T]: T[K] extends Variable<infer X>
-    ? X
-    : T[K] extends Variable
-    ? LiteralTerm | IriTerm // Default for untyped variables
-    : never;
+  [K in keyof T]: T[K] extends Variable<infer X> ? X : never;
 };
 
 export class SelectQueryBuilderBase<T>
@@ -179,9 +173,9 @@ export class SelectQueryBuilderBase<T>
         const items: SelectReturn<T>[] = [];
         for await (const binding of stream) {
           const temp = Object.entries(this.lookup).reduce((acc, curr) => {
-            acc[curr[1]] = binding[curr[0]]
+            acc[curr[1]] = binding[curr[0]];
             return acc;
-          }, {} as Record<string, any>)
+          }, {} as Record<string, any>);
           items.push(temp as SelectReturn<T>);
         }
         return items;
