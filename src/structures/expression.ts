@@ -203,6 +203,13 @@ export function transform_literal(self: BaseQueryReturnType) {
   return self as LiteralTerm;
 }
 
+export function transform_blank(self: BaseQueryReturnType) {
+  if (!('language' in self)) {
+    console.error('W: Wrongful static cast of BlankTerm to LiteralTerm');
+  }
+  return self as BlankTerm;
+}
+
 export function transform_string(self: BaseQueryReturnType) {
   return self.value;
 }
@@ -238,6 +245,13 @@ export function cast_literal<T>(variable: Variable<T>) {
   return apply_transform(
     variable as unknown as Variable<LiteralTerm>,
     transform_literal
+  );
+}
+
+export function cast_blank<T>(variable: Variable<T>) {
+  return apply_transform(
+    variable as unknown as Variable<BlankTerm>,
+    transform_blank
   );
 }
 

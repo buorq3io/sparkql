@@ -54,7 +54,7 @@ export interface Ordering {
   descending?: boolean | undefined;
 }
 
-export type BaseQueryReturnType = LiteralTerm | IriTerm;
+export type BaseQueryReturnType = LiteralTerm | IriTerm | BlankTerm;
 export type QueryReturnType = BaseQueryReturnType | any;
 
 export type Variable<T extends QueryReturnType = BaseQueryReturnType> =
