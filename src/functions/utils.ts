@@ -1,12 +1,13 @@
 import {
   IriTerm,
   Wildcard,
+  QueryReturnType,
+  BaseQueryReturnType,
   PatternOrTriple,
   OperationExpression,
   AggregateExpression,
   ExpressionOrPrimitive,
   FunctionCallExpression,
-  ExpressionReturnType,
 } from '../generic';
 import { createBgpPatterns, processPrimitiveExpression } from '../structures';
 
@@ -21,9 +22,10 @@ function isGeneralPatternOrExpression(
   );
 }
 
-export function op<K extends ExpressionReturnType>(
+export function op<K extends QueryReturnType>(
   operator: string,
-  args: (ExpressionOrPrimitive | ExpressionOrPrimitive[] | PatternOrTriple)[]
+  args: (ExpressionOrPrimitive | ExpressionOrPrimitive[] | PatternOrTriple)[],
+  transform?: (self: BaseQueryReturnType) => K
 ): OperationExpression<K> {
   const proper_args = args.map(a => {
     if (Array.isArray(a)) {
@@ -39,17 +41,20 @@ export function op<K extends ExpressionReturnType>(
     type: 'operation',
     operator: operator,
     args: proper_args,
+    transform: transform,
   };
 }
 
-export function func<K extends ExpressionReturnType>(
+export function func<K extends QueryReturnType>(
   func: string | IriTerm,
-  args: ExpressionOrPrimitive[]
+  args: ExpressionOrPrimitive[],
+  transform?: (self: BaseQueryReturnType) => K
 ): FunctionCallExpression<K> {
   return {
     type: 'functionCall',
     function: func,
     args: args.map(a => processPrimitiveExpression(a)),
+    transform: transform,
   };
 }
 
@@ -59,10 +64,11 @@ function isWildCardOrExpressionAndPrimitives(
   return typeof o === 'object' && 'termType' in o && o.termType === 'Wildcard';
 }
 
-export function agg<K extends ExpressionReturnType>(
+export function agg<K extends QueryReturnType>(
   expression: ExpressionOrPrimitive | Wildcard,
   aggregation: string,
-  separator?: string | undefined
+  separator?: string,
+  transform?: (self: BaseQueryReturnType) => K
 ): AggregateExpression<K> {
   let proper_expression;
   if (isWildCardOrExpressionAndPrimitives(expression)) {
@@ -76,11 +82,12 @@ export function agg<K extends ExpressionReturnType>(
     expression: proper_expression,
     aggregation: aggregation,
     separator: separator,
+    transform: transform,
   };
 }
 
 export function distinct<
-  K extends ExpressionReturnType,
+  K extends QueryReturnType,
   T extends
     | OperationExpression<K>
     | FunctionCallExpression<K>

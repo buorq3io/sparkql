@@ -13,8 +13,8 @@ import {
   VariableTerm,
   PropertyPath,
   TermOrPrimitive,
+  QueryReturnType,
   VariableExpression,
-  VariableReturnType,
   ExpressionOrPrimitive,
 } from '../generic';
 // @ts-ignore
@@ -23,7 +23,9 @@ import { DataFactory, DirectionalLanguage } from '@rdfjs/types';
 
 const factory = DataModelFactory as DataFactory;
 
-export function processPrimitiveExpression(e: ExpressionOrPrimitive) {
+export function processPrimitiveExpression<T extends QueryReturnType>(
+  e: ExpressionOrPrimitive<T>
+) {
   if (typeof e !== 'object') {
     return processPrimitiveTerm(e);
   }
@@ -159,7 +161,7 @@ export function literal(
   return factory.literal(value, lang);
 }
 
-export function as<T extends VariableReturnType>(
+export function as<T extends QueryReturnType>(
   expression: ExpressionOrPrimitive<T>,
   value: VariableTerm
 ): VariableExpression<T> {
@@ -169,8 +171,154 @@ export function as<T extends VariableReturnType>(
   };
 }
 
-export function cast<T extends VariableReturnType>(
-  variable: Variable
-): Variable<T> {
-  return variable as Variable<T>;
+export function cast_iri<T>(variable: Variable<T>) {
+  const variable1 = variable as unknown as Variable<IriTerm>;
+
+  const transform = (self: IriTerm | LiteralTerm) => {
+    if ('language' in self) {
+      console.warn('W: Wrongful static cast of LiteralTerm to IriTerm');
+    }
+    return self as IriTerm;
+  };
+
+  if ('expression' in variable1) {
+    if (
+      typeof variable1.expression === 'object' &&
+      'type' in variable1.expression
+    ) {
+      variable1.expression.transform = transform;
+    }
+  } else {
+    variable1.transform = transform;
+  }
+  return variable1;
+}
+
+export function cast_literal<T>(variable: Variable<T>) {
+  const variable1 = variable as unknown as Variable<LiteralTerm>;
+
+  const transform = (self: IriTerm | LiteralTerm) => {
+    if (!('language' in self)) {
+      console.error('W: Wrongful static cast of IriTerm to LiteralTerm');
+    }
+    return self as LiteralTerm;
+  };
+
+  if ('expression' in variable1) {
+    if (
+      typeof variable1.expression === 'object' &&
+      'type' in variable1.expression
+    ) {
+      variable1.expression.transform = transform;
+    }
+  } else {
+    variable1.transform = transform;
+  }
+  return variable1;
+}
+
+export function cast_string<T>(variable: Variable<T>) {
+  const variable1 = variable as unknown as Variable<string>;
+  const transform = (self: IriTerm | LiteralTerm) => self.value;
+
+  if ('expression' in variable1) {
+    if (
+      typeof variable1.expression === 'object' &&
+      'type' in variable1.expression
+    ) {
+      variable1.expression.transform = transform;
+    }
+  } else {
+    variable1.transform = transform;
+  }
+  return variable1;
+}
+
+export function cast_langstring<T>(variable: Variable<T>) {
+  const variable1 = variable as unknown as Variable<string>;
+  const transform = (self: IriTerm | LiteralTerm) =>
+    ('language' in self) ? `'${self.value}'@${self.language}` : self.value;
+
+  if ('expression' in variable1) {
+    if (
+      typeof variable1.expression === 'object' &&
+      'type' in variable1.expression
+    ) {
+      variable1.expression.transform = transform;
+    }
+  } else {
+    variable1.transform = transform;
+  }
+  return variable1;
+}
+
+export function cast_boolean<T>(variable: Variable<T>) {
+  const variable1 = variable as unknown as Variable<boolean>;
+  const transform = (self: IriTerm | LiteralTerm) => {
+    return self.value.toLowerCase() === 'true';
+  };
+
+  if ('expression' in variable1) {
+    if (
+      typeof variable1.expression === 'object' &&
+      'type' in variable1.expression
+    ) {
+      variable1.expression.transform = transform;
+    }
+  } else {
+    variable1.transform = transform;
+  }
+  return variable1;
+}
+
+export function cast_number<T>(variable: Variable<T>) {
+  const variable1 = variable as unknown as Variable<number>;
+  const transform = (self: IriTerm | LiteralTerm) => parseFloat(self.value);
+
+  if ('expression' in variable1) {
+    if (
+      typeof variable1.expression === 'object' &&
+      'type' in variable1.expression
+    ) {
+      variable1.expression.transform = transform;
+    }
+  } else {
+    variable1.transform = transform;
+  }
+  return variable1;
+}
+
+export function cast_bigint<T>(variable: Variable<T>) {
+  const variable1 = variable as unknown as Variable<bigint>;
+  const transform = (self: IriTerm | LiteralTerm) => BigInt(self.value);
+
+  if ('expression' in variable1) {
+    if (
+      typeof variable1.expression === 'object' &&
+      'type' in variable1.expression
+    ) {
+      variable1.expression.transform = transform;
+    }
+  } else {
+    variable1.transform = transform;
+  }
+  return variable1;
+}
+
+export function cast_array<T>(variable: Variable<T>, separator: string = '\u001f') {
+  const variable1 = variable as unknown as Variable<string[] | null>;
+  const transform = (self: IriTerm | LiteralTerm) =>
+    self ? self.value.split(separator) : null;
+
+  if ('expression' in variable1) {
+    if (
+      typeof variable1.expression === 'object' &&
+      'type' in variable1.expression
+    ) {
+      variable1.expression.transform = transform;
+    }
+  } else {
+    variable1.transform = transform;
+  }
+  return variable1;
 }

@@ -54,15 +54,15 @@ export interface Ordering {
   descending?: boolean | undefined;
 }
 
-export type VariableReturnType = LiteralTerm | Primitive | IriTerm;
-export type ExpressionReturnType = LiteralTerm | Primitive | IriTerm;
+export type BaseQueryReturnType = LiteralTerm | IriTerm;
+export type QueryReturnType = BaseQueryReturnType | any;
 
-export type Variable<T extends VariableReturnType = VariableReturnType> =
+export type Variable<T extends QueryReturnType = BaseQueryReturnType> =
   | VariableExpression<T>
   | VariableTerm<T>;
 
 export interface VariableExpression<
-  T extends VariableReturnType = VariableReturnType
+  T extends QueryReturnType = BaseQueryReturnType
 > {
   expression: Expression<T>;
   variable: VariableTerm;
@@ -94,14 +94,10 @@ export interface LiteralTerm {
 
 export type Primitive = number | bigint | string | boolean;
 
-export interface VariableTerm<
-  T extends LiteralTerm | Primitive | IriTerm =
-    | LiteralTerm
-    | Primitive
-    | IriTerm
-> {
+export interface VariableTerm<T extends QueryReturnType = BaseQueryReturnType> {
   termType: 'Variable';
   value: string;
+  transform?: (self: BaseQueryReturnType) => T;
 
   equals(other: Term | null | undefined): boolean;
 }
@@ -248,7 +244,7 @@ export interface ValuePatternRow {
   [variable: string]: IriTerm | BlankTerm | LiteralTerm | undefined;
 }
 
-export type Expression<T extends ExpressionReturnType = ExpressionReturnType> =
+export type Expression<T extends QueryReturnType = BaseQueryReturnType> =
   | OperationExpression<T>
   | FunctionCallExpression<T>
   | AggregateExpression<T>
@@ -258,35 +254,38 @@ export type Expression<T extends ExpressionReturnType = ExpressionReturnType> =
   | LiteralTerm;
 
 export type ExpressionOrPrimitive<
-  T extends ExpressionReturnType = ExpressionReturnType
+  T extends QueryReturnType = BaseQueryReturnType
 > = Expression<T> | Primitive;
 
 export interface Tuple extends Array<Expression> {}
 
-export interface BaseExpression {
+export interface BaseExpression<
+  T extends QueryReturnType = BaseQueryReturnType
+> {
   type: string;
   distinct?: boolean | undefined;
+  transform?: (self: BaseQueryReturnType) => T;
 }
 
 export interface OperationExpression<
-  T extends ExpressionReturnType = ExpressionReturnType
-> extends BaseExpression {
+  T extends QueryReturnType = BaseQueryReturnType
+> extends BaseExpression<T> {
   type: 'operation';
   operator: string;
   args: Array<Expression | Pattern>;
 }
 
 export interface FunctionCallExpression<
-  T extends ExpressionReturnType = ExpressionReturnType
-> extends BaseExpression {
+  T extends QueryReturnType = BaseQueryReturnType
+> extends BaseExpression<T> {
   type: 'functionCall';
   function: string | IriTerm;
   args: Expression[];
 }
 
 export interface AggregateExpression<
-  T extends ExpressionReturnType = ExpressionReturnType
-> extends BaseExpression {
+  T extends QueryReturnType = BaseQueryReturnType
+> extends BaseExpression<T> {
   type: 'aggregate';
   expression: Expression | Wildcard;
   aggregation: string;

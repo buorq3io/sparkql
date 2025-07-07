@@ -6,6 +6,8 @@ import {
   VariableTerm,
   SelectQuery,
   SparqlGenerator,
+  QueryReturnType,
+  BaseQueryReturnType,
   VariableExpression,
   ExpressionOrPrimitive,
 } from '../generic';
@@ -26,6 +28,10 @@ export class SelectQueryBuilderBase<T>
   private readonly sparqlGenerator: SparqlGenerator;
   private _promise: Promise<SelectReturn<T>[]> | null = null;
   private lookup: Record<string, string> = {};
+  private lookupTransform: Record<
+    string,
+    ((self: BaseQueryReturnType) => QueryReturnType) | undefined
+  > = {};
 
   constructor(
     variables: SelectFields<T> | undefined,
@@ -55,15 +61,20 @@ export class SelectQueryBuilderBase<T>
         // Case 1: The value is a Variable directly
         if (isVariableTerm(value)) {
           this.lookup[value.value] = key;
+          this.lookupTransform[value.value] = value.transform;
         }
         // Case 2: The value is an object that contains a 'variable' property
         else if (
           typeof value === 'object' &&
           value !== null &&
           'variable' in value &&
-          isVariableTerm((value as any).variable)
+          isVariableTerm(value.variable)
         ) {
           this.lookup[(value as any).variable.value] = key;
+          this.lookupTransform[(value as any).variable.value] =
+            'transform' in value.expression
+              ? value.expression.transform
+              : undefined;
         }
       }
     }
@@ -173,7 +184,8 @@ export class SelectQueryBuilderBase<T>
         const items: SelectReturn<T>[] = [];
         for await (const binding of stream) {
           const temp = Object.entries(this.lookup).reduce((acc, curr) => {
-            acc[curr[1]] = binding[curr[0]];
+            const func = this.lookupTransform[curr[0]] ?? ((self: any) => self);
+            acc[curr[1]] = func(binding[curr[0]]);
             return acc;
           }, {} as Record<string, any>);
           items.push(temp as SelectReturn<T>);
