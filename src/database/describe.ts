@@ -1,7 +1,7 @@
-import { DescribeQuery, IriTerm, QuadTerm, VariableTerm } from '../generic';
-import { QueryBuilderBase } from './query';
-import SparqlClient from 'sparql-http-client';
 import { Wildcard } from 'sparqljs';
+import SparqlClient from 'sparql-http-client';
+import { QueryBuilderBase } from './query';
+import { DescribeQuery, IriTerm, QuadTerm, VariableTerm } from '../generic';
 
 export type DescribeVariables = (VariableTerm | IriTerm)[];
 
@@ -18,9 +18,7 @@ export class DescribeQueryBuilderBase
     super({
       type: 'query',
       queryType: 'DESCRIBE',
-      variables: variables.length !== 0
-        ? <(VariableTerm | IriTerm)[]>Object.values(variables)
-        : [new Wildcard()],
+      variables: variables.length !== 0 ? variables : [new Wildcard()],
       prefixes: prefixes,
     });
   }

@@ -10,9 +10,12 @@ import {
 } from '../generic';
 import { Wildcard } from 'sparqljs';
 import SparqlClient from 'sparql-http-client';
-import { SelectVariables } from './base';
 import { QueryBuilderBase } from './query';
 import { processPrimitiveExpression } from '../structures';
+
+export type SelectVariables<T extends Record<string, any>> = {
+  [K in keyof T]: Variable<T[K]>;
+};
 
 export class SelectQueryBuilderBase<T extends Record<string, any>>
   extends QueryBuilderBase<SelectQuery>

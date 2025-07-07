@@ -6,14 +6,9 @@ import {
   createVariableManager,
   transformIntoPrefixObject,
 } from '../structures';
-import { Variable } from '../generic';
 import { AskQueryBuilderBase } from './ask';
-import { SelectQueryBuilderBase } from './select';
+import { SelectQueryBuilderBase, SelectVariables } from './select';
 import { DescribeQueryBuilderBase, DescribeVariables } from './describe';
-
-export type SelectVariables<T extends Record<string, any>> = {
-  [K in keyof T]: Variable<T[K]>;
-};
 
 export class SparqlDatabase<T extends IriManagerConfig> {
   private readonly queryPrefixes;
