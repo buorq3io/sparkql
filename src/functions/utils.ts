@@ -25,7 +25,7 @@ function isGeneralPatternOrExpression(
 export function op<K extends QueryReturnType>(
   operator: string,
   args: (ExpressionOrPrimitive | ExpressionOrPrimitive[] | PatternOrTriple)[],
-  transform?: (self: BaseQueryReturnType) => K
+  transform?: (self: BaseQueryReturnType, ...other: any[]) => K
 ): OperationExpression<K> {
   const proper_args = args.map(a => {
     if (Array.isArray(a)) {
@@ -48,7 +48,7 @@ export function op<K extends QueryReturnType>(
 export function func<K extends QueryReturnType>(
   func: string | IriTerm,
   args: ExpressionOrPrimitive[],
-  transform?: (self: BaseQueryReturnType) => K
+  transform?: (self: BaseQueryReturnType, ...other: any[]) => K
 ): FunctionCallExpression<K> {
   return {
     type: 'functionCall',
@@ -68,7 +68,7 @@ export function agg<K extends QueryReturnType>(
   expression: ExpressionOrPrimitive | Wildcard,
   aggregation: string,
   separator?: string,
-  transform?: (self: BaseQueryReturnType) => K
+  transform?: (self: BaseQueryReturnType, ...other: any[]) => K
 ): AggregateExpression<K> {
   let proper_expression;
   if (isWildCardOrExpressionAndPrimitives(expression)) {
