@@ -9,6 +9,7 @@ import {
 import { Variable } from '../generic';
 import { AskQueryBuilderBase } from './ask';
 import { SelectQueryBuilderBase } from './select';
+import { DescribeQueryBuilderBase, DescribeVariables } from './describe';
 
 export type SelectVariables<T extends Record<string, any>> = {
   [K in keyof T]: Variable<T[K]>;
@@ -51,6 +52,10 @@ export class SparqlDatabase<T extends IriManagerConfig> {
 
   ask() {
     return new AskQueryBuilderBase(this.queryPrefixes);
+  }
+
+  describe(...variables: DescribeVariables): DescribeQueryBuilderBase {
+    return new DescribeQueryBuilderBase(variables, this.queryPrefixes);
   }
 }
 
