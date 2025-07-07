@@ -1,27 +1,23 @@
 import {
-  Triple,
-  Pattern,
-  Ordering,
   Variable,
   VariableTerm,
+  Ordering,
   SelectQuery,
-  SparqlGenerator,
   QueryReturnType,
   BaseQueryReturnType,
   VariableExpression,
   ExpressionOrPrimitive,
 } from '../generic';
-import { Generator, Wildcard } from 'sparqljs';
+import { Wildcard } from 'sparqljs';
 import SparqlClient from 'sparql-http-client';
 import { SelectVariables } from './base';
-import { createBgpPatterns, processPrimitiveExpression } from '../structures';
+import { QueryBuilderBase } from './query';
+import { processPrimitiveExpression } from '../structures';
 
 export class SelectQueryBuilderBase<T extends Record<string, any>>
+  extends QueryBuilderBase<SelectQuery>
   implements PromiseLike<T[]>
 {
-  private readonly config: SelectQuery;
-  private readonly endpointUrl: string;
-  private readonly sparqlGenerator: SparqlGenerator;
   private _promise: Promise<T[]> | null = null;
   private lookup: Record<string, string> = {};
   private lookupTransform: Record<
@@ -35,12 +31,14 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
     distict: SelectQuery['distinct'] = undefined,
     reduced: SelectQuery['reduced'] = undefined
   ) {
-    if (!process.env.DATABASE_URL) {
-      throw Error(
-        '$DATABASE_URL environment variable ' +
-          'should be defined as your SPARQL endpoint!'
-      );
-    }
+    super({
+      type: 'query',
+      queryType: 'SELECT',
+      variables: variables
+        ? <Variable[]>Object.values(variables)
+        : [new Wildcard()],
+      prefixes: prefixes,
+    });
 
     function isVariableTerm(obj: any): obj is VariableTerm {
       return (
@@ -75,19 +73,6 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
       }
     }
 
-    this.endpointUrl = process.env.DATABASE_URL;
-    // @ts-ignore
-    this.sparqlGenerator = new Generator();
-
-    this.config = {
-      type: 'query',
-      queryType: 'SELECT',
-      variables: variables
-        ? <Variable[]>Object.values(variables)
-        : [new Wildcard()],
-      prefixes: prefixes,
-    };
-
     if (distict != undefined) {
       this.config['distinct'] = distict;
     }
@@ -95,13 +80,6 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
     if (reduced != undefined) {
       this.config['reduced'] = reduced;
     }
-  }
-
-  where(...where: (Pattern | Triple)[]) {
-    if (where.length !== 0) {
-      this.config.where = createBgpPatterns(where);
-    }
-    return this;
   }
 
   having(...havings: ExpressionOrPrimitive[]) {
@@ -157,14 +135,6 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
   offset(offset: number) {
     this.config.offset = offset;
     return this;
-  }
-
-  getSPARQL() {
-    return this.config;
-  }
-
-  toSPARQL() {
-    return this.sparqlGenerator.stringify(this.getSPARQL());
   }
 
   private execute(): Promise<T[]> {

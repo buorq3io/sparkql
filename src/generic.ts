@@ -16,7 +16,7 @@ export type Term = IriTerm | BlankTerm | LiteralTerm | VariableTerm | QuadTerm;
 export type TermOrPrimitive = Term | Primitive;
 
 export type SparqlQuery = Query;
-export type Query = SelectQuery;
+export type Query = SelectQuery | ConstructQuery | AskQuery | DescribeQuery;
 
 export interface BaseQuery {
   type: 'query';
@@ -42,6 +42,20 @@ export interface SelectQuery extends BaseQuery {
   order?: Ordering[] | undefined;
   limit?: number | undefined;
   offset?: number | undefined;
+}
+
+export interface ConstructQuery extends BaseQuery {
+  queryType: "CONSTRUCT";
+  template?: Triple[] | undefined;
+}
+
+export interface AskQuery extends BaseQuery {
+  queryType: "ASK";
+}
+
+export interface DescribeQuery extends BaseQuery {
+  queryType: "DESCRIBE";
+  variables: Array<VariableTerm | IriTerm> | [Wildcard];
 }
 
 export interface Grouping {
