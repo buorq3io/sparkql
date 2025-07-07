@@ -9,8 +9,8 @@ import {
 import { Variable } from '../generic';
 import { SelectQueryBuilderBase } from './select';
 
-export type SelectFields<T> = {
-  [K in keyof T]: T[K] extends Variable<infer X> ? T[K] : never ;
+export type SelectVariables<T extends Record<string, any>> = {
+  [K in keyof T]: Variable<T[K]>;
 };
 
 export class SparqlDatabase<T extends IriManagerConfig> {
@@ -20,11 +20,15 @@ export class SparqlDatabase<T extends IriManagerConfig> {
     this.queryPrefixes = transformIntoPrefixObject(nodes);
   }
 
-  select<T>(variables?: SelectFields<T>): SelectQueryBuilderBase<T> {
+  select<U extends Record<string, any> = Record<string, any>>(
+    variables?: SelectVariables<U>
+  ): SelectQueryBuilderBase<U> {
     return new SelectQueryBuilderBase(variables, this.queryPrefixes);
   }
 
-  selectDistinct<T>(variables?: SelectFields<T>): SelectQueryBuilderBase<T> {
+  selectDistinct<U extends Record<string, any> = Record<string, any>>(
+    variables?: SelectVariables<U>
+  ): SelectQueryBuilderBase<U> {
     return new SelectQueryBuilderBase(
       variables,
       this.queryPrefixes,
@@ -33,7 +37,9 @@ export class SparqlDatabase<T extends IriManagerConfig> {
     );
   }
 
-  selectReduced<T>(variables?: SelectFields<T>): SelectQueryBuilderBase<T> {
+  selectReduced<U extends Record<string, any> = Record<string, any>>(
+    variables?: SelectVariables<U>
+  ): SelectQueryBuilderBase<U> {
     return new SelectQueryBuilderBase(
       variables,
       this.queryPrefixes,
