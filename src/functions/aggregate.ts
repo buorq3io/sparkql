@@ -1,19 +1,32 @@
 import { agg } from './utils';
 import { Wildcard } from 'sparqljs';
-import { AggregateExpression, ExpressionOrPrimitive } from '../struct';
+import { transform_array, transform_number } from '../structures';
+import { AggregateExpression, ExpressionOrPrimitive } from '../generic';
 
-export function count(): AggregateExpression;
-export function count(expression: ExpressionOrPrimitive): AggregateExpression;
+export function count(): AggregateExpression<number>;
+export function count(
+  expression: ExpressionOrPrimitive
+): AggregateExpression<number>;
+
 export function count(expression?: ExpressionOrPrimitive) {
-  return agg(expression ?? new Wildcard(), 'count');
+  return agg(
+    expression ?? new Wildcard(),
+    'count',
+    undefined,
+    transform_number
+  );
 }
 
-export function sum(expression: ExpressionOrPrimitive) {
-  return agg(expression, 'sum');
+export function sum(
+  expression: ExpressionOrPrimitive
+): AggregateExpression<number> {
+  return agg(expression, 'sum', undefined, transform_number);
 }
 
-export function avg(expression: ExpressionOrPrimitive) {
-  return agg(expression, 'avg');
+export function avg(
+  expression: ExpressionOrPrimitive
+): AggregateExpression<number> {
+  return agg(expression, 'avg', undefined, transform_number);
 }
 
 export function min(expression: ExpressionOrPrimitive) {
@@ -31,6 +44,6 @@ export function sample(expression: ExpressionOrPrimitive) {
 export function groupConcat(
   expression: ExpressionOrPrimitive,
   separator: string = '\u001f'
-) {
-  return agg(expression, 'group_concat', separator);
+): AggregateExpression<string[]> {
+  return agg(expression, 'group_concat', separator, transform_array);
 }

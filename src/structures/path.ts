@@ -3,7 +3,7 @@ import {
   PropertySet,
   PropertyPath,
   NegatedPropertySet,
-} from '../struct';
+} from '../generic';
 
 export function path(
   pathType: '!',

@@ -6,12 +6,11 @@ import {
   createVariableManager,
   transformIntoPrefixObject,
 } from '../structures';
-import { Wildcard } from 'sparqljs';
-import { Variable } from '../struct';
+import { Variable } from '../generic';
 import { SelectQueryBuilderBase } from './select';
 
-export type SelectFields<T> = {
-  [K in keyof T]: T[K] extends Variable ? T[K] : never ;
+export type SelectVariables<T extends Record<string, any>> = {
+  [K in keyof T]: Variable<T[K]>;
 };
 
 export class SparqlDatabase<T extends IriManagerConfig> {
@@ -21,25 +20,28 @@ export class SparqlDatabase<T extends IriManagerConfig> {
     this.queryPrefixes = transformIntoPrefixObject(nodes);
   }
 
-  select<T>(variables?: SelectFields<T>): SelectQueryBuilderBase<T> {
-    return new SelectQueryBuilderBase(
-      variables ? <Variable[]>Object.values(variables) : [new Wildcard()],
-      this.queryPrefixes
-    );
+  select<U extends Record<string, any> = Record<string, any>>(
+    variables?: SelectVariables<U>
+  ): SelectQueryBuilderBase<U> {
+    return new SelectQueryBuilderBase(variables, this.queryPrefixes);
   }
 
-  selectDistinct<T>(variables?: SelectFields<T>): SelectQueryBuilderBase<T> {
+  selectDistinct<U extends Record<string, any> = Record<string, any>>(
+    variables?: SelectVariables<U>
+  ): SelectQueryBuilderBase<U> {
     return new SelectQueryBuilderBase(
-      variables ? <Variable[]>Object.values(variables) : [new Wildcard()],
+      variables,
       this.queryPrefixes,
       true,
       undefined
     );
   }
 
-  selectReduced<T>(variables?: SelectFields<T>): SelectQueryBuilderBase<T> {
+  selectReduced<U extends Record<string, any> = Record<string, any>>(
+    variables?: SelectVariables<U>
+  ): SelectQueryBuilderBase<U> {
     return new SelectQueryBuilderBase(
-      variables ? <Variable[]>Object.values(variables) : [new Wildcard()],
+      variables,
       this.queryPrefixes,
       undefined,
       true

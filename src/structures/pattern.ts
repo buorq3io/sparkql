@@ -16,7 +16,7 @@ import {
   ValuePatternRow,
   PatternOrTriple,
   ExpressionOrPrimitive,
-} from '../struct';
+} from '../generic';
 import { processPrimitiveExpression } from './expression';
 
 export function createBgpPatterns(patterns: PatternOrTriple[]) {

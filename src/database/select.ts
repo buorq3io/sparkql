@@ -2,37 +2,35 @@ import {
   Triple,
   Pattern,
   Ordering,
+  Variable,
+  VariableTerm,
   SelectQuery,
   SparqlGenerator,
+  QueryReturnType,
+  BaseQueryReturnType,
   VariableExpression,
   ExpressionOrPrimitive,
-  Variable,
-  LiteralTerm,
-  IriTerm,
-  VariableWithReturnType,
-} from '../struct';
-import { Generator } from 'sparqljs';
+} from '../generic';
+import { Generator, Wildcard } from 'sparqljs';
 import SparqlClient from 'sparql-http-client';
+import { SelectVariables } from './base';
 import { createBgpPatterns, processPrimitiveExpression } from '../structures';
 
-export type SelectReturn<T> = {
-  [K in keyof T]: T[K] extends VariableWithReturnType<infer X>
-    ? X
-    : T[K] extends Variable
-    ? LiteralTerm | IriTerm // Default for untyped variables
-    : never;
-};
-
-export class SelectQueryBuilderBase<T>
-  implements PromiseLike<SelectReturn<T>[]>
+export class SelectQueryBuilderBase<T extends Record<string, any>>
+  implements PromiseLike<T[]>
 {
   private readonly config: SelectQuery;
   private readonly endpointUrl: string;
   private readonly sparqlGenerator: SparqlGenerator;
-  private _promise: Promise<SelectReturn<T>[]> | null = null;
+  private _promise: Promise<T[]> | null = null;
+  private lookup: Record<string, string> = {};
+  private lookupTransform: Record<
+    string,
+    ((self: BaseQueryReturnType) => QueryReturnType) | undefined
+  > = {};
 
   constructor(
-    variables: SelectQuery['variables'],
+    variables: SelectVariables<T> | undefined,
     prefixes: SelectQuery['prefixes'],
     distict: SelectQuery['distinct'] = undefined,
     reduced: SelectQuery['reduced'] = undefined
@@ -44,13 +42,49 @@ export class SelectQueryBuilderBase<T>
       );
     }
 
+    function isVariableTerm(obj: any): obj is VariableTerm {
+      return (
+        typeof obj === 'object' &&
+        obj !== null &&
+        'termType' in obj &&
+        obj.termType === 'Variable'
+      );
+    }
+
+    for (const key in variables) {
+      if (Object.prototype.hasOwnProperty.call(variables, key)) {
+        const value = variables[key];
+        // Case 1: The value is a Variable directly
+        if (isVariableTerm(value)) {
+          this.lookup[value.value] = key;
+          this.lookupTransform[value.value] = value.transform;
+        }
+        // Case 2: The value is an object that contains a 'variable' property
+        else if (
+          typeof value === 'object' &&
+          value !== null &&
+          'variable' in value &&
+          isVariableTerm(value.variable)
+        ) {
+          this.lookup[(value as any).variable.value] = key;
+          this.lookupTransform[(value as any).variable.value] =
+            'transform' in value.expression
+              ? value.expression.transform
+              : undefined;
+        }
+      }
+    }
+
     this.endpointUrl = process.env.DATABASE_URL;
+    // @ts-ignore
     this.sparqlGenerator = new Generator();
 
     this.config = {
       type: 'query',
       queryType: 'SELECT',
-      variables: variables,
+      variables: variables
+        ? <Variable[]>Object.values(variables)
+        : [new Wildcard()],
       prefixes: prefixes,
     };
 
@@ -133,7 +167,7 @@ export class SelectQueryBuilderBase<T>
     return this.sparqlGenerator.stringify(this.getSPARQL());
   }
 
-  private execute(): Promise<SelectReturn<T>[]> {
+  private execute(): Promise<T[]> {
     if (this._promise) {
       return this._promise;
     }
@@ -143,9 +177,14 @@ export class SelectQueryBuilderBase<T>
         const client = new SparqlClient({ endpointUrl: this.endpointUrl });
         const stream = client.query.select(this.toSPARQL());
 
-        const items: SelectReturn<T>[] = [];
+        const items: T[] = [];
         for await (const binding of stream) {
-          items.push(binding as SelectReturn<T>);
+          const temp = Object.entries(this.lookup).reduce((acc, curr) => {
+            const func = this.lookupTransform[curr[0]] ?? ((self: any) => self);
+            acc[curr[1]] = func(binding[curr[0]]);
+            return acc;
+          }, {} as Record<string, any>);
+          items.push(temp as T);
         }
         return items;
       } catch (error) {
@@ -153,14 +192,11 @@ export class SelectQueryBuilderBase<T>
         throw error;
       }
     })();
-
     return this._promise;
   }
 
-  public then<TResult1 = SelectReturn<T>[], TResult2 = never>(
-    onfulfilled?:
-      | ((value: SelectReturn<T>[]) => TResult1 | PromiseLike<TResult1>)
-      | null,
+  public then<TResult1 = T[], TResult2 = never>(
+    onfulfilled?: ((value: T[]) => TResult1 | PromiseLike<TResult1>) | null,
     onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
   ): Promise<TResult1 | TResult2> {
     return this.execute().then(onfulfilled, onrejected);

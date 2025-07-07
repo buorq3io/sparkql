@@ -1,13 +1,14 @@
 import {
-  Pattern,
   IriTerm,
   Wildcard,
-  ExpressionOrPrimitive,
+  QueryReturnType,
+  BaseQueryReturnType,
+  PatternOrTriple,
   OperationExpression,
   AggregateExpression,
+  ExpressionOrPrimitive,
   FunctionCallExpression,
-  PatternOrTriple,
-} from '../struct';
+} from '../generic';
 import { createBgpPatterns, processPrimitiveExpression } from '../structures';
 
 function isGeneralPatternOrExpression(
@@ -21,13 +22,14 @@ function isGeneralPatternOrExpression(
   );
 }
 
-export function op(
+export function op<K extends QueryReturnType>(
   operator: string,
-  args: (ExpressionOrPrimitive | ExpressionOrPrimitive[] | PatternOrTriple)[]
-): OperationExpression {
+  args: (ExpressionOrPrimitive | ExpressionOrPrimitive[] | PatternOrTriple)[],
+  transform?: (self: BaseQueryReturnType, ...other: any[]) => K
+): OperationExpression<K> {
   const proper_args = args.map(a => {
     if (Array.isArray(a)) {
-      return a.map(v => processPrimitiveExpression(v))
+      return a.map(v => processPrimitiveExpression(v));
     }
     if (isGeneralPatternOrExpression(a)) {
       return createBgpPatterns([a])[0];
@@ -39,17 +41,20 @@ export function op(
     type: 'operation',
     operator: operator,
     args: proper_args,
+    transform: transform,
   };
 }
 
-export function func(
+export function func<K extends QueryReturnType>(
   func: string | IriTerm,
-  args: ExpressionOrPrimitive[]
-): FunctionCallExpression {
+  args: ExpressionOrPrimitive[],
+  transform?: (self: BaseQueryReturnType, ...other: any[]) => K
+): FunctionCallExpression<K> {
   return {
     type: 'functionCall',
     function: func,
     args: args.map(a => processPrimitiveExpression(a)),
+    transform: transform,
   };
 }
 
@@ -59,11 +64,12 @@ function isWildCardOrExpressionAndPrimitives(
   return typeof o === 'object' && 'termType' in o && o.termType === 'Wildcard';
 }
 
-export function agg(
+export function agg<K extends QueryReturnType>(
   expression: ExpressionOrPrimitive | Wildcard,
   aggregation: string,
-  separator?: string | undefined
-): AggregateExpression {
+  separator?: string,
+  transform?: (self: BaseQueryReturnType, ...other: any[]) => K
+): AggregateExpression<K> {
   let proper_expression;
   if (isWildCardOrExpressionAndPrimitives(expression)) {
     proper_expression = expression;
@@ -76,11 +82,16 @@ export function agg(
     expression: proper_expression,
     aggregation: aggregation,
     separator: separator,
+    transform: transform,
   };
 }
 
 export function distinct<
-  T extends OperationExpression | FunctionCallExpression | AggregateExpression
+  K extends QueryReturnType,
+  T extends
+    | OperationExpression<K>
+    | FunctionCallExpression<K>
+    | AggregateExpression<K>
 >(expression: T): T {
   return { ...expression, distinct: true };
 }

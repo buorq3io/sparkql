@@ -3,24 +3,30 @@ import {
   Triple,
   IriTerm,
   QuadTerm,
+  QuadGraph,
+  QuadObject,
+  QuadSubject,
+  QuadPredicate,
   Variable,
   BlankTerm,
   LiteralTerm,
   VariableTerm,
   PropertyPath,
   TermOrPrimitive,
+  QueryReturnType,
   VariableExpression,
   ExpressionOrPrimitive,
-  VariableWithReturnType,
-  VariableReturnType,
-} from '../struct';
+  BaseQueryReturnType,
+} from '../generic';
 // @ts-ignore
 import DataModelFactory from '@rdfjs/data-model';
 import { DataFactory, DirectionalLanguage } from '@rdfjs/types';
 
 const factory = DataModelFactory as DataFactory;
 
-export function processPrimitiveExpression(e: ExpressionOrPrimitive) {
+export function processPrimitiveExpression<T extends QueryReturnType>(
+  e: ExpressionOrPrimitive<T>
+) {
   if (typeof e !== 'object') {
     return processPrimitiveTerm(e);
   }
@@ -54,7 +60,7 @@ export function processPrimitiveTerm<T extends TermOrPrimitive>(
   return t as any;
 }
 
-type Subject = IriTerm | BlankTerm | VariableTerm | QuadTerm;
+type Subject = IriTerm | BlankTerm | VariableTerm;
 type Predicate = IriTerm | VariableTerm | PropertyPath;
 type Object = TermOrPrimitive;
 type PredicateObjectArray = Array<[Predicate, Object]>;
@@ -129,10 +135,10 @@ export function triples(
 }
 
 export function quad(
-  subject: Subject,
-  predicate: Exclude<Predicate, PropertyPath>,
-  object: Object,
-  graph?: QuadTerm['graph']
+  subject: QuadSubject,
+  predicate: QuadPredicate,
+  object: QuadObject,
+  graph?: QuadGraph
 ): QuadTerm {
   return factory.quad(subject, predicate, processPrimitiveTerm(object), graph);
 }
@@ -156,18 +162,126 @@ export function literal(
   return factory.literal(value, lang);
 }
 
-export function as(
-  expression: ExpressionOrPrimitive,
+export function as<T extends QueryReturnType>(
+  expression: ExpressionOrPrimitive<T>,
   value: VariableTerm
-): VariableExpression {
+): VariableExpression<T> {
   return {
     variable: value,
     expression: processPrimitiveExpression(expression),
   };
 }
 
-export function cast<T extends VariableReturnType>(
-  variable: Variable
-): VariableWithReturnType<T> {
-  return variable as VariableWithReturnType<T>;
+export function apply_transform<T>(
+  variable: Variable<T>,
+  transform: (self: BaseQueryReturnType, ...other: any[]) => T
+) {
+  if ('expression' in variable) {
+    if (
+      typeof variable.expression === 'object' &&
+      'type' in variable.expression
+    ) {
+      variable.expression.transform = transform;
+    }
+  } else {
+    variable.transform = transform;
+  }
+  return variable;
+}
+
+export function transform_iri(self: BaseQueryReturnType) {
+  if ('language' in self) {
+    console.warn('W: Wrongful static cast of LiteralTerm to IriTerm');
+  }
+  return self as IriTerm;
+}
+
+export function transform_literal(self: BaseQueryReturnType) {
+  if (!('language' in self)) {
+    console.error('W: Wrongful static cast of IriTerm to LiteralTerm');
+  }
+  return self as LiteralTerm;
+}
+
+export function transform_string(self: BaseQueryReturnType) {
+  return self.value;
+}
+
+export function transform_langstring(self: BaseQueryReturnType) {
+  return 'language' in self ? `'${self.value}'@${self.language}` : self.value;
+}
+
+export function transform_boolean(self: BaseQueryReturnType) {
+  return self.value.toLowerCase() === 'true';
+}
+
+export function transform_number(self: BaseQueryReturnType) {
+  return parseFloat(self.value);
+}
+
+export function transform_bigint(self: BaseQueryReturnType) {
+  return BigInt(self.value);
+}
+
+export function transform_array(self: BaseQueryReturnType, separator: string) {
+  return self ? self.value.split(separator) : [];
+}
+
+export function cast_iri<T>(variable: Variable<T>) {
+  return apply_transform(
+    variable as unknown as Variable<IriTerm>,
+    transform_iri
+  );
+}
+
+export function cast_literal<T>(variable: Variable<T>) {
+  return apply_transform(
+    variable as unknown as Variable<LiteralTerm>,
+    transform_literal
+  );
+}
+
+export function cast_string<T>(variable: Variable<T>) {
+  return apply_transform(
+    variable as unknown as Variable<string>,
+    transform_string
+  );
+}
+
+export function cast_langstring<T>(variable: Variable<T>) {
+  return apply_transform(
+    variable as unknown as Variable<string>,
+    transform_langstring
+  );
+}
+
+export function cast_boolean<T>(variable: Variable<T>) {
+  return apply_transform(
+    variable as unknown as Variable<boolean>,
+    transform_boolean
+  );
+}
+
+export function cast_number<T>(variable: Variable<T>) {
+  return apply_transform(
+    variable as unknown as Variable<number>,
+    transform_number
+  );
+}
+
+export function cast_bigint<T>(variable: Variable<T>) {
+  return apply_transform(
+    variable as unknown as Variable<bigint>,
+    transform_bigint
+  );
+}
+
+export function cast_array<T>(
+  variable: Variable<T>,
+  separator: string = '\u001f'
+) {
+  return apply_transform(
+    variable as unknown as Variable<string[]>,
+    transform_array
+  );
 }
