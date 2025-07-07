@@ -7,6 +7,7 @@ import {
   transformIntoPrefixObject,
 } from '../structures';
 import { Variable } from '../generic';
+import { AskQueryBuilderBase } from './ask';
 import { SelectQueryBuilderBase } from './select';
 
 export type SelectVariables<T extends Record<string, any>> = {
@@ -46,6 +47,10 @@ export class SparqlDatabase<T extends IriManagerConfig> {
       undefined,
       true
     );
+  }
+
+  ask() {
+    return new AskQueryBuilderBase(this.queryPrefixes);
   }
 }
 
