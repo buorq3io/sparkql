@@ -9,6 +9,7 @@ import {
 import { AskQueryBuilderBase } from './ask';
 import { SelectQueryBuilderBase, SelectVariables } from './select';
 import { DescribeQueryBuilderBase, DescribeVariables } from './describe';
+import { ConstructQueryBuilderBase, ConstructTemplates } from './construct';
 
 export class SparqlDatabase<T extends IriManagerConfig> {
   private readonly queryPrefixes;
@@ -51,6 +52,10 @@ export class SparqlDatabase<T extends IriManagerConfig> {
 
   describe(...variables: DescribeVariables): DescribeQueryBuilderBase {
     return new DescribeQueryBuilderBase(variables, this.queryPrefixes);
+  }
+
+  construct(...templates: ConstructTemplates): ConstructQueryBuilderBase {
+    return new ConstructQueryBuilderBase(templates, this.queryPrefixes);
   }
 }
 
