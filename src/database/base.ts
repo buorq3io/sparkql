@@ -7,6 +7,7 @@ import {
   transformIntoPrefixObject,
 } from '../structures';
 import { AskQueryBuilderBase } from './ask';
+import { UpdateQueryBuilderBase } from './update';
 import { SelectQueryBuilderBase, SelectVariables } from './select';
 import { DescribeQueryBuilderBase, DescribeVariables } from './describe';
 import { ConstructQueryBuilderBase, ConstructTemplates } from './construct';
@@ -56,6 +57,10 @@ export class SparqlDatabase<T extends IriManagerConfig> {
 
   construct(...templates: ConstructTemplates): ConstructQueryBuilderBase {
     return new ConstructQueryBuilderBase(templates, this.queryPrefixes);
+  }
+
+  update() {
+    return new UpdateQueryBuilderBase([], this.queryPrefixes);
   }
 }
 

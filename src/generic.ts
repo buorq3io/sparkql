@@ -98,6 +98,7 @@ export type InsertDeleteOperation =
     };
 
 export type Quads = BgpPattern | GraphQuads;
+export type UpdateQuads = (Quads | Triple)[];
 
 export type ManagementOperation =
   | CopyMoveAddOperation
