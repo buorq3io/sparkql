@@ -1,4 +1,5 @@
 import {
+  SparqlClient,
   Variable,
   VariableTerm,
   Ordering,
@@ -9,7 +10,6 @@ import {
   ExpressionOrPrimitive,
 } from '../generic';
 import { Wildcard } from 'sparqljs';
-import SparqlClient from 'sparql-http-client';
 import { QueryBuilderBase } from './query';
 import { processPrimitiveExpression } from '../structures';
 
@@ -18,10 +18,9 @@ export type SelectVariables<T extends Record<string, any>> = {
 };
 
 export class SelectQueryBuilderBase<T extends Record<string, any>>
-  extends QueryBuilderBase<SelectQuery>
+  extends QueryBuilderBase<SelectQuery, T[]>
   implements PromiseLike<T[]>
 {
-  private _promise: Promise<T[]> | null = null;
   private lookup: Record<string, string> = {};
   private lookupTransform: Record<
     string,
@@ -140,38 +139,18 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
     return this;
   }
 
-  private execute(): Promise<T[]> {
-    if (this._promise) {
-      return this._promise;
+  protected async makeQuery(client: SparqlClient): Promise<T[]> {
+    const stream = client.query.select(this.toSPARQL());
+
+    const items: T[] = [];
+    for await (const binding of stream) {
+      const temp = Object.entries(this.lookup).reduce((acc, curr) => {
+        const func = this.lookupTransform[curr[0]] ?? ((self: any) => self);
+        acc[curr[1]] = func(binding[curr[0]]);
+        return acc;
+      }, {} as Record<string, any>);
+      items.push(temp as T);
     }
-
-    this._promise = (async () => {
-      try {
-        const client = new SparqlClient({ endpointUrl: this.endpointUrl });
-        const stream = client.query.select(this.toSPARQL());
-
-        const items: T[] = [];
-        for await (const binding of stream) {
-          const temp = Object.entries(this.lookup).reduce((acc, curr) => {
-            const func = this.lookupTransform[curr[0]] ?? ((self: any) => self);
-            acc[curr[1]] = func(binding[curr[0]]);
-            return acc;
-          }, {} as Record<string, any>);
-          items.push(temp as T);
-        }
-        return items;
-      } catch (error) {
-        console.error('SPARQL execution failed:', error);
-        throw error;
-      }
-    })();
-    return this._promise;
-  }
-
-  public then<TResult1 = T[], TResult2 = never>(
-    onfulfilled?: ((value: T[]) => TResult1 | PromiseLike<TResult1>) | null,
-    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
-  ): Promise<TResult1 | TResult2> {
-    return this.execute().then(onfulfilled, onrejected);
+    return items;
   }
 }

@@ -1,3 +1,5 @@
+export type { StreamClient as SparqlClient } from 'sparql-http-client';
+
 export interface Wildcard {
   readonly termType: 'Wildcard';
   readonly value: '*';
@@ -45,16 +47,16 @@ export interface SelectQuery extends BaseQuery {
 }
 
 export interface ConstructQuery extends BaseQuery {
-  queryType: "CONSTRUCT";
+  queryType: 'CONSTRUCT';
   template?: Triple[] | undefined;
 }
 
 export interface AskQuery extends BaseQuery {
-  queryType: "ASK";
+  queryType: 'ASK';
 }
 
 export interface DescribeQuery extends BaseQuery {
-  queryType: "DESCRIBE";
+  queryType: 'DESCRIBE';
   variables: Array<VariableTerm | IriTerm> | [Wildcard];
 }
 

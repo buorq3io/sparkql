@@ -1,15 +1,12 @@
-import SparqlClient from 'sparql-http-client';
 import { QueryBuilderBase } from './query';
-import { ConstructQuery, QuadTerm, Triple } from '../generic';
+import { ConstructQuery, QuadTerm, Triple, SparqlClient } from '../generic';
 
 export type ConstructTemplates = Triple[];
 
 export class ConstructQueryBuilderBase
-  extends QueryBuilderBase<ConstructQuery>
+  extends QueryBuilderBase<ConstructQuery, QuadTerm[]>
   implements PromiseLike<QuadTerm[]>
 {
-  private _promise: Promise<QuadTerm[]> | null = null;
-
   constructor(
     variables: ConstructTemplates,
     prefixes: ConstructQuery['prefixes']
@@ -22,35 +19,13 @@ export class ConstructQueryBuilderBase
     });
   }
 
-  private execute(): Promise<QuadTerm[]> {
-    if (this._promise) {
-      return this._promise;
+  protected async makeQuery(client: SparqlClient): Promise<QuadTerm[]> {
+    const stream = client.query.construct(this.toSPARQL());
+
+    const items: QuadTerm[] = [];
+    for await (const binding of stream) {
+      items.push(binding);
     }
-
-    this._promise = (async () => {
-      try {
-        const client = new SparqlClient({ endpointUrl: this.endpointUrl });
-        const stream = client.query.construct(this.toSPARQL());
-
-        const items: QuadTerm[] = [];
-        for await (const binding of stream) {
-          items.push(binding);
-        }
-        return items;
-      } catch (error) {
-        console.error('SPARQL execution failed:', error);
-        throw error;
-      }
-    })();
-    return this._promise;
-  }
-
-  public then<TResult1 = QuadTerm[], TResult2 = never>(
-    onfulfilled?:
-      | ((value: QuadTerm[]) => TResult1 | PromiseLike<TResult1>)
-      | null,
-    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
-  ): Promise<TResult1 | TResult2> {
-    return this.execute().then(onfulfilled, onrejected);
+    return items;
   }
 }

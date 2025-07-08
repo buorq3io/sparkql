@@ -1,16 +1,19 @@
+import {
+  IriTerm,
+  QuadTerm,
+  VariableTerm,
+  DescribeQuery,
+  SparqlClient,
+} from '../generic';
 import { Wildcard } from 'sparqljs';
-import SparqlClient from 'sparql-http-client';
 import { QueryBuilderBase } from './query';
-import { DescribeQuery, IriTerm, QuadTerm, VariableTerm } from '../generic';
 
 export type DescribeVariables = (VariableTerm | IriTerm)[];
 
 export class DescribeQueryBuilderBase
-  extends QueryBuilderBase<DescribeQuery>
+  extends QueryBuilderBase<DescribeQuery, QuadTerm[]>
   implements PromiseLike<QuadTerm[]>
 {
-  private _promise: Promise<QuadTerm[]> | null = null;
-
   constructor(
     variables: DescribeVariables,
     prefixes: DescribeQuery['prefixes']
@@ -23,35 +26,13 @@ export class DescribeQueryBuilderBase
     });
   }
 
-  private execute(): Promise<QuadTerm[]> {
-    if (this._promise) {
-      return this._promise;
+  protected async makeQuery(client: SparqlClient): Promise<QuadTerm[]> {
+    const stream = client.query.construct(this.toSPARQL());
+
+    const items: QuadTerm[] = [];
+    for await (const binding of stream) {
+      items.push(binding);
     }
-
-    this._promise = (async () => {
-      try {
-        const client = new SparqlClient({ endpointUrl: this.endpointUrl });
-        const stream = client.query.construct(this.toSPARQL());
-
-        const items: QuadTerm[] = [];
-        for await (const binding of stream) {
-          items.push(binding);
-        }
-        return items;
-      } catch (error) {
-        console.error('SPARQL execution failed:', error);
-        throw error;
-      }
-    })();
-    return this._promise;
-  }
-
-  public then<TResult1 = QuadTerm[], TResult2 = never>(
-    onfulfilled?:
-      | ((value: QuadTerm[]) => TResult1 | PromiseLike<TResult1>)
-      | null,
-    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
-  ): Promise<TResult1 | TResult2> {
-    return this.execute().then(onfulfilled, onrejected);
+    return items;
   }
 }
