@@ -1,7 +1,6 @@
 import {
   IriManagerConfig,
   createIriManager,
-  createPrefixManager,
   VariableManagerConfig,
   createVariableManager,
   transformIntoPrefixObject,
@@ -69,7 +68,6 @@ export function createObjects<T extends string, K extends IriManagerConfig>(
   nodeConfig: K
 ) {
   const nodes = createIriManager(nodeConfig);
-  const prefixes = createPrefixManager(nodeConfig);
   const variables = createVariableManager(...variableKeys);
-  return [variables, nodes, prefixes] as const;
+  return [variables, nodes] as const;
 }
