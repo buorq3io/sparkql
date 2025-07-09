@@ -69,6 +69,6 @@ export function createObjects<
   P extends 'strict' | 'allow' = 'allow'
 >(variableKeys: readonly VariableManagerConfig<T>[], nodeConfig: K, mode?: P) {
   const nodes = createIriManager(nodeConfig, mode ?? 'allow');
-  const variables = createVariableManager(...variableKeys);
+  const variables = createVariableManager(variableKeys, mode ?? 'allow');
   return [variables, nodes] as const;
 }
