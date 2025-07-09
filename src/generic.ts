@@ -1,3 +1,5 @@
+export type { StreamClient as SparqlClient } from 'sparql-http-client';
+
 export interface Wildcard {
   readonly termType: 'Wildcard';
   readonly value: '*';
@@ -15,8 +17,8 @@ export type Term = IriTerm | BlankTerm | LiteralTerm | VariableTerm | QuadTerm;
 
 export type TermOrPrimitive = Term | Primitive;
 
-export type SparqlQuery = Query;
-export type Query = SelectQuery;
+export type SparqlQuery = Query | Update;
+export type Query = SelectQuery | ConstructQuery | AskQuery | DescribeQuery;
 
 export interface BaseQuery {
   type: 'query';
@@ -42,6 +44,103 @@ export interface SelectQuery extends BaseQuery {
   order?: Ordering[] | undefined;
   limit?: number | undefined;
   offset?: number | undefined;
+}
+
+export interface ConstructQuery extends BaseQuery {
+  queryType: 'CONSTRUCT';
+  template?: Triple[] | undefined;
+}
+
+export interface AskQuery extends BaseQuery {
+  queryType: 'ASK';
+}
+
+export interface DescribeQuery extends BaseQuery {
+  queryType: 'DESCRIBE';
+  variables: Array<VariableTerm | IriTerm> | [Wildcard];
+}
+
+export interface Update {
+  type: 'update';
+  base?: string | undefined;
+  prefixes: { [prefix: string]: string };
+  updates: UpdateOperation[];
+}
+
+export type UpdateOperation = InsertDeleteOperation | ManagementOperation;
+
+export type InsertDeleteOperation =
+  | {
+      updateType: 'insert';
+      graph?: GraphOrDefault;
+      insert: Quads[];
+    }
+  | {
+      updateType: 'delete';
+      graph?: GraphOrDefault;
+      delete: Quads[];
+    }
+  | {
+      updateType: 'insertdelete';
+      graph?: IriTerm;
+      insert: Quads[];
+      delete: Quads[];
+      using?: {
+        default: IriTerm[];
+        named: IriTerm[];
+      };
+      where: Pattern[];
+    }
+  | {
+      updateType: 'deletewhere';
+      graph?: GraphOrDefault;
+      delete: Quads[];
+    };
+
+export type Quads = BgpPattern | GraphQuads;
+export type UpdateQuads = (Quads | Triple)[];
+
+export type ManagementOperation =
+  | CopyMoveAddOperation
+  | LoadOperation
+  | CreateOperation
+  | ClearDropOperation;
+
+export interface CopyMoveAddOperation {
+  type: 'copy' | 'move' | 'add';
+  silent: boolean;
+  source: GraphOrDefault;
+  destination: GraphOrDefault;
+}
+
+export interface LoadOperation {
+  type: 'load';
+  silent: boolean;
+  source: IriTerm;
+  destination: IriTerm | false;
+}
+
+export interface CreateOperation {
+  type: 'create';
+  silent: boolean;
+  graph: GraphOrDefault;
+}
+
+export interface ClearDropOperation {
+  type: 'clear' | 'drop';
+  silent: boolean;
+  graph: GraphReference;
+}
+
+export interface GraphOrDefault {
+  type: 'graph';
+  name?: IriTerm | undefined;
+  default?: boolean | undefined;
+}
+
+export interface GraphReference extends GraphOrDefault {
+  named?: boolean | undefined;
+  all?: boolean | undefined;
 }
 
 export interface Grouping {
@@ -180,6 +279,12 @@ export type PatternOrTriple = Pattern | Triple;
 
 export interface BgpPattern {
   type: 'bgp';
+  triples: Triple[];
+}
+
+export interface GraphQuads {
+  type: 'graph';
+  name: IriTerm | VariableTerm;
   triples: Triple[];
 }
 

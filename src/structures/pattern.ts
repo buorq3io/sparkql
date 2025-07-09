@@ -3,6 +3,9 @@ import {
   VariableTerm,
   Triple,
   Pattern,
+  Quads,
+  UpdateQuads,
+  GraphQuads,
   BgpPattern,
   BindPattern,
   UnionPattern,
@@ -36,6 +39,27 @@ export function createBgpPatterns(patterns: PatternOrTriple[]) {
       result.push(pattern);
     } else {
       temp.push(pattern);
+    }
+  }
+  if (temp.length != 0) {
+    result.push(bgp(...temp));
+  }
+  return result;
+}
+
+export function createBgpQuads(quads: UpdateQuads): Quads[] {
+  let temp: Triple[] = [];
+  const result: Quads[] = [];
+
+  for (const quad of quads) {
+    if ('type' in quad) {
+      if (temp.length != 0) {
+        result.push(bgp(...temp));
+        temp = [];
+      }
+      result.push(quad);
+    } else {
+      temp.push(quad);
     }
   }
   if (temp.length != 0) {
@@ -80,6 +104,17 @@ export function graph(
     type: 'graph',
     name: name,
     patterns: createBgpPatterns(patterns),
+  };
+}
+
+export function quadgraph(
+  name: IriTerm | VariableTerm,
+  ...triples: Triple[]
+): GraphQuads {
+  return {
+    type: 'graph',
+    name: name,
+    triples: triples,
   };
 }
 

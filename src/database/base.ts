@@ -6,12 +6,11 @@ import {
   createVariableManager,
   transformIntoPrefixObject,
 } from '../structures';
-import { Variable } from '../generic';
-import { SelectQueryBuilderBase } from './select';
-
-export type SelectVariables<T extends Record<string, any>> = {
-  [K in keyof T]: Variable<T[K]>;
-};
+import { AskQueryBuilderBase } from './ask';
+import { UpdateQueryBuilderBase } from './update';
+import { SelectQueryBuilderBase, SelectVariables } from './select';
+import { DescribeQueryBuilderBase, DescribeVariables } from './describe';
+import { ConstructQueryBuilderBase, ConstructTemplates } from './construct';
 
 export class SparqlDatabase<T extends IriManagerConfig> {
   private readonly queryPrefixes;
@@ -46,6 +45,22 @@ export class SparqlDatabase<T extends IriManagerConfig> {
       undefined,
       true
     );
+  }
+
+  ask() {
+    return new AskQueryBuilderBase(this.queryPrefixes);
+  }
+
+  describe(...variables: DescribeVariables): DescribeQueryBuilderBase {
+    return new DescribeQueryBuilderBase(variables, this.queryPrefixes);
+  }
+
+  construct(...templates: ConstructTemplates): ConstructQueryBuilderBase {
+    return new ConstructQueryBuilderBase(templates, this.queryPrefixes);
+  }
+
+  update() {
+    return new UpdateQueryBuilderBase([], this.queryPrefixes);
   }
 }
 
