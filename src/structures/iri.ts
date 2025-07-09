@@ -22,10 +22,13 @@ export function createIriManager<
   T extends IriManagerConfig,
   K extends 'strict' | 'allow'
 >(nodes: T, mode: K): IriManager<T, K> {
-  const result: Record<string, Record<string, IriTerm>> = {};
+  const result: Record<string, IriProxy> = {};
   for (const [prefix, { uri, fields }] of Object.entries(nodes)) {
     result[prefix] = {};
-    result[prefix] = createIriProxy(uri, mode ? fields : undefined);
+    result[prefix] = createIriProxy(
+      uri,
+      mode === 'strict' ? fields : undefined
+    );
   }
   return result as IriManager<T, K>;
 }
