@@ -50,6 +50,10 @@ export class WithQueryBuilderBase
   }
 
   insert(...quads: UpdateQuads) {
+    if (quads.length === 0) {
+      return this;
+    }
+
     this._operation.insert = [
       ...this._operation.insert,
       ...createBgpQuads(quads),
@@ -59,6 +63,10 @@ export class WithQueryBuilderBase
   }
 
   delete(...quads: UpdateQuads) {
+    if (quads.length === 0) {
+      return this;
+    }
+
     this._operation.delete = [
       ...this._operation.delete,
       ...createBgpQuads(quads),
@@ -77,15 +85,37 @@ export class WithQueryBuilderBase
   }
 
   using(...iris: IriTerm[]) {
-    this._operation.using!.default = [
-      ...this._operation.using!.default,
-      ...iris,
-    ];
+    if (iris.length === 0) {
+      return this;
+    }
+
+    if (this._operation.using) {
+      this._operation.using.default = [
+        ...this._operation.using.default,
+        ...iris,
+      ];
+    } else {
+      this._operation.using = {
+        default: iris,
+        named: [],
+      };
+    }
     return this;
   }
 
   usingNamed(...iris: IriTerm[]) {
-    this._operation.using!.named = [...this._operation.using!.named, ...iris];
+    if (iris.length === 0) {
+      return this;
+    }
+
+    if (this._operation.using) {
+      this._operation.using.named = [...this._operation.using.named, ...iris];
+    } else {
+      this._operation.using = {
+        default: [],
+        named: iris,
+      };
+    }
     return this;
   }
 

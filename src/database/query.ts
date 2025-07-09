@@ -7,6 +7,10 @@ export abstract class QueryBuilderBase<
   KReturn
 > extends SparqlQueryBuilderBase<TConfig, KReturn> {
   from(...iris: IriTerm[]) {
+    if (iris.length === 0) {
+      return this;
+    }
+
     if (this.config.from) {
       this.config.from.default = [...this.config.from.default, ...iris];
     } else {
@@ -15,9 +19,14 @@ export abstract class QueryBuilderBase<
         named: [],
       };
     }
+    return this;
   }
 
   fromNamed(...iris: IriTerm[]) {
+    if (iris.length === 0) {
+      return this;
+    }
+
     if (this.config.from) {
       this.config.from.named = [...this.config.from.named, ...iris];
     } else {
@@ -26,18 +35,33 @@ export abstract class QueryBuilderBase<
         named: iris,
       };
     }
+    return this;
   }
 
   values(...rows: ValuePatternRow[]) {
+    if (rows.length === 0) {
+      return this;
+    }
+
     if (this.config.values) {
       this.config.values = [...this.config.values, ...rows];
     } else {
       this.config.values = rows;
     }
+    return this;
   }
 
   where(...patterns: (Pattern | Triple)[]) {
-    if (patterns.length !== 0) {
+    if (patterns.length === 0) {
+      return this;
+    }
+
+    if (this.config.where) {
+      this.config.where = [
+        ...this.config.where,
+        ...createBgpPatterns(patterns),
+      ];
+    } else {
       this.config.where = createBgpPatterns(patterns);
     }
     return this;

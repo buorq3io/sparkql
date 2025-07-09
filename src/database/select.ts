@@ -76,28 +76,39 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
     }
 
     if (distict != undefined) {
-      this.config['distinct'] = distict;
+      this.config.distinct = distict;
     }
 
     if (reduced != undefined) {
-      this.config['reduced'] = reduced;
+      this.config.reduced = reduced;
     }
   }
 
-  having(...havings: ExpressionOrPrimitive[]) {
-    if (havings.length !== 0) {
-      this.config.having = havings.map(e => processPrimitiveExpression(e));
+  having(...expressions: ExpressionOrPrimitive[]) {
+    if (expressions.length === 0) {
+      return this;
+    }
+
+    if (this.config.having) {
+      this.config.having = [
+        ...this.config.having,
+        ...expressions.map(e => processPrimitiveExpression(e)),
+      ];
+    } else {
+      this.config.having = expressions.map(e => processPrimitiveExpression(e));
     }
     return this;
   }
 
-  groupBy(
-    ...groupings: [
-      ExpressionOrPrimitive | VariableExpression,
-      ...(ExpressionOrPrimitive | VariableExpression)[]
-    ]
-  ) {
-    this.config.group = [];
+  groupBy(...groupings: (ExpressionOrPrimitive | VariableExpression)[]) {
+    if (groupings.length === 0) {
+      return this;
+    }
+
+    if (!this.config.group) {
+      this.config.group = [];
+    }
+
     for (const grouping of groupings) {
       if (typeof grouping === 'object' && 'variable' in grouping) {
         this.config.group.push(grouping);
@@ -110,13 +121,15 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
     return this;
   }
 
-  orderBy(
-    ...orderings: [
-      ExpressionOrPrimitive | Required<Ordering>,
-      ...(ExpressionOrPrimitive | Required<Ordering>)[]
-    ]
-  ) {
-    this.config.order = [];
+  orderBy(...orderings: (ExpressionOrPrimitive | Required<Ordering>)[]) {
+    if (orderings.length === 0) {
+      return this;
+    }
+
+    if (!this.config.order) {
+      this.config.order = [];
+    }
+
     for (const ordering of orderings) {
       if (typeof ordering === 'object' && 'descending' in ordering) {
         this.config.order.push(ordering);
