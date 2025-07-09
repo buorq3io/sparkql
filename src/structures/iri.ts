@@ -8,32 +8,41 @@ export type IriManagerConfig = Record<
 
 export type IriProxy = Record<string, IriTerm>;
 
-export type IriManager<T extends IriManagerConfig> = {
+export type IriManager<
+  T extends IriManagerConfig,
+  K extends 'strict' | 'allow'
+> = {
   [P in keyof T]: {
     [F in T[P]['fields'][number]]: IriTerm;
-  } & {
-    [key: string]: IriTerm;
-  };
+  } &
+    (K extends 'allow' ? { [key: string]: IriTerm } : {});
 };
 
-export function createIriManager<T extends IriManagerConfig>(
-  nodes: T
-): IriManager<T> {
+export function createIriManager<
+  T extends IriManagerConfig,
+  K extends 'strict' | 'allow'
+>(nodes: T, mode: K): IriManager<T, K> {
   const result: Record<string, Record<string, IriTerm>> = {};
-  for (const [prefix, { uri }] of Object.entries(nodes)) {
+  for (const [prefix, { uri, fields }] of Object.entries(nodes)) {
     result[prefix] = {};
-    result[prefix] = createIriProxy(uri);
+    result[prefix] = createIriProxy(uri, mode ? fields : undefined);
   }
-  return result as IriManager<T>;
+  return result as IriManager<T, K>;
 }
 
-export function createIriProxy(uri: string): IriProxy {
+export function createIriProxy(
+  uri: string,
+  fields?: readonly string[]
+): IriProxy {
   const cache: IriProxy = {};
   return new Proxy(
     {},
     {
       get(target, prop, receiver) {
         if (typeof prop === 'string') {
+          if (fields !== undefined && !fields.includes(prop)) {
+            return Reflect.get(target, prop, receiver);
+          }
           if (!cache[prop]) {
             cache[prop] = iri(uri + prop);
           }

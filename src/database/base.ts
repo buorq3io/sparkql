@@ -63,11 +63,12 @@ export class SparqlDatabase<T extends IriManagerConfig> {
   }
 }
 
-export function createObjects<T extends string, K extends IriManagerConfig>(
-  variableKeys: readonly VariableManagerConfig<T>[],
-  nodeConfig: K
-) {
-  const nodes = createIriManager(nodeConfig);
+export function createObjects<
+  T extends string,
+  K extends IriManagerConfig,
+  P extends 'strict' | 'allow' = 'allow'
+>(variableKeys: readonly VariableManagerConfig<T>[], nodeConfig: K, mode?: P) {
+  const nodes = createIriManager(nodeConfig, mode ?? 'allow');
   const variables = createVariableManager(...variableKeys);
   return [variables, nodes] as const;
 }
