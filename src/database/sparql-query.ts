@@ -7,18 +7,11 @@ export abstract class SparqlQueryBuilderBase<
   KReturn
 > {
   protected readonly config: TConfig;
-  protected readonly endpointUrl: string;
+  protected readonly endpointUrl: string | undefined;
   protected _promise: Promise<KReturn> | null = null;
   protected readonly sparqlGenerator: SparqlGenerator;
 
   protected constructor(initialConfig: TConfig) {
-    if (!process.env.DATABASE_URL) {
-      throw Error(
-        '$DATABASE_URL environment variable ' +
-          'should be defined as your SPARQL endpoint!'
-      );
-    }
-
     this.config = initialConfig;
     this.sparqlGenerator = new Generator();
     this.endpointUrl = process.env.DATABASE_URL;
@@ -35,6 +28,13 @@ export abstract class SparqlQueryBuilderBase<
   protected abstract makeQuery(client: SparqlClient): Promise<KReturn>;
 
   protected execute(): Promise<KReturn> {
+    if (!this.endpointUrl) {
+      throw Error(
+        '$DATABASE_URL environment variable ' +
+        'should be defined as your SPARQL endpoint!'
+      );
+    }
+
     if (this._promise) {
       return this._promise;
     }

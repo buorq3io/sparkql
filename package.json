@@ -10,7 +10,7 @@
   "scripts": {
     "build": "tsc --project tsconfig.build.json",
     "clean": "rm -rf ./lib/",
-    "cm": "cz",
+    "test": "vitest",
     "semantic-release": "semantic-release",
     "typecheck": "tsc --noEmit"
   },
@@ -24,34 +24,23 @@
     "url": "https://github.com/buorq3io"
   },
   "engines": {
-    "node": ">=12.0"
+    "node": ">=18.0.0"
   },
   "keywords": [],
   "devDependencies": {
     "@rdfjs/types": "^2.0.1",
-    "@types/jest": "^27.5.2",
-    "@types/node": "^12.20.11",
-    "@types/pg": "^8.15.4",
+    "@types/node": "^18.0.0",
     "@types/sparql-http-client": "^3.0.5",
     "@types/sparqljs": "^3.1.12",
-    "@typescript-eslint/eslint-plugin": "^4.22.0",
-    "@typescript-eslint/parser": "^4.22.0",
+    "@vitest/coverage-v8": "^3.2.4",
     "conventional-changelog-conventionalcommits": "^5.0.0",
     "dotenv": "^16.5.0",
-    "drizzle-kit": "^0.31.1",
-    "drizzle-orm": "^0.44.2",
-    "eslint": "^7.25.0",
-    "eslint-config-prettier": "^8.3.0",
-    "eslint-plugin-node": "^11.1.0",
-    "eslint-plugin-prettier": "^3.4.0",
     "json-diff-ts": "^4.3.0",
     "lint-staged": "^13.2.1",
-    "pg": "^8.16.0",
     "prettier": "^2.2.1",
     "semantic-release": "^21.0.1",
-    "ts-node": "^10.2.1",
-    "tsx": "^4.20.3",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
   },
   "release": {
     "branches": [
