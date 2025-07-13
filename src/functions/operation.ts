@@ -32,24 +32,44 @@ export function lte(...args: [E, E]): OperationExpression<boolean> {
   return op('<=', args, transform_boolean);
 }
 
-export function and(...args: [E, E]): OperationExpression<boolean> {
-  return op('&&', args, transform_boolean);
+export function and(...args: [E, E, ...E[]]): OperationExpression<boolean> {
+  const [first, ...rest] = args;
+
+  return rest.reduce(
+    (acc, current) => op('&&', [acc, current], transform_boolean),
+    first
+  ) as OperationExpression<boolean>;
 }
 
-export function or(...args: [E, E]): OperationExpression<boolean> {
-  return op('||', args, transform_boolean);
+export function or(...args: [E, E, ...E[]]): OperationExpression<boolean> {
+  const [first, ...rest] = args;
+
+  return rest.reduce(
+    (acc, current) => op('||', [acc, current], transform_boolean),
+    first
+  ) as OperationExpression<boolean>;
 }
 
-export function add(...args: [E, E]): OperationExpression<number> {
-  return op('+', args, transform_number);
+export function add(...args: [E, E, ...E[]]): OperationExpression<number> {
+  const [first, ...rest] = args;
+
+  return rest.reduce(
+    (acc, current) => op('+', [acc, current], transform_number),
+    first
+  ) as OperationExpression<number>;
 }
 
 export function subs(...args: [E, E]): OperationExpression<number> {
   return op('-', args, transform_number);
 }
 
-export function mul(...args: [E, E]): OperationExpression<number> {
-  return op('*', args, transform_number);
+export function mul(...args: [E, E, ...E[]]): OperationExpression<number> {
+  const [first, ...rest] = args;
+
+  return rest.reduce(
+    (acc, current) => op('*', [acc, current], transform_number),
+    first
+  ) as OperationExpression<number>;
 }
 
 export function div(...args: [E, E]): OperationExpression<number> {
