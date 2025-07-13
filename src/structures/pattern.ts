@@ -152,7 +152,7 @@ export function serviceSilent(
   return serviceBase(name, true, ...patterns);
 }
 
-export function filter(expression: ExpressionOrPrimitive): FilterPattern {
+export function filter(expression: ExpressionOrPrimitive<any>): FilterPattern {
   return {
     type: 'filter',
     expression: processPrimitiveExpression(expression),
@@ -160,7 +160,7 @@ export function filter(expression: ExpressionOrPrimitive): FilterPattern {
 }
 
 export function bind(
-  expression: ExpressionOrPrimitive,
+  expression: ExpressionOrPrimitive<any>,
   variable: VariableTerm
 ): BindPattern {
   return {
