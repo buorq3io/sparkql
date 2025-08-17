@@ -1,5 +1,4 @@
 import * as SparqlJs from 'sparqljs';
-import * as RdfJs from 'rdf-data-factory';
 import SparqlClient from 'sparql-http-client';
 import {
   Term,
@@ -21,9 +20,10 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
   protected readonly endpointUrl: string | undefined;
   protected _promise: Promise<KReturn> | null = null;
   protected readonly sparqlGenerator: SparqlGenerator;
-  protected readonly factory: DataFactory = new RdfJs.DataFactory();
+  protected readonly factory: DataFactory;
 
-  protected constructor(initialConfig: TConfig) {
+  protected constructor(initialConfig: TConfig, factory: DataFactory) {
+    this.factory = factory;
     this.config = initialConfig;
     this.sparqlGenerator = new SparqlJs.Generator();
     this.endpointUrl = process.env.DATABASE_URL;

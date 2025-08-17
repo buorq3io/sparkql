@@ -6,6 +6,7 @@ import {
   SparqlClient,
   UpdateOperation,
   InsertDeleteOperation,
+  DataFactory,
 } from '../generic';
 import { UpdateQueryBuilderBase } from './update';
 import { SparqlQueryBuilderBase } from './sparql-query';
@@ -21,12 +22,20 @@ export class WithQueryBuilderBase
   private _operation_push = false;
   private readonly _operation: Extract<InsertDeleteOperation, { updateType: 'insertdelete' }>;
 
-  constructor(updates: UpdateOperation[], prefixes: Update['prefixes'], iri?: IriTerm) {
-    super({
-      type: 'update',
-      updates: updates,
-      prefixes: prefixes,
-    });
+  constructor(
+    updates: UpdateOperation[],
+    prefixes: Update['prefixes'],
+    factory: DataFactory,
+    iri?: IriTerm
+  ) {
+    super(
+      {
+        type: 'update',
+        updates: updates,
+        prefixes: prefixes,
+      },
+      factory
+    );
     this._operation = {
       updateType: 'insertdelete',
       where: [],
@@ -103,7 +112,7 @@ export class WithQueryBuilderBase
 
   end() {
     this.checkoutOperation();
-    return new UpdateQueryBuilderBase(this.config.updates, this.config.prefixes);
+    return new UpdateQueryBuilderBase(this.config.updates, this.config.prefixes, this.factory);
   }
 
   protected makeQuery(client: SparqlClient): Promise<void> {

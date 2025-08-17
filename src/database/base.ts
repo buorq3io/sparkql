@@ -24,35 +24,35 @@ export class SparqlDatabase<T extends IriManagerConfig> {
   select<U extends Record<string, any> = Record<string, any>>(
     variables?: SelectVariables<U>
   ): SelectQueryBuilderBase<U> {
-    return new SelectQueryBuilderBase(variables, this.queryPrefixes);
+    return new SelectQueryBuilderBase(variables, this.queryPrefixes, this.factory);
   }
 
   selectDistinct<U extends Record<string, any> = Record<string, any>>(
     variables?: SelectVariables<U>
   ): SelectQueryBuilderBase<U> {
-    return new SelectQueryBuilderBase(variables, this.queryPrefixes, true, undefined);
+    return new SelectQueryBuilderBase(variables, this.queryPrefixes, this.factory, true, undefined);
   }
 
   selectReduced<U extends Record<string, any> = Record<string, any>>(
     variables?: SelectVariables<U>
   ): SelectQueryBuilderBase<U> {
-    return new SelectQueryBuilderBase(variables, this.queryPrefixes, undefined, true);
+    return new SelectQueryBuilderBase(variables, this.queryPrefixes, this.factory, undefined, true);
   }
 
   ask() {
-    return new AskQueryBuilderBase(this.queryPrefixes);
+    return new AskQueryBuilderBase(this.queryPrefixes, this.factory);
   }
 
   describe(...variables: DescribeVariables): DescribeQueryBuilderBase {
-    return new DescribeQueryBuilderBase(variables, this.queryPrefixes);
+    return new DescribeQueryBuilderBase(variables, this.queryPrefixes, this.factory);
   }
 
   construct(...templates: ConstructTemplates): ConstructQueryBuilderBase {
-    return new ConstructQueryBuilderBase(templates, this.queryPrefixes);
+    return new ConstructQueryBuilderBase(templates, this.queryPrefixes, this.factory);
   }
 
   update() {
-    return new UpdateQueryBuilderBase([], this.queryPrefixes);
+    return new UpdateQueryBuilderBase([], this.queryPrefixes, this.factory);
   }
 
   variable(value: string): VariableTerm {

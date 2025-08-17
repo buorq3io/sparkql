@@ -9,6 +9,7 @@ import {
   BaseQueryReturnType,
   VariableExpression,
   Expression,
+  DataFactory,
 } from '../generic';
 import { QueryBuilderBase } from './query';
 
@@ -29,20 +30,24 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
   constructor(
     variables: SelectVariables<T> | undefined,
     prefixes: SelectQuery['prefixes'],
+    factory: DataFactory,
     distict: SelectQuery['distinct'] = undefined,
     reduced: SelectQuery['reduced'] = undefined
   ) {
-    super({
-      type: 'query',
-      queryType: 'SELECT',
-      variables: variables ? <SparqlJs.Variable[]>Object.values(variables).map(v => {
-            if ('expression' in v) {
-              return { ...v, expression: this.sanitizeExpression(v.expression) };
-            }
-            return v;
-          }) : [new SparqlJs.Wildcard()],
-      prefixes: prefixes,
-    });
+    super(
+      {
+        type: 'query',
+        queryType: 'SELECT',
+        variables: variables ? <SparqlJs.Variable[]>Object.values(variables).map(v => {
+              if ('expression' in v) {
+                return { ...v, expression: this.sanitizeExpression(v.expression) };
+              }
+              return v;
+            }) : [new SparqlJs.Wildcard()],
+        prefixes: prefixes,
+      },
+      factory
+    );
 
     function isVariableTerm(obj: any): obj is VariableTerm {
       return (

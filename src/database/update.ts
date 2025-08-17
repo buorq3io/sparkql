@@ -10,17 +10,21 @@ import {
   CreateOperation,
   ClearDropOperation,
   CopyMoveAddOperation,
+  DataFactory,
 } from '../generic';
 import { WithQueryBuilderBase } from './with';
 import { SparqlQueryBuilderBase } from './sparql-query';
 
 export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<Update, void> {
-  constructor(updates: UpdateOperation[], prefixes: Update['prefixes']) {
-    super({
-      type: 'update',
-      updates: updates,
-      prefixes: prefixes,
-    });
+  constructor(updates: UpdateOperation[], prefixes: Update['prefixes'], factory: DataFactory) {
+    super(
+      {
+        type: 'update',
+        updates: updates,
+        prefixes: prefixes,
+      },
+      factory
+    );
   }
 
   insert(...quads: Quads[]) {
