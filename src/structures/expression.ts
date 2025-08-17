@@ -1,12 +1,6 @@
 import {
-  Term,
   Triple,
   IriTerm,
-  QuadTerm,
-  QuadGraph,
-  QuadObject,
-  QuadSubject,
-  QuadPredicate,
   TripleSubject,
   TriplePredicate,
   TripleObject,
@@ -14,17 +8,11 @@ import {
   BlankTerm,
   LiteralTerm,
   VariableTerm,
-  PropertyPath,
   QueryReturnType,
   VariableExpression,
   Expression,
   BaseQueryReturnType,
 } from '../generic';
-// @ts-ignore
-import DataModelFactory from '@rdfjs/data-model';
-import { DataFactory, DirectionalLanguage } from '@rdfjs/types';
-
-const factory = DataModelFactory as DataFactory;
 
 type PredicateObjectArray = Array<[TriplePredicate, TripleObject]>;
 
@@ -48,11 +36,12 @@ export function triples(
   predicateObjectList: PredicateObjectArray
 ): Triple[];
 
-export function triples(
-  subject: TripleSubject,
-  predicate: TriplePredicate,
-  predicateObjectList: PredicateObjectArray
-): Triple[];
+// TODO: BRING THIS BEHAVIOUR BACK
+// export function triples(
+//   subject: TripleSubject,
+//   predicate: TriplePredicate,
+//   predicateObjectList: PredicateObjectArray
+// ): Triple[];
 
 export function triples(
   subject: TripleSubject,
@@ -75,33 +64,18 @@ export function triples(
     return arg3.map(obj => triple(subject, predicate, obj));
   }
 
+  // TODO: BRING THIS BEHAVIOUR BACK
   // @overload 3 -> TripleSubject, TriplePredicate, PredicateObjectArray
-  if (arg3) {
-    const blank_node = blank();
-    const predicate = arg2 as TriplePredicate;
-    return [
-      triple(subject, predicate, blank_node),
-      ...arg3.map(p => triple(blank_node, p[0], p[1])),
-    ];
-  }
+  // if (arg3) {
+  //   const blank_node = blank();
+  //   const predicate = arg2 as TriplePredicate;
+  //   return [
+  //     triple(subject, predicate, blank_node),
+  //     ...arg3.map(p => triple(blank_node, p[0], p[1])),
+  //   ];
+  // }
 
   throw new Error('Invalid arguments supplied to triples function.');
-}
-
-export function variable(value: string): VariableTerm {
-  return factory.variable!(value);
-}
-
-export function iri<T extends string>(value: T): IriTerm {
-  return factory.namedNode(value);
-}
-
-export function blank<T extends string>(value?: T): BlankTerm {
-  return factory.blankNode(value);
-}
-
-export function literal(value: string, lang?: string | IriTerm | DirectionalLanguage): LiteralTerm {
-  return factory.literal(value, lang);
 }
 
 export function as<T extends QueryReturnType>(
