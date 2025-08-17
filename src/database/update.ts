@@ -1,7 +1,7 @@
 import {
   IriTerm,
   Update,
-  UpdateQuads,
+  Quads,
   SparqlClient,
   GraphReference,
   GraphOrDefault,
@@ -11,14 +11,10 @@ import {
   ClearDropOperation,
   CopyMoveAddOperation,
 } from '../generic';
-import { createBgpQuads } from '../structures';
 import { WithQueryBuilderBase } from './with';
 import { SparqlQueryBuilderBase } from './sparql-query';
 
-export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<
-  Update,
-  void
-> {
+export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<Update, void> {
   constructor(updates: UpdateOperation[], prefixes: Update['prefixes']) {
     super({
       type: 'update',
@@ -27,45 +23,41 @@ export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<
     });
   }
 
-  insert(...quads: UpdateQuads) {
+  insert(...quads: Quads[]) {
     this.config.updates = [
       ...this.config.updates,
       {
         updateType: 'insert',
-        insert: createBgpQuads(quads),
+        insert: quads.map(q => this.sanitizeQuads(q)),
       },
     ];
     return this;
   }
 
-  delete(...quads: UpdateQuads) {
+  delete(...quads: Quads[]) {
     this.config.updates = [
       ...this.config.updates,
       {
         updateType: 'delete',
-        delete: createBgpQuads(quads),
+        delete: quads.map(q => this.sanitizeQuads(q)),
       },
     ];
     return this;
   }
 
-  deleteWhere(...quads: UpdateQuads) {
+  deleteWhere(...quads: Quads[]) {
     this.config.updates = [
       ...this.config.updates,
       {
         updateType: 'deletewhere',
-        delete: createBgpQuads(quads),
+        delete: quads.map(q => this.sanitizeQuads(q)),
       },
     ];
     return this;
   }
 
   with(iri?: IriTerm) {
-    return new WithQueryBuilderBase(
-      this.config.updates,
-      this.config.prefixes,
-      iri
-    );
+    return new WithQueryBuilderBase(this.config.updates, this.config.prefixes, iri);
   }
 
   private createCopyMoveAddOperation(
@@ -135,10 +127,7 @@ export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<
     return this.createLoadOperation(source, destination, true);
   }
 
-  private createCreateOperation(
-    graph: GraphOrDefault,
-    silent: boolean = false
-  ) {
+  private createCreateOperation(graph: GraphOrDefault, silent: boolean = false) {
     this.config.updates = [
       ...this.config.updates,
       {

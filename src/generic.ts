@@ -1,136 +1,31 @@
+import * as SparqlJs from 'sparqljs';
+import * as RdfJs from 'rdf-data-factory';
+
 export type { StreamClient as SparqlClient } from 'sparql-http-client';
 
-export interface Wildcard {
-  readonly termType: 'Wildcard';
-  readonly value: '*';
+export type DataFactory = RdfJs.DataFactory;
 
-  equals(other: Term | DefaultGraph | null | undefined): boolean;
-}
+export type Wildcard = SparqlJs.Wildcard;
+export type SparqlGenerator = SparqlJs.SparqlGenerator;
 
-export interface SparqlGenerator {
-  stringify(query: SparqlQuery): string;
+export type SparqlQuery = SparqlJs.SparqlQuery;
+export type Query = SparqlJs.Query;
 
-  createGenerator(): any;
-}
-
-export type Term = IriTerm | BlankTerm | LiteralTerm | VariableTerm | QuadTerm;
-
-export type TermOrPrimitive = Term | Primitive;
-
-export type SparqlQuery = Query | Update;
-export type Query = SelectQuery | ConstructQuery | AskQuery | DescribeQuery;
-
-export interface BaseQuery {
-  type: 'query';
-  base?: string | undefined;
-  prefixes: { [prefix: string]: string };
-  from?:
-    | {
-        default: IriTerm[];
-        named: IriTerm[];
-      }
-    | undefined;
-  where?: Pattern[] | undefined;
-  values?: ValuePatternRow[] | undefined;
-}
-
-export interface SelectQuery extends BaseQuery {
-  queryType: 'SELECT';
-  variables: Variable[] | [Wildcard];
-  distinct?: boolean | undefined;
-  reduced?: boolean | undefined;
-  group?: Grouping[] | undefined;
-  having?: Expression[] | undefined;
-  order?: Ordering[] | undefined;
-  limit?: number | undefined;
-  offset?: number | undefined;
-}
-
-export interface ConstructQuery extends BaseQuery {
-  queryType: 'CONSTRUCT';
-  template?: Triple[] | undefined;
-}
-
-export interface AskQuery extends BaseQuery {
-  queryType: 'ASK';
-}
-
-export interface DescribeQuery extends BaseQuery {
-  queryType: 'DESCRIBE';
-  variables: Array<VariableTerm | IriTerm> | [Wildcard];
-}
-
-export interface Update {
-  type: 'update';
-  base?: string | undefined;
-  prefixes: { [prefix: string]: string };
-  updates: UpdateOperation[];
-}
+export type SelectQuery = SparqlJs.SelectQuery
+export type ConstructQuery = SparqlJs.ConstructQuery
+export type AskQuery = SparqlJs.AskQuery
+export type DescribeQuery = SparqlJs.DescribeQuery
+export type Update = SparqlJs.Update
 
 export type UpdateOperation = InsertDeleteOperation | ManagementOperation;
+export type InsertDeleteOperation = SparqlJs.InsertDeleteOperation;
+export type ManagementOperation = SparqlJs.ManagementOperation;
+export type CopyMoveAddOperation = SparqlJs.CopyMoveAddOperation;
+export type LoadOperation = SparqlJs.LoadOperation;
+export type CreateOperation = SparqlJs.CreateOperation;
+export type ClearDropOperation = SparqlJs.ClearDropOperation;
 
-export type InsertDeleteOperation =
-  | {
-      updateType: 'insert';
-      graph?: GraphOrDefault;
-      insert: Quads[];
-    }
-  | {
-      updateType: 'delete';
-      graph?: GraphOrDefault;
-      delete: Quads[];
-    }
-  | {
-      updateType: 'insertdelete';
-      graph?: IriTerm;
-      insert: Quads[];
-      delete: Quads[];
-      using?: {
-        default: IriTerm[];
-        named: IriTerm[];
-      };
-      where: Pattern[];
-    }
-  | {
-      updateType: 'deletewhere';
-      graph?: GraphOrDefault;
-      delete: Quads[];
-    };
-
-export type Quads = BgpPattern | GraphQuads;
-export type UpdateQuads = (Quads | Triple)[];
-
-export type ManagementOperation =
-  | CopyMoveAddOperation
-  | LoadOperation
-  | CreateOperation
-  | ClearDropOperation;
-
-export interface CopyMoveAddOperation {
-  type: 'copy' | 'move' | 'add';
-  silent: boolean;
-  source: GraphOrDefault;
-  destination: GraphOrDefault;
-}
-
-export interface LoadOperation {
-  type: 'load';
-  silent: boolean;
-  source: IriTerm;
-  destination: IriTerm | false;
-}
-
-export interface CreateOperation {
-  type: 'create';
-  silent: boolean;
-  graph: GraphOrDefault;
-}
-
-export interface ClearDropOperation {
-  type: 'clear' | 'drop';
-  silent: boolean;
-  graph: GraphReference;
-}
+export type Quads = Triple | BgpPattern | GraphQuads;
 
 export interface GraphOrDefault {
   type: 'graph';
@@ -153,129 +48,62 @@ export interface Ordering {
   descending?: boolean | undefined;
 }
 
-export type BaseQueryReturnType = LiteralTerm | IriTerm | BlankTerm;
-export type QueryReturnType = BaseQueryReturnType | any;
+export type IriTerm = SparqlJs.IriTerm;
+export type BlankTerm = SparqlJs.BlankTerm;
 
-export type Variable<T extends QueryReturnType = BaseQueryReturnType> =
+export type PrimitiveTerm = number | bigint | string | boolean;
+export type LiteralTerm = SparqlJs.LiteralTerm | PrimitiveTerm;
+
+export type Variable<T extends QueryReturnType = QueryReturnType> =
   | VariableExpression<T>
   | VariableTerm<T>;
 
-export interface VariableExpression<
-  T extends QueryReturnType = BaseQueryReturnType
-> {
+export interface VariableExpression<T extends QueryReturnType = QueryReturnType> {
   expression: Expression<T>;
   variable: VariableTerm;
 }
 
-export interface IriTerm<Iri extends string = string> {
-  termType: 'NamedNode';
-  value: Iri;
-
-  equals(other: Term | null | undefined): boolean;
-}
-
-export interface BlankTerm {
-  termType: 'BlankNode';
-  value: string;
-
-  equals(other: Term | null | undefined): boolean;
-}
-
-export interface LiteralTerm {
-  termType: 'Literal';
-  value: string;
-  language: string;
-  direction?: 'ltr' | 'rtl' | '' | null;
-  datatype: IriTerm;
-
-  equals(other: Term | null | undefined): boolean;
-}
-
-export type Primitive = number | bigint | string | boolean;
-
-export interface VariableTerm<T extends QueryReturnType = BaseQueryReturnType> {
-  termType: 'Variable';
-  value: string;
+export interface VariableTerm<T extends QueryReturnType = QueryReturnType>
+  extends SparqlJs.VariableTerm {
   transform?: (self: BaseQueryReturnType) => T;
-
-  equals(other: Term | null | undefined): boolean;
 }
 
-export interface DefaultGraph {
-  termType: 'DefaultGraph';
-  value: '';
+export type DefaultGraph = RdfJs.DefaultGraph;
+export type QuadTerm = SparqlJs.QuadTerm;
 
-  equals(other: Term | null | undefined): boolean;
-}
-
+export type QuadGraph = DefaultGraph | IriTerm | BlankTerm | VariableTerm;
 export type QuadSubject = IriTerm | BlankTerm | QuadTerm | VariableTerm;
 export type QuadPredicate = IriTerm | VariableTerm;
-export type QuadObject =
-  | IriTerm
-  | LiteralTerm
-  | BlankTerm
-  | QuadTerm
-  | VariableTerm;
-export type QuadGraph = DefaultGraph | IriTerm | BlankTerm | VariableTerm;
+export type QuadObject = Term;
 
-export interface BaseQuadTerm {
-  termType: 'Quad';
-  value: '';
-  subject: Term;
-  predicate: Term;
-  object: Term;
-  graph: Term | DefaultGraph;
+export type Term = VariableTerm | IriTerm | LiteralTerm | BlankTerm | QuadTerm;
 
-  equals(other: Term | null | undefined): boolean;
-}
+export type BaseQueryReturnType = IriTerm | BlankTerm | Exclude<LiteralTerm, PrimitiveTerm>;
+export type QueryReturnType = BaseQueryReturnType | any;
 
-export interface QuadTerm extends BaseQuadTerm {
-  subject: QuadSubject;
-  predicate: QuadPredicate;
-  object: QuadObject;
-  graph: QuadGraph;
-
-  equals(other: Term | null | undefined): boolean;
-}
-
-export interface Triple {
-  subject: IriTerm | BlankTerm | VariableTerm;
-  predicate: IriTerm | VariableTerm | PropertyPath;
-  object: Term;
-}
-
-export type PropertyPath =
-  | NegatedPropertySet
-  | {
-      type: 'path';
-      pathType: '|' | '/' | '^' | '+' | '*' | '?';
-      items: Array<IriTerm | PropertyPath>;
-    };
-
-export interface NegatedPropertySet {
-  type: 'path';
-  pathType: '!';
-  items: Array<
-    | IriTerm
-    | {
-        type: 'path';
-        pathType: '^';
-        items: [IriTerm];
-      }
-  >;
-}
-
+export type PropertyPath = SparqlJs.PropertyPath;
+export type NegatedPropertySet = SparqlJs.NegatedPropertySet;
 export type PropertySet = Exclude<PropertyPath, NegatedPropertySet>;
 
+export type TripleSubject = IriTerm | BlankTerm | VariableTerm;
+export type TriplePredicate = IriTerm | VariableTerm | PropertyPath;
+export type TripleObject = Term;
+
+export interface Triple extends Record<keyof SparqlJs.Triple, unknown> {
+  type: 'triple'
+  subject: TripleSubject;
+  predicate: TriplePredicate;
+  object: TripleObject;
+}
+
 export type Pattern =
+  | Triple
   | BgpPattern
   | BlockPattern
   | FilterPattern
   | BindPattern
   | ValuesPattern
   | SelectQuery;
-
-export type PatternOrTriple = Pattern | Triple;
 
 export interface BgpPattern {
   type: 'bgp';
@@ -349,7 +177,7 @@ export interface ValuePatternRow {
   [variable: string]: IriTerm | BlankTerm | LiteralTerm | undefined;
 }
 
-export type Expression<T extends QueryReturnType = BaseQueryReturnType> =
+export type Expression<T extends QueryReturnType = QueryReturnType> =
   | OperationExpression<T>
   | FunctionCallExpression<T>
   | AggregateExpression<T>
@@ -358,39 +186,29 @@ export type Expression<T extends QueryReturnType = BaseQueryReturnType> =
   | VariableTerm<T>
   | LiteralTerm;
 
-export type ExpressionOrPrimitive<
-  T extends QueryReturnType = BaseQueryReturnType
-> = Expression<T> | Primitive;
-
 export interface Tuple extends Array<Expression> {}
 
-export interface BaseExpression<
-  T extends QueryReturnType = BaseQueryReturnType
-> {
-  type: string;
-  distinct?: boolean | undefined;
-  transform?: (self: BaseQueryReturnType) => T;
+export interface BaseExpression<T extends QueryReturnType = QueryReturnType>
+  extends SparqlJs.BaseExpression {
+  transform?: (self: BaseQueryReturnType, ...other: any[]) => T;
 }
 
-export interface OperationExpression<
-  T extends QueryReturnType = BaseQueryReturnType
-> extends BaseExpression<T> {
+export interface OperationExpression<T extends QueryReturnType = QueryReturnType>
+  extends BaseExpression<T> {
   type: 'operation';
   operator: string;
   args: Array<Expression | Pattern>;
 }
 
-export interface FunctionCallExpression<
-  T extends QueryReturnType = BaseQueryReturnType
-> extends BaseExpression<T> {
+export interface FunctionCallExpression<T extends QueryReturnType = QueryReturnType>
+  extends BaseExpression<T> {
   type: 'functionCall';
   function: string | IriTerm;
   args: Expression[];
 }
 
-export interface AggregateExpression<
-  T extends QueryReturnType = BaseQueryReturnType
-> extends BaseExpression<T> {
+export interface AggregateExpression<T extends QueryReturnType = QueryReturnType>
+  extends BaseExpression<T> {
   type: 'aggregate';
   expression: Expression | Wildcard;
   aggregation: string;

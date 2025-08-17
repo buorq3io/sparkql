@@ -7,14 +7,19 @@ export class ConstructQueryBuilderBase
   extends QueryBuilderBase<ConstructQuery, QuadTerm[]>
   implements PromiseLike<QuadTerm[]>
 {
-  constructor(
-    variables: ConstructTemplates,
-    prefixes: ConstructQuery['prefixes']
-  ) {
+  constructor(variables: ConstructTemplates, prefixes: ConstructQuery['prefixes']) {
     super({
       type: 'query',
       queryType: 'CONSTRUCT',
-      template: variables.length !== 0 ? variables : undefined,
+      template:
+        variables.length !== 0
+          ? variables.map(t => {
+              return {
+                ...t,
+                object: this.sanitizeTerm(t.object),
+              };
+            })
+          : undefined,
       prefixes: prefixes,
     });
   }

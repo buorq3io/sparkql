@@ -1,16 +1,14 @@
 import {
-  Triple,
   IriTerm,
   Pattern,
   Update,
-  UpdateQuads,
+  Quads,
   SparqlClient,
   UpdateOperation,
   InsertDeleteOperation,
 } from '../generic';
 import { UpdateQueryBuilderBase } from './update';
 import { SparqlQueryBuilderBase } from './sparql-query';
-import { createBgpPatterns, createBgpQuads } from '../structures';
 
 export class WithQueryBuilderBase
   extends SparqlQueryBuilderBase<Update, void>
@@ -21,16 +19,9 @@ export class WithQueryBuilderBase
   private delete_call = false;
 
   private _operation_push = false;
-  private readonly _operation: Extract<
-    InsertDeleteOperation,
-    { updateType: 'insertdelete' }
-  >;
+  private readonly _operation: Extract<InsertDeleteOperation, { updateType: 'insertdelete' }>;
 
-  constructor(
-    updates: UpdateOperation[],
-    prefixes: Update['prefixes'],
-    iri?: IriTerm
-  ) {
+  constructor(updates: UpdateOperation[], prefixes: Update['prefixes'], iri?: IriTerm) {
     super({
       type: 'update',
       updates: updates,
@@ -49,36 +40,30 @@ export class WithQueryBuilderBase
     };
   }
 
-  insert(...quads: UpdateQuads) {
+  insert(...quads: Quads[]) {
     if (quads.length === 0) {
       return this;
     }
 
-    this._operation.insert = [
-      ...this._operation.insert,
-      ...createBgpQuads(quads),
-    ];
+    this._operation.insert = [...this._operation.insert, ...quads.map(q => this.sanitizeQuads(q))];
     this.insert_call = true;
     return this;
   }
 
-  delete(...quads: UpdateQuads) {
+  delete(...quads: Quads[]) {
     if (quads.length === 0) {
       return this;
     }
 
-    this._operation.delete = [
-      ...this._operation.delete,
-      ...createBgpQuads(quads),
-    ];
+    this._operation.delete = [...this._operation.delete, ...quads.map(q => this.sanitizeQuads(q))];
     this.delete_call = true;
     return this;
   }
 
-  where(...patterns: (Pattern | Triple)[]) {
+  where(...patterns: Pattern[]) {
     this._operation.where = [
       ...this._operation.where,
-      ...createBgpPatterns(patterns),
+      ...patterns.map(p => this.sanitizePattern(p)),
     ];
     this.where_call = true;
     return this;
@@ -90,10 +75,7 @@ export class WithQueryBuilderBase
     }
 
     if (this._operation.using) {
-      this._operation.using.default = [
-        ...this._operation.using.default,
-        ...iris,
-      ];
+      this._operation.using.default = [...this._operation.using.default, ...iris];
     } else {
       this._operation.using = {
         default: iris,
@@ -121,10 +103,7 @@ export class WithQueryBuilderBase
 
   end() {
     this.checkoutOperation();
-    return new UpdateQueryBuilderBase(
-      this.config.updates,
-      this.config.prefixes
-    );
+    return new UpdateQueryBuilderBase(this.config.updates, this.config.prefixes);
   }
 
   protected makeQuery(client: SparqlClient): Promise<void> {
@@ -134,9 +113,7 @@ export class WithQueryBuilderBase
 
   private checkoutOperation() {
     if (!(this.where_call && this.insert_call && this.delete_call)) {
-      throw Error(
-        '.insert(), .delete() and .where() should be called on modify operation.'
-      );
+      throw Error('.insert(), .delete() and .where() should be called on modify operation.');
     }
     if (this._operation_push) {
       this.config.updates.pop();
