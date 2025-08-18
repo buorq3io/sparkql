@@ -1,5 +1,4 @@
-import { variable } from './expression';
-import { VariableTerm } from '../generic';
+import { DataFactory, VariableTerm } from '../generic';
 
 export type VariableManagerConfig<T extends string> = Exclude<T, '__'>;
 
@@ -11,17 +10,19 @@ export type VariableManager<T extends string, K extends 'strict' | 'allow'> = {
   __: () => VariableTerm;
 } & (K extends 'allow' ? { [key: Exclude<string, '__'>]: VariableTerm } : {});
 
-export function createVariableManager<
-  T extends string,
-  K extends 'strict' | 'allow'
->(keys: readonly VariableManagerConfig<T>[], mode: K): VariableManager<T, K> {
-  return createVariableProxy(
-    mode === 'strict' ? keys : undefined
-  ) as VariableManager<T, K>;
+export function createVariableManager<T extends string, K extends 'strict' | 'allow'>(
+  keys: readonly VariableManagerConfig<T>[],
+  mode: K,
+  factory: DataFactory
+): VariableManager<T, K> {
+  return createVariableProxy(factory, mode === 'strict' ? keys : undefined) as VariableManager<
+    T,
+    K
+  >;
 }
 
-export function createVariableProxy(keys?: readonly string[]): VariableProxy {
-  const cache: VariableProxy = { __: createVariableGenerator() };
+export function createVariableProxy(factory: DataFactory, keys?: readonly string[]): VariableProxy {
+  const cache: VariableProxy = { __: createVariableGenerator(factory.variable) };
   return new Proxy(
     {},
     {
@@ -31,7 +32,7 @@ export function createVariableProxy(keys?: readonly string[]): VariableProxy {
             return Reflect.get(target, prop, receiver);
           }
           if (!cache[prop]) {
-            cache[prop] = variable(prop);
+            cache[prop] = factory.variable(prop);
           }
           return cache[prop];
         }
@@ -41,9 +42,13 @@ export function createVariableProxy(keys?: readonly string[]): VariableProxy {
   );
 }
 
-export function createVariableGenerator(prefix = '__v', seed = 0) {
+export function createVariableGenerator(
+  generator: (value: string) => VariableTerm,
+  prefix = '__v',
+  seed = 0
+) {
   let counter = seed;
   return () => {
-    return variable(`${prefix}${(counter++).toString(36)}`);
+    return generator(`${prefix}${(counter++).toString(36)}`);
   };
 }

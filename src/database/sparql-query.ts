@@ -1,19 +1,31 @@
-import { Generator } from 'sparqljs';
+import * as SparqlJs from 'sparqljs';
 import SparqlClient from 'sparql-http-client';
-import { SparqlGenerator, SparqlQuery } from '../generic';
+import {
+  Term,
+  LiteralTerm,
+  PrimitiveTerm,
+  Expression,
+  Pattern,
+  ValuePatternRow,
+  SparqlQuery,
+  QueryReturnType,
+  DataFactory,
+  SparqlGenerator,
+  Quads,
+} from '../generic';
+import { bgp } from '../structures';
 
-export abstract class SparqlQueryBuilderBase<
-  TConfig extends SparqlQuery,
-  KReturn
-> {
+export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KReturn> {
   protected readonly config: TConfig;
   protected readonly endpointUrl: string | undefined;
   protected _promise: Promise<KReturn> | null = null;
   protected readonly sparqlGenerator: SparqlGenerator;
+  protected readonly factory: DataFactory;
 
-  protected constructor(initialConfig: TConfig) {
+  protected constructor(initialConfig: TConfig, factory: DataFactory) {
+    this.factory = factory;
     this.config = initialConfig;
-    this.sparqlGenerator = new Generator();
+    this.sparqlGenerator = new SparqlJs.Generator();
     this.endpointUrl = process.env.DATABASE_URL;
   }
 
@@ -30,8 +42,7 @@ export abstract class SparqlQueryBuilderBase<
   protected execute(): Promise<KReturn> {
     if (!this.endpointUrl) {
       throw Error(
-        '$DATABASE_URL environment variable ' +
-        'should be defined as your SPARQL endpoint!'
+        '$DATABASE_URL environment variable ' + 'should be defined as your SPARQL endpoint!'
       );
     }
 
@@ -56,5 +67,153 @@ export abstract class SparqlQueryBuilderBase<
     onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
   ): Promise<TResult1 | TResult2> {
     return this.execute().then(onfulfilled, onrejected);
+  }
+
+  protected sanitizeTerm<T extends Term>(
+    t: T
+  ): T extends Exclude<Term, PrimitiveTerm> ? T : Exclude<LiteralTerm, PrimitiveTerm> {
+    const urls = {
+      integer: 'http://www.w3.org/2001/XMLSchema#integer',
+      float: 'http://www.w3.org/2001/XMLSchema#decimal',
+      bigint: 'http://www.w3.org/2001/XMLSchema#integer',
+      boolean: 'http://www.w3.org/2001/XMLSchema#boolean',
+    };
+
+    if (typeof t === 'number') {
+      if (Number.isInteger(t)) {
+        return this.factory.literal(t.toString(), this.factory.namedNode(urls.integer)) as any;
+      } else {
+        return this.factory.literal(t.toString(), this.factory.namedNode(urls.float)) as any;
+      }
+    } else if (typeof t === 'bigint') {
+      return this.factory.literal(t.toString(), this.factory.namedNode(urls.integer)) as any;
+    } else if (typeof t === 'boolean') {
+      return this.factory.literal(
+        t ? 'true' : 'false',
+        this.factory.namedNode(urls.boolean)
+      ) as any;
+    } else if (typeof t === 'string') {
+      return this.factory.literal(t) as any;
+    }
+
+    return t as any;
+  }
+
+  protected sanitizeExpression<T extends QueryReturnType>(
+    expression: Expression<T>
+  ): SparqlJs.Expression {
+    const isExpressionOrPattern = (o: Expression | Pattern): o is Expression => {
+      if (typeof o !== 'object') {
+        return true;
+      } else if (!('type' in o)) {
+        return true;
+      } else if (['operation', 'functionCall', 'aggregate'].includes(o.type)) {
+        return true;
+      }
+      return false;
+    };
+
+    if (Array.isArray(expression)) {
+      return expression.map(e => this.sanitizeExpression(e));
+    } else if (typeof expression !== 'object') {
+      return this.sanitizeTerm(expression);
+    } else if ('type' in expression) {
+      if (expression.type === 'operation') {
+        return {
+          ...expression,
+          args: expression.args.map(a => {
+            if (isExpressionOrPattern(a)) {
+              return this.sanitizeExpression(a);
+            } else {
+              return this.sanitizePattern(a);
+            }
+          }),
+        };
+      } else if (expression.type === 'functionCall') {
+        return {
+          ...expression,
+          args: expression.args.map(a => {
+            return this.sanitizeExpression(a);
+          }),
+        };
+      } else if (expression.type === 'aggregate') {
+        return {
+          ...expression,
+          expression:
+            typeof expression.expression === 'object' &&
+            'termType' in expression.expression &&
+            expression.expression.termType === 'Wildcard'
+              ? expression.expression
+              : this.sanitizeExpression(expression.expression),
+        };
+      }
+      throw Error();
+    }
+
+    return expression;
+  }
+
+  protected sanitizeValuePatternRow(row: ValuePatternRow): SparqlJs.ValuePatternRow {
+    const result = {} as Record<string, any>;
+    for (const key in row) {
+      result[key] = row[key] ? this.sanitizeTerm(row[key]) : undefined;
+    }
+    return result;
+  }
+
+  protected sanitizePattern(pattern: Pattern): SparqlJs.Pattern {
+    if (pattern.type === 'triple') {
+      return this.sanitizePattern(bgp(pattern));
+    }
+
+    if (pattern.type === 'bgp') {
+      return {
+        ...pattern,
+        triples: pattern.triples.map(t => {
+          return {
+            ...t,
+            object: this.sanitizeTerm(t.object),
+          };
+        }),
+      };
+    } else if (
+      pattern.type === 'optional' ||
+      pattern.type === 'union' ||
+      pattern.type === 'group' ||
+      pattern.type === 'graph' ||
+      pattern.type === 'minus' ||
+      pattern.type === 'service'
+    ) {
+      return {
+        ...pattern,
+        patterns: pattern.patterns.map(p => {
+          return this.sanitizePattern(p);
+        }),
+      };
+    } else if (pattern.type === 'filter' || pattern.type === 'bind') {
+      return {
+        ...pattern,
+        expression: this.sanitizeExpression(pattern.expression),
+      };
+    } else if (pattern.type === 'values') {
+      return {
+        ...pattern,
+        values: pattern.values?.map(v => this.sanitizeValuePatternRow(v)),
+      };
+    } else if (pattern.type === 'query') {
+      return pattern;
+    }
+    throw Error();
+  }
+
+  protected sanitizeQuads(quads: Quads): SparqlJs.Quads {
+    if (quads.type === 'triple') {
+      return this.sanitizePattern(bgp(quads)) as any;
+    } else if (quads.type === 'bgp') {
+      return this.sanitizePattern(quads) as any;
+    } else if (quads.type === 'graph') {
+      return { ...quads, triples: quads.triples.map(t => this.sanitizePattern(t)) as any };
+    }
+    throw Error();
   }
 }

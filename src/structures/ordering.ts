@@ -1,13 +1,9 @@
-import { processPrimitiveExpression } from './expression';
-import { Ordering, ExpressionOrPrimitive } from '../generic';
+import { Ordering, Expression } from '../generic';
 
-export function asc(expression: ExpressionOrPrimitive): Required<Ordering> {
-  return {
-    expression: processPrimitiveExpression(expression),
-    descending: false,
-  };
+export function asc(expression: Expression): Required<Ordering> {
+  return { expression: expression, descending: false };
 }
 
-export function desc(expression: ExpressionOrPrimitive): Required<Ordering> {
-  return { expression: processPrimitiveExpression(expression), descending: true };
+export function desc(expression: Expression): Required<Ordering> {
+  return { expression: expression, descending: true };
 }

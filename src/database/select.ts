@@ -1,3 +1,4 @@
+import * as SparqlJs from 'sparqljs';
 import {
   SparqlClient,
   Variable,
@@ -7,11 +8,10 @@ import {
   QueryReturnType,
   BaseQueryReturnType,
   VariableExpression,
-  ExpressionOrPrimitive,
+  Expression,
+  DataFactory,
 } from '../generic';
-import { Wildcard } from 'sparqljs';
 import { QueryBuilderBase } from './query';
-import { processPrimitiveExpression } from '../structures';
 
 export type SelectVariables<T extends Record<string, any>> = {
   [K in keyof T]: Variable<T[K]>;
@@ -30,24 +30,28 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
   constructor(
     variables: SelectVariables<T> | undefined,
     prefixes: SelectQuery['prefixes'],
+    factory: DataFactory,
     distict: SelectQuery['distinct'] = undefined,
     reduced: SelectQuery['reduced'] = undefined
   ) {
-    super({
-      type: 'query',
-      queryType: 'SELECT',
-      variables: variables
-        ? <Variable[]>Object.values(variables)
-        : [new Wildcard()],
-      prefixes: prefixes,
-    });
+    super(
+      {
+        type: 'query',
+        queryType: 'SELECT',
+        variables: variables ? <SparqlJs.Variable[]>Object.values(variables).map(v => {
+              if ('expression' in v) {
+                return { ...v, expression: this.sanitizeExpression(v.expression) };
+              }
+              return v;
+            }) : [new SparqlJs.Wildcard()],
+        prefixes: prefixes,
+      },
+      factory
+    );
 
     function isVariableTerm(obj: any): obj is VariableTerm {
       return (
-        typeof obj === 'object' &&
-        obj !== null &&
-        'termType' in obj &&
-        obj.termType === 'Variable'
+        typeof obj === 'object' && obj !== null && 'termType' in obj && obj.termType === 'Variable'
       );
     }
 
@@ -66,9 +70,9 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
           'variable' in value &&
           isVariableTerm(value.variable)
         ) {
-          this.lookup[(value as any).variable.value] = key;
-          this.lookupTransform[(value as any).variable.value] =
-            'transform' in value.expression
+          this.lookup[value.variable.value] = key;
+          this.lookupTransform[value.variable.value] =
+            typeof value.expression === 'object' && 'transform' in value.expression
               ? value.expression.transform
               : undefined;
         }
@@ -84,7 +88,7 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
     }
   }
 
-  having(...expressions: ExpressionOrPrimitive[]) {
+  having(...expressions: Expression[]) {
     if (expressions.length === 0) {
       return this;
     }
@@ -92,15 +96,15 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
     if (this.config.having) {
       this.config.having = [
         ...this.config.having,
-        ...expressions.map(e => processPrimitiveExpression(e)),
+        ...expressions.map(e => this.sanitizeExpression(e)),
       ];
     } else {
-      this.config.having = expressions.map(e => processPrimitiveExpression(e));
+      this.config.having = expressions.map(e => this.sanitizeExpression(e));
     }
     return this;
   }
 
-  groupBy(...groupings: (ExpressionOrPrimitive | VariableExpression)[]) {
+  groupBy(...groupings: (Expression | VariableExpression)[]) {
     if (groupings.length === 0) {
       return this;
     }
@@ -111,17 +115,20 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
 
     for (const grouping of groupings) {
       if (typeof grouping === 'object' && 'variable' in grouping) {
-        this.config.group.push(grouping);
+        this.config.group.push({
+          ...grouping,
+          expression: this.sanitizeExpression(grouping.expression),
+        });
       } else {
         this.config.group.push({
-          expression: processPrimitiveExpression(grouping),
+          expression: this.sanitizeExpression(grouping),
         });
       }
     }
     return this;
   }
 
-  orderBy(...orderings: (ExpressionOrPrimitive | Required<Ordering>)[]) {
+  orderBy(...orderings: (Expression | Required<Ordering>)[]) {
     if (orderings.length === 0) {
       return this;
     }
@@ -132,10 +139,13 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
 
     for (const ordering of orderings) {
       if (typeof ordering === 'object' && 'descending' in ordering) {
-        this.config.order.push(ordering);
+        this.config.order.push({
+          ...ordering,
+          expression: this.sanitizeExpression(ordering.expression),
+        });
       } else {
         this.config.order.push({
-          expression: processPrimitiveExpression(ordering),
+          expression: this.sanitizeExpression(ordering),
         });
       }
     }

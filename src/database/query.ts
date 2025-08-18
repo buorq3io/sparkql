@@ -1,6 +1,5 @@
-import { createBgpPatterns } from '../structures';
 import { SparqlQueryBuilderBase } from './sparql-query';
-import { Query, Triple, Pattern, IriTerm, ValuePatternRow } from '../generic';
+import { Query, Pattern, IriTerm, ValuePatternRow } from '../generic';
 
 export abstract class QueryBuilderBase<
   TConfig extends Query,
@@ -44,25 +43,25 @@ export abstract class QueryBuilderBase<
     }
 
     if (this.config.values) {
-      this.config.values = [...this.config.values, ...rows];
+      this.config.values = [
+        ...this.config.values,
+        ...rows.map(r => this.sanitizeValuePatternRow(r)),
+      ];
     } else {
-      this.config.values = rows;
+      this.config.values = rows.map(r => this.sanitizeValuePatternRow(r));
     }
     return this;
   }
 
-  where(...patterns: (Pattern | Triple)[]) {
+  where(...patterns: Pattern[]) {
     if (patterns.length === 0) {
       return this;
     }
 
     if (this.config.where) {
-      this.config.where = [
-        ...this.config.where,
-        ...createBgpPatterns(patterns),
-      ];
+      this.config.where = [...this.config.where, ...patterns.map(p => this.sanitizePattern(p))];
     } else {
-      this.config.where = createBgpPatterns(patterns);
+      this.config.where = patterns.map(p => this.sanitizePattern(p));
     }
     return this;
   }

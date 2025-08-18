@@ -3,8 +3,7 @@ import {
   VariableTerm,
   Triple,
   Pattern,
-  Quads,
-  UpdateQuads,
+  Expression,
   GraphQuads,
   BgpPattern,
   BindPattern,
@@ -17,56 +16,7 @@ import {
   ServicePattern,
   OptionalPattern,
   ValuePatternRow,
-  PatternOrTriple,
-  ExpressionOrPrimitive,
 } from '../generic';
-import { processPrimitiveExpression } from './expression';
-
-export function createBgpPatterns(patterns: PatternOrTriple[]) {
-  const isPatternNotTriple = (v: any): v is Pattern => {
-    return !!v.type;
-  };
-
-  let temp: Triple[] = [];
-  const result: Pattern[] = [];
-
-  for (const pattern of patterns) {
-    if (isPatternNotTriple(pattern)) {
-      if (temp.length != 0) {
-        result.push(bgp(...temp));
-        temp = [];
-      }
-      result.push(pattern);
-    } else {
-      temp.push(pattern);
-    }
-  }
-  if (temp.length != 0) {
-    result.push(bgp(...temp));
-  }
-  return result;
-}
-
-export function createBgpQuads(quads: UpdateQuads): Quads[] {
-  let temp: Triple[] = [];
-  const result: Quads[] = [];
-
-  for (const quad of quads) {
-    if ('type' in quad) {
-      if (temp.length != 0) {
-        result.push(bgp(...temp));
-        temp = [];
-      }
-      result.push(quad);
-    } else {
-      temp.push(quad);
-    }
-  }
-  if (temp.length != 0) {
-    result.push(bgp(...temp));
-  }
-  return result;
-}
 
 export function bgp(...triples: Triple[]): BgpPattern {
   return {
@@ -75,42 +25,36 @@ export function bgp(...triples: Triple[]): BgpPattern {
   };
 }
 
-export function optional(...patterns: PatternOrTriple[]): OptionalPattern {
+export function optional(...patterns: Pattern[]): OptionalPattern {
   return {
     type: 'optional',
-    patterns: createBgpPatterns(patterns),
+    patterns: patterns,
   };
 }
 
-export function union(...patterns: PatternOrTriple[]): UnionPattern {
+export function union(...patterns: Pattern[]): UnionPattern {
   return {
     type: 'union',
-    patterns: createBgpPatterns(patterns),
+    patterns: patterns,
   };
 }
 
-export function group(...patterns: PatternOrTriple[]): GroupPattern {
+export function group(...patterns: Pattern[]): GroupPattern {
   return {
     type: 'group',
-    patterns: createBgpPatterns(patterns),
+    patterns: patterns,
   };
 }
 
-export function graph(
-  name: IriTerm | VariableTerm,
-  ...patterns: PatternOrTriple[]
-): GraphPattern {
+export function graph(name: IriTerm | VariableTerm, ...patterns: Pattern[]): GraphPattern {
   return {
     type: 'graph',
     name: name,
-    patterns: createBgpPatterns(patterns),
+    patterns: patterns,
   };
 }
 
-export function quadgraph(
-  name: IriTerm | VariableTerm,
-  ...triples: Triple[]
-): GraphQuads {
+export function quadgraph(name: IriTerm | VariableTerm, ...triples: Triple[]): GraphQuads {
   return {
     type: 'graph',
     name: name,
@@ -118,54 +62,48 @@ export function quadgraph(
   };
 }
 
-export function minus(...patterns: PatternOrTriple[]): MinusPattern {
+export function minus(...patterns: Pattern[]): MinusPattern {
   return {
     type: 'minus',
-    patterns: createBgpPatterns(patterns),
+    patterns: patterns,
   };
 }
 
 function serviceBase(
   name: IriTerm | VariableTerm,
   silent: boolean,
-  ...patterns: PatternOrTriple[]
+  ...patterns: Pattern[]
 ): ServicePattern {
   return {
     type: 'service',
     name: name,
     silent: silent,
-    patterns: createBgpPatterns(patterns),
+    patterns: patterns,
   };
 }
 
-export function service(
-  name: IriTerm | VariableTerm,
-  ...patterns: PatternOrTriple[]
-): ServicePattern {
+export function service(name: IriTerm | VariableTerm, ...patterns: Pattern[]): ServicePattern {
   return serviceBase(name, false, ...patterns);
 }
 
 export function serviceSilent(
   name: IriTerm | VariableTerm,
-  ...patterns: PatternOrTriple[]
+  ...patterns: Pattern[]
 ): ServicePattern {
   return serviceBase(name, true, ...patterns);
 }
 
-export function filter(expression: ExpressionOrPrimitive<any>): FilterPattern {
+export function filter(expression: Expression): FilterPattern {
   return {
     type: 'filter',
-    expression: processPrimitiveExpression(expression),
+    expression: expression,
   };
 }
 
-export function bind(
-  expression: ExpressionOrPrimitive<any>,
-  variable: VariableTerm
-): BindPattern {
+export function bind(expression: Expression, variable: VariableTerm): BindPattern {
   return {
     type: 'bind',
-    expression: processPrimitiveExpression(expression),
+    expression: expression,
     variable: variable,
   };
 }

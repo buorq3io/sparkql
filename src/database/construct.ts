@@ -1,5 +1,5 @@
 import { QueryBuilderBase } from './query';
-import { ConstructQuery, QuadTerm, Triple, SparqlClient } from '../generic';
+import { ConstructQuery, QuadTerm, Triple, SparqlClient, DataFactory } from '../generic';
 
 export type ConstructTemplates = Triple[];
 
@@ -9,14 +9,26 @@ export class ConstructQueryBuilderBase
 {
   constructor(
     variables: ConstructTemplates,
-    prefixes: ConstructQuery['prefixes']
+    prefixes: ConstructQuery['prefixes'],
+    factory: DataFactory
   ) {
-    super({
-      type: 'query',
-      queryType: 'CONSTRUCT',
-      template: variables.length !== 0 ? variables : undefined,
-      prefixes: prefixes,
-    });
+    super(
+      {
+        type: 'query',
+        queryType: 'CONSTRUCT',
+        template:
+          variables.length !== 0
+            ? variables.map(t => {
+                return {
+                  ...t,
+                  object: this.sanitizeTerm(t.object),
+                };
+              })
+            : undefined,
+        prefixes: prefixes,
+      },
+      factory
+    );
   }
 
   protected async makeQuery(client: SparqlClient): Promise<QuadTerm[]> {

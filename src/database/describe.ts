@@ -4,6 +4,7 @@ import {
   VariableTerm,
   DescribeQuery,
   SparqlClient,
+  DataFactory,
 } from '../generic';
 import { Wildcard } from 'sparqljs';
 import { QueryBuilderBase } from './query';
@@ -16,14 +17,18 @@ export class DescribeQueryBuilderBase
 {
   constructor(
     variables: DescribeVariables,
-    prefixes: DescribeQuery['prefixes']
+    prefixes: DescribeQuery['prefixes'],
+    factory: DataFactory
   ) {
-    super({
-      type: 'query',
-      queryType: 'DESCRIBE',
-      variables: variables.length !== 0 ? variables : [new Wildcard()],
-      prefixes: prefixes,
-    });
+    super(
+      {
+        type: 'query',
+        queryType: 'DESCRIBE',
+        variables: variables.length !== 0 ? variables : [new Wildcard()],
+        prefixes: prefixes,
+      },
+      factory
+    );
   }
 
   protected async makeQuery(client: SparqlClient): Promise<QuadTerm[]> {

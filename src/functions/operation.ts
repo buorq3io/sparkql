@@ -1,38 +1,34 @@
-import {
-  QueryReturnType,
-  OperationExpression,
-  ExpressionOrPrimitive,
-} from '../generic';
 import { op } from './utils';
+import { Expression, OperationExpression } from '../generic';
 import { transform_boolean, transform_number } from '../structures';
 
-type E<T = QueryReturnType> = ExpressionOrPrimitive<T>;
-
-export function eq(...args: [E, E]): OperationExpression<boolean> {
+export function eq(...args: [Expression, Expression]): OperationExpression<boolean> {
   return op('=', args, transform_boolean);
 }
 
-export function ne(...args: [E, E]): OperationExpression<boolean> {
+export function ne(...args: [Expression, Expression]): OperationExpression<boolean> {
   return op('!=', args, transform_boolean);
 }
 
-export function gt(...args: [E, E]): OperationExpression<boolean> {
+export function gt(...args: [Expression, Expression]): OperationExpression<boolean> {
   return op('>', args, transform_boolean);
 }
 
-export function gte(...args: [E, E]): OperationExpression<boolean> {
+export function gte(...args: [Expression, Expression]): OperationExpression<boolean> {
   return op('>=', args, transform_boolean);
 }
 
-export function lt(...args: [E, E]): OperationExpression<boolean> {
+export function lt(...args: [Expression, Expression]): OperationExpression<boolean> {
   return op('<', args, transform_boolean);
 }
 
-export function lte(...args: [E, E]): OperationExpression<boolean> {
+export function lte(...args: [Expression, Expression]): OperationExpression<boolean> {
   return op('<=', args, transform_boolean);
 }
 
-export function and(...args: [E, E, ...E[]]): OperationExpression<boolean> {
+export function and(
+  ...args: [Expression, Expression, ...Expression[]]
+): OperationExpression<boolean> {
   const [first, ...rest] = args;
 
   return rest.reduce(
@@ -41,7 +37,9 @@ export function and(...args: [E, E, ...E[]]): OperationExpression<boolean> {
   ) as OperationExpression<boolean>;
 }
 
-export function or(...args: [E, E, ...E[]]): OperationExpression<boolean> {
+export function or(
+  ...args: [Expression, Expression, ...Expression[]]
+): OperationExpression<boolean> {
   const [first, ...rest] = args;
 
   return rest.reduce(
@@ -50,7 +48,9 @@ export function or(...args: [E, E, ...E[]]): OperationExpression<boolean> {
   ) as OperationExpression<boolean>;
 }
 
-export function add(...args: [E, E, ...E[]]): OperationExpression<number> {
+export function add(
+  ...args: [Expression, Expression, ...Expression[]]
+): OperationExpression<number> {
   const [first, ...rest] = args;
 
   return rest.reduce(
@@ -59,11 +59,13 @@ export function add(...args: [E, E, ...E[]]): OperationExpression<number> {
   ) as OperationExpression<number>;
 }
 
-export function subs(...args: [E, E]): OperationExpression<number> {
+export function subs(...args: [Expression, Expression]): OperationExpression<number> {
   return op('-', args, transform_number);
 }
 
-export function mul(...args: [E, E, ...E[]]): OperationExpression<number> {
+export function mul(
+  ...args: [Expression, Expression, ...Expression[]]
+): OperationExpression<number> {
   const [first, ...rest] = args;
 
   return rest.reduce(
@@ -72,18 +74,18 @@ export function mul(...args: [E, E, ...E[]]): OperationExpression<number> {
   ) as OperationExpression<number>;
 }
 
-export function div(...args: [E, E]): OperationExpression<number> {
+export function div(...args: [Expression, Expression]): OperationExpression<number> {
   return op('/', args, transform_number);
 }
 
-export function not(...args: [E]): OperationExpression<boolean> {
+export function not(...args: [Expression]): OperationExpression<boolean> {
   return op('!', args, transform_boolean);
 }
 
-export function uplus(...args: [E]): OperationExpression<number> {
+export function uplus(...args: [Expression]): OperationExpression<number> {
   return op('uplus', args, transform_number);
 }
 
-export function uminus(...args: [E]): OperationExpression<number> {
+export function uminus(...args: [Expression]): OperationExpression<number> {
   return op('uminus', args, transform_number);
 }

@@ -1,4 +1,4 @@
-import { SparqlDatabase, createObjects } from '../src';
+import { SparqlDatabase } from '../src';
 
 const prefixes = {
   rdf: {
@@ -12,4 +12,4 @@ const prefixes = {
 } as const;
 
 export const db = new SparqlDatabase(prefixes);
-export const [v, n] = createObjects([], prefixes);
+export const [v, n] = db.create([], prefixes, 'allow');

@@ -1,40 +1,32 @@
-import { iri } from './expression';
-import { IriTerm, SparqlQuery } from '../generic';
+import { DataFactory, IriTerm, SparqlQuery } from '../generic';
 
-export type IriManagerConfig = Record<
-  string,
-  { uri: string; fields: readonly string[] }
->;
+export type IriManagerConfig = Record<string, { uri: string; fields: readonly string[] }>;
 
 export type IriProxy = Record<string, IriTerm>;
 
-export type IriManager<
-  T extends IriManagerConfig,
-  K extends 'strict' | 'allow'
-> = {
+export type IriManager<T extends IriManagerConfig, K extends 'strict' | 'allow'> = {
   [P in keyof T]: {
     [F in T[P]['fields'][number]]: IriTerm;
   } &
     (K extends 'allow' ? { [key: string]: IriTerm } : {});
 };
 
-export function createIriManager<
-  T extends IriManagerConfig,
-  K extends 'strict' | 'allow'
->(nodes: T, mode: K): IriManager<T, K> {
+export function createIriManager<T extends IriManagerConfig, K extends 'strict' | 'allow'>(
+  nodes: T,
+  mode: K,
+  factory: DataFactory
+): IriManager<T, K> {
   const result: Record<string, IriProxy> = {};
   for (const [prefix, { uri, fields }] of Object.entries(nodes)) {
     result[prefix] = {};
-    result[prefix] = createIriProxy(
-      uri,
-      mode === 'strict' ? fields : undefined
-    );
+    result[prefix] = createIriProxy(uri, factory, mode === 'strict' ? fields : undefined);
   }
   return result as IriManager<T, K>;
 }
 
 export function createIriProxy(
   uri: string,
+  factory: DataFactory,
   fields?: readonly string[]
 ): IriProxy {
   const cache: IriProxy = {};
@@ -47,7 +39,7 @@ export function createIriProxy(
             return Reflect.get(target, prop, receiver);
           }
           if (!cache[prop]) {
-            cache[prop] = iri(uri + prop);
+            cache[prop] = factory.namedNode(uri + prop);
           }
           return cache[prop];
         }
