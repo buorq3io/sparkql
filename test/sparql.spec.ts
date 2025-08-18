@@ -3,6 +3,7 @@ import { diff } from 'json-diff-ts';
 import { readdirSync, readFileSync } from 'fs';
 import { describe, test, expect } from 'vitest';
 
+import { db } from './index';
 import { SparqlQueryBuilderBase } from '../src/database/sparql-query';
 
 let parser = new Parser();
@@ -43,6 +44,9 @@ describe('SPARQL Queries', () => {
 
       builded.prefixes = {};
       original.prefixes = {};
+
+      parser._resetBlanks();
+      db.resetBlankCounter();
 
       expect(diff(original, builded)).toStrictEqual([]);
     });
