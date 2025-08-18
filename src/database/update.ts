@@ -61,7 +61,7 @@ export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<Update, void>
   }
 
   with(iri?: IriTerm) {
-    return new WithQueryBuilderBase(this.config.updates, this.config.prefixes, iri);
+    return new WithQueryBuilderBase(this.config.updates, this.config.prefixes, this.factory, iri);
   }
 
   private createCopyMoveAddOperation(
