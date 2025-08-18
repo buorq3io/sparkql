@@ -22,7 +22,7 @@ import {
 
 export class SparqlDatabase<T extends IriManagerConfig> {
   private readonly queryPrefixes;
-  protected readonly factory: DataFactory = new DataFactory();
+  protected readonly factory: DataFactory = new DataFactory({blankNodePrefix: "g_"});
   protected readonly factoryFunctions: FactoryFunctions;
 
   constructor(nodes: T) {
