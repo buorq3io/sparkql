@@ -1,5 +1,6 @@
 export * from './iri'
 export * from './path'
+export * from './blank'
 export * from './pattern'
 export * from './ordering'
 export * from './variable'

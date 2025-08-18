@@ -1,6 +1,7 @@
 import {
   IriManagerConfig,
   createIriManager,
+  createBlankManager,
   VariableManagerConfig,
   createVariableManager,
   transformIntoPrefixObject,
@@ -110,8 +111,9 @@ export class SparqlDatabase<T extends IriManagerConfig> {
     nodeConfig: K,
     mode?: P
   ) {
+    const blanks = createBlankManager(this.factoryFunctions);
     const nodes = createIriManager(nodeConfig, mode ?? 'allow', this.factoryFunctions);
     const variables = createVariableManager(variableKeys, mode ?? 'allow', this.factoryFunctions);
-    return [variables, nodes] as const;
+    return [variables, nodes, blanks] as const;
   }
 }
