@@ -2,16 +2,16 @@ import * as SparqlJs from 'sparqljs';
 import SparqlClient from 'sparql-http-client';
 import {
   Term,
+  Quads,
   LiteralTerm,
   PrimitiveTerm,
-  Expression,
   Pattern,
-  ValuePatternRow,
+  Expression,
   SparqlQuery,
+  ValuePatternRow,
   QueryReturnType,
-  DataFactory,
   SparqlGenerator,
-  Quads,
+  FactoryFunctions,
 } from '../generic';
 import { bgp } from '../structures';
 
@@ -20,11 +20,11 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
   protected readonly endpointUrl: string | undefined;
   protected _promise: Promise<KReturn> | null = null;
   protected readonly sparqlGenerator: SparqlGenerator;
-  protected readonly factory: DataFactory;
+  protected readonly factoryFunctions: FactoryFunctions;
 
-  protected constructor(initialConfig: TConfig, factory: DataFactory) {
-    this.factory = factory;
+  protected constructor(initialConfig: TConfig, factoryFunctions: FactoryFunctions) {
     this.config = initialConfig;
+    this.factoryFunctions = factoryFunctions;
     this.sparqlGenerator = new SparqlJs.Generator();
     this.endpointUrl = process.env.DATABASE_URL;
   }
@@ -81,19 +81,28 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
 
     if (typeof t === 'number') {
       if (Number.isInteger(t)) {
-        return this.factory.literal(t.toString(), this.factory.namedNode(urls.integer)) as any;
+        return this.factoryFunctions.literal(
+          t.toString(),
+          this.factoryFunctions.iri(urls.integer)
+        ) as any;
       } else {
-        return this.factory.literal(t.toString(), this.factory.namedNode(urls.float)) as any;
+        return this.factoryFunctions.literal(
+          t.toString(),
+          this.factoryFunctions.iri(urls.float)
+        ) as any;
       }
     } else if (typeof t === 'bigint') {
-      return this.factory.literal(t.toString(), this.factory.namedNode(urls.integer)) as any;
+      return this.factoryFunctions.literal(
+        t.toString(),
+        this.factoryFunctions.iri(urls.integer)
+      ) as any;
     } else if (typeof t === 'boolean') {
-      return this.factory.literal(
+      return this.factoryFunctions.literal(
         t ? 'true' : 'false',
-        this.factory.namedNode(urls.boolean)
+        this.factoryFunctions.iri(urls.boolean)
       ) as any;
     } else if (typeof t === 'string') {
-      return this.factory.literal(t) as any;
+      return this.factoryFunctions.literal(t) as any;
     }
 
     return t as any;

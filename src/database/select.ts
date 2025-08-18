@@ -9,7 +9,7 @@ import {
   BaseQueryReturnType,
   VariableExpression,
   Expression,
-  DataFactory,
+  FactoryFunctions,
 } from '../generic';
 import { QueryBuilderBase } from './query';
 
@@ -30,7 +30,7 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
   constructor(
     variables: SelectVariables<T> | undefined,
     prefixes: SelectQuery['prefixes'],
-    factory: DataFactory,
+    factoryFunctions: FactoryFunctions,
     distict: SelectQuery['distinct'] = undefined,
     reduced: SelectQuery['reduced'] = undefined
   ) {
@@ -46,7 +46,7 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
             }) : [new SparqlJs.Wildcard()],
         prefixes: prefixes,
       },
-      factory
+      factoryFunctions
     );
 
     function isVariableTerm(obj: any): obj is VariableTerm {

@@ -1,9 +1,16 @@
-import * as SparqlJs from 'sparqljs';
-import * as RdfJs from 'rdf-data-factory';
+import type * as SparqlJs from 'sparqljs';
+import type * as RdfJs from 'rdf-data-factory';
 
 export type { StreamClient as SparqlClient } from 'sparql-http-client';
 
 export type DataFactory = RdfJs.DataFactory;
+
+export type FactoryFunctions = {
+  variable: (value: string) => VariableTerm;
+  iri: <T extends string>(value: T) => IriTerm;
+  blank: <T extends string>(value?: T) => BlankTerm;
+  literal: (value: string, lang?: string | IriTerm) => LiteralTerm;
+};
 
 export type Wildcard = SparqlJs.Wildcard;
 export type SparqlGenerator = SparqlJs.SparqlGenerator;

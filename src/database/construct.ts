@@ -1,5 +1,5 @@
 import { QueryBuilderBase } from './query';
-import { ConstructQuery, QuadTerm, Triple, SparqlClient, DataFactory } from '../generic';
+import { ConstructQuery, QuadTerm, Triple, SparqlClient, DataFactory, FactoryFunctions } from '../generic';
 
 export type ConstructTemplates = Triple[];
 
@@ -10,7 +10,7 @@ export class ConstructQueryBuilderBase
   constructor(
     variables: ConstructTemplates,
     prefixes: ConstructQuery['prefixes'],
-    factory: DataFactory
+    factoryFunctions: FactoryFunctions
   ) {
     super(
       {
@@ -27,7 +27,7 @@ export class ConstructQueryBuilderBase
             : undefined,
         prefixes: prefixes,
       },
-      factory
+      factoryFunctions
     );
   }
 

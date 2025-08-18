@@ -11,65 +11,85 @@ import { UpdateQueryBuilderBase } from './update';
 import { SelectQueryBuilderBase, SelectVariables } from './select';
 import { DescribeQueryBuilderBase, DescribeVariables } from './describe';
 import { ConstructQueryBuilderBase, ConstructTemplates } from './construct';
-import { BlankTerm, IriTerm, LiteralTerm, VariableTerm } from '../generic';
+import { BlankTerm, FactoryFunctions, IriTerm, LiteralTerm, VariableTerm } from '../generic';
 
 export class SparqlDatabase<T extends IriManagerConfig> {
   private readonly queryPrefixes;
   protected readonly factory: DataFactory = new DataFactory();
+  protected readonly factoryFunctions: FactoryFunctions;
 
   constructor(nodes: T) {
     this.queryPrefixes = transformIntoPrefixObject(nodes);
+
+    this.factoryFunctions = {
+      variable: this.variable,
+      iri: this.iri,
+      blank: this.blank,
+      literal: this.literal,
+    };
   }
 
   select<U extends Record<string, any> = Record<string, any>>(
     variables?: SelectVariables<U>
   ): SelectQueryBuilderBase<U> {
-    return new SelectQueryBuilderBase(variables, this.queryPrefixes, this.factory);
+    return new SelectQueryBuilderBase(variables, this.queryPrefixes, this.factoryFunctions);
   }
 
   selectDistinct<U extends Record<string, any> = Record<string, any>>(
     variables?: SelectVariables<U>
   ): SelectQueryBuilderBase<U> {
-    return new SelectQueryBuilderBase(variables, this.queryPrefixes, this.factory, true, undefined);
+    return new SelectQueryBuilderBase(
+      variables,
+      this.queryPrefixes,
+      this.factoryFunctions,
+      true,
+      undefined
+    );
   }
 
   selectReduced<U extends Record<string, any> = Record<string, any>>(
     variables?: SelectVariables<U>
   ): SelectQueryBuilderBase<U> {
-    return new SelectQueryBuilderBase(variables, this.queryPrefixes, this.factory, undefined, true);
+    return new SelectQueryBuilderBase(
+      variables,
+      this.queryPrefixes,
+      this.factoryFunctions,
+      undefined,
+      true
+    );
   }
 
   ask() {
-    return new AskQueryBuilderBase(this.queryPrefixes, this.factory);
+    return new AskQueryBuilderBase(this.queryPrefixes, this.factoryFunctions);
   }
 
   describe(...variables: DescribeVariables): DescribeQueryBuilderBase {
-    return new DescribeQueryBuilderBase(variables, this.queryPrefixes, this.factory);
+    return new DescribeQueryBuilderBase(variables, this.queryPrefixes, this.factoryFunctions);
   }
 
   construct(...templates: ConstructTemplates): ConstructQueryBuilderBase {
-    return new ConstructQueryBuilderBase(templates, this.queryPrefixes, this.factory);
+    return new ConstructQueryBuilderBase(templates, this.queryPrefixes, this.factoryFunctions);
   }
 
   update() {
-    return new UpdateQueryBuilderBase([], this.queryPrefixes, this.factory);
+    return new UpdateQueryBuilderBase([], this.queryPrefixes, this.factoryFunctions);
   }
 
-  variable(value: string): VariableTerm {
+  variable = (value: string): VariableTerm => {
     return this.factory.variable(value);
-  }
+  };
 
-  iri<T extends string>(value: T): IriTerm {
+  iri = <T extends string>(value: T): IriTerm => {
     return this.factory.namedNode(value);
-  }
+  };
 
-  blank<T extends string>(value?: T): BlankTerm {
+  blank = <T extends string>(value?: T): BlankTerm => {
     return this.factory.blankNode(value);
-  }
+  };
 
-  literal(value: string, lang?: string | IriTerm): LiteralTerm {
+  literal = (value: string, lang?: string | IriTerm): LiteralTerm => {
     return this.factory.literal(value, lang);
-  }
+  };
 
   resetBlankCounter() {
     this.factory.resetBlankNodeCounter();
