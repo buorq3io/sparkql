@@ -1,4 +1,4 @@
-import { DataFactory, VariableTerm } from '../generic';
+import { FactoryFunctions, VariableTerm } from '../generic';
 
 export type VariableManagerConfig<T extends string> = Exclude<T, '__'>;
 
@@ -13,16 +13,19 @@ export type VariableManager<T extends string, K extends 'strict' | 'allow'> = {
 export function createVariableManager<T extends string, K extends 'strict' | 'allow'>(
   keys: readonly VariableManagerConfig<T>[],
   mode: K,
-  factory: DataFactory
+  factoryFunctions: FactoryFunctions
 ): VariableManager<T, K> {
-  return createVariableProxy(factory, mode === 'strict' ? keys : undefined) as VariableManager<
-    T,
-    K
-  >;
+  return createVariableProxy(
+    factoryFunctions,
+    mode === 'strict' ? keys : undefined
+  ) as VariableManager<T, K>;
 }
 
-export function createVariableProxy(factory: DataFactory, keys?: readonly string[]): VariableProxy {
-  const cache: VariableProxy = { __: createVariableGenerator(factory.variable) };
+export function createVariableProxy(
+  factoryFunctions: FactoryFunctions,
+  keys?: readonly string[]
+): VariableProxy {
+  const cache: VariableProxy = { __: createVariableGenerator(factoryFunctions.variable) };
   return new Proxy(
     {},
     {
@@ -32,7 +35,7 @@ export function createVariableProxy(factory: DataFactory, keys?: readonly string
             return Reflect.get(target, prop, receiver);
           }
           if (!cache[prop]) {
-            cache[prop] = factory.variable(prop);
+            cache[prop] = factoryFunctions.variable(prop);
           }
           return cache[prop];
         }

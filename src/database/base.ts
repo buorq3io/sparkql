@@ -110,8 +110,8 @@ export class SparqlDatabase<T extends IriManagerConfig> {
     nodeConfig: K,
     mode?: P
   ) {
-    const nodes = createIriManager(nodeConfig, mode ?? 'allow', this.factory);
-    const variables = createVariableManager(variableKeys, mode ?? 'allow', this.factory);
+    const nodes = createIriManager(nodeConfig, mode ?? 'allow', this.factoryFunctions);
+    const variables = createVariableManager(variableKeys, mode ?? 'allow', this.factoryFunctions);
     return [variables, nodes] as const;
   }
 }
