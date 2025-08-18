@@ -5,11 +5,16 @@ export class AskQueryBuilderBase
   extends QueryBuilderBase<AskQuery, boolean>
   implements PromiseLike<boolean>
 {
-  constructor(prefixes: AskQuery['prefixes'], factoryFunctions: FactoryFunctions) {
+  constructor(
+    prefixes: AskQuery['prefixes'],
+    base: string | undefined,
+    factoryFunctions: FactoryFunctions
+  ) {
     super(
       {
         type: 'query',
         queryType: 'ASK',
+        base: base,
         prefixes: prefixes,
       },
       factoryFunctions

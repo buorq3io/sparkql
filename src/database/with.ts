@@ -25,6 +25,7 @@ export class WithQueryBuilderBase
   constructor(
     updates: UpdateOperation[],
     prefixes: Update['prefixes'],
+    base: string | undefined,
     factoryFunctions: FactoryFunctions,
     iri?: IriTerm
   ) {
@@ -32,6 +33,7 @@ export class WithQueryBuilderBase
       {
         type: 'update',
         updates: updates,
+        base: base,
         prefixes: prefixes,
       },
       factoryFunctions
@@ -115,6 +117,7 @@ export class WithQueryBuilderBase
     return new UpdateQueryBuilderBase(
       this.config.updates,
       this.config.prefixes,
+      this.config.base,
       this.factoryFunctions
     );
   }

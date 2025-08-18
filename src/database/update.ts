@@ -20,12 +20,14 @@ export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<Update, void>
   constructor(
     updates: UpdateOperation[],
     prefixes: Update['prefixes'],
+    base: string | undefined,
     factoryFunctions: FactoryFunctions
   ) {
     super(
       {
         type: 'update',
         updates: updates,
+        base: base,
         prefixes: prefixes,
       },
       factoryFunctions
@@ -69,6 +71,7 @@ export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<Update, void>
     return new WithQueryBuilderBase(
       this.config.updates,
       this.config.prefixes,
+      this.config.base,
       this.factoryFunctions,
       iri
     );

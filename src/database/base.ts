@@ -22,12 +22,17 @@ import {
 } from '../generic';
 
 export class SparqlDatabase<T extends IriManagerConfig> {
+  private readonly nodes;
+  private readonly queryBase?: string;
   private readonly queryPrefixes;
-  protected readonly factory: DataFactory = new DataFactory({blankNodePrefix: "g_"});
+  protected readonly factory: DataFactory;
   protected readonly factoryFunctions: FactoryFunctions;
 
-  constructor(nodes: T) {
+  constructor(nodes: T, base?: string, factory?: DataFactory) {
+    this.nodes = nodes;
+    this.queryBase = base;
     this.queryPrefixes = transformIntoPrefixObject(nodes);
+    this.factory = factory ?? new DataFactory({ blankNodePrefix: 'g_' });
 
     this.factoryFunctions = {
       variable: this.variable,
@@ -37,10 +42,19 @@ export class SparqlDatabase<T extends IriManagerConfig> {
     };
   }
 
+  public base(value: string) {
+    return new SparqlDatabase(this.nodes, value, this.factory);
+  }
+
   select<U extends Record<string, any> = Record<string, any>>(
     variables?: SelectVariables<U>
   ): SelectQueryBuilderBase<U> {
-    return new SelectQueryBuilderBase(variables, this.queryPrefixes, this.factoryFunctions);
+    return new SelectQueryBuilderBase(
+      variables,
+      this.queryPrefixes,
+      this.queryBase,
+      this.factoryFunctions
+    );
   }
 
   selectDistinct<U extends Record<string, any> = Record<string, any>>(
@@ -49,6 +63,7 @@ export class SparqlDatabase<T extends IriManagerConfig> {
     return new SelectQueryBuilderBase(
       variables,
       this.queryPrefixes,
+      this.queryBase,
       this.factoryFunctions,
       true,
       undefined
@@ -61,6 +76,7 @@ export class SparqlDatabase<T extends IriManagerConfig> {
     return new SelectQueryBuilderBase(
       variables,
       this.queryPrefixes,
+      this.queryBase,
       this.factoryFunctions,
       undefined,
       true
@@ -68,19 +84,34 @@ export class SparqlDatabase<T extends IriManagerConfig> {
   }
 
   ask() {
-    return new AskQueryBuilderBase(this.queryPrefixes, this.factoryFunctions);
+    return new AskQueryBuilderBase(this.queryPrefixes, this.queryBase, this.factoryFunctions);
   }
 
   describe(...variables: DescribeVariables): DescribeQueryBuilderBase {
-    return new DescribeQueryBuilderBase(variables, this.queryPrefixes, this.factoryFunctions);
+    return new DescribeQueryBuilderBase(
+      variables,
+      this.queryPrefixes,
+      this.queryBase,
+      this.factoryFunctions
+    );
   }
 
   construct(...templates: ConstructTemplates): ConstructQueryBuilderBase {
-    return new ConstructQueryBuilderBase(templates, this.queryPrefixes, this.factoryFunctions);
+    return new ConstructQueryBuilderBase(
+      templates,
+      this.queryPrefixes,
+      this.queryBase,
+      this.factoryFunctions
+    );
   }
 
   update() {
-    return new UpdateQueryBuilderBase([], this.queryPrefixes, this.factoryFunctions);
+    return new UpdateQueryBuilderBase(
+      [],
+      this.queryPrefixes,
+      this.queryBase,
+      this.factoryFunctions
+    );
   }
 
   variable = (value: string): VariableTerm => {

@@ -30,6 +30,7 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
   constructor(
     variables: SelectVariables<T> | undefined,
     prefixes: SelectQuery['prefixes'],
+    base: string | undefined,
     factoryFunctions: FactoryFunctions,
     distict: SelectQuery['distinct'] = undefined,
     reduced: SelectQuery['reduced'] = undefined
@@ -44,6 +45,7 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
               }
               return v;
             }) : [new SparqlJs.Wildcard()],
+        base: base,
         prefixes: prefixes,
       },
       factoryFunctions
