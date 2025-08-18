@@ -11,7 +11,14 @@ import { UpdateQueryBuilderBase } from './update';
 import { SelectQueryBuilderBase, SelectVariables } from './select';
 import { DescribeQueryBuilderBase, DescribeVariables } from './describe';
 import { ConstructQueryBuilderBase, ConstructTemplates } from './construct';
-import { BlankTerm, FactoryFunctions, IriTerm, LiteralTerm, VariableTerm } from '../generic';
+import {
+  BlankPrefix,
+  BlankTerm,
+  FactoryFunctions,
+  IriTerm,
+  LiteralTerm,
+  VariableTerm,
+} from '../generic';
 
 export class SparqlDatabase<T extends IriManagerConfig> {
   private readonly queryPrefixes;
@@ -83,7 +90,10 @@ export class SparqlDatabase<T extends IriManagerConfig> {
     return this.factory.namedNode(value);
   };
 
-  blank = <T extends string>(value?: T): BlankTerm => {
+  blank = <T extends string>(value?: BlankPrefix<T>): BlankTerm => {
+    if (value && (value.startsWith('e_') || value.startsWith('g_'))) {
+      throw Error('For blank terms, prefixes "e_" and "g_" are reserved for internal use.');
+    }
     return this.factory.blankNode(value);
   };
 

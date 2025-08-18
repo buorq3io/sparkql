@@ -5,10 +5,11 @@ export type { StreamClient as SparqlClient } from 'sparql-http-client';
 
 export type DataFactory = RdfJs.DataFactory;
 
+export type BlankPrefix<T extends string> = T extends `e_${string}` | `g_${string}` ? never : T;
 export type FactoryFunctions = {
   variable: (value: string) => VariableTerm;
   iri: <T extends string>(value: T) => IriTerm;
-  blank: <T extends string>(value?: T) => BlankTerm;
+  blank: <T extends string>(value?: BlankPrefix<T>) => BlankTerm;
   literal: (value: string, lang?: string | IriTerm) => LiteralTerm;
 };
 
@@ -18,11 +19,11 @@ export type SparqlGenerator = SparqlJs.SparqlGenerator;
 export type SparqlQuery = SparqlJs.SparqlQuery;
 export type Query = SparqlJs.Query;
 
-export type SelectQuery = SparqlJs.SelectQuery
-export type ConstructQuery = SparqlJs.ConstructQuery
-export type AskQuery = SparqlJs.AskQuery
-export type DescribeQuery = SparqlJs.DescribeQuery
-export type Update = SparqlJs.Update
+export type SelectQuery = SparqlJs.SelectQuery;
+export type ConstructQuery = SparqlJs.ConstructQuery;
+export type AskQuery = SparqlJs.AskQuery;
+export type DescribeQuery = SparqlJs.DescribeQuery;
+export type Update = SparqlJs.Update;
 
 export type UpdateOperation = InsertDeleteOperation | ManagementOperation;
 export type InsertDeleteOperation = SparqlJs.InsertDeleteOperation;
@@ -97,7 +98,7 @@ export type TriplePredicate = IriTerm | VariableTerm | PropertyPath;
 export type TripleObject = Term;
 
 export interface Triple extends Record<keyof SparqlJs.Triple, unknown> {
-  type: 'triple'
+  type: 'triple';
   subject: TripleSubject;
   predicate: TriplePredicate;
   object: TripleObject;
