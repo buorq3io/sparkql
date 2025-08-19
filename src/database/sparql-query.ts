@@ -1,10 +1,10 @@
-import * as SparqlJs from 'sparqljs';
-import SparqlClient from 'sparql-http-client';
 import {
   Term,
   Quads,
+  BlankTerm,
   LiteralTerm,
   PrimitiveTerm,
+  AnonymousBlankTerm,
   Pattern,
   Expression,
   SparqlQuery,
@@ -12,10 +12,10 @@ import {
   QueryReturnType,
   SparqlGenerator,
   FactoryFunctions,
-  BlankTerm,
-  AnonymousBlankTerm,
-} from '../generic';
-import { bgp } from '../structures';
+} from '../generic.js';
+import SparqlJs from 'sparqljs';
+import SparqlClient from 'sparql-http-client';
+import { bgp } from '../structures/index.js';
 
 export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KReturn> {
   protected readonly config: TConfig;

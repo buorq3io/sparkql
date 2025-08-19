@@ -8,7 +8,7 @@ import {
   OperationExpression,
   AggregateExpression,
   FunctionCallExpression,
-} from '../generic';
+} from '../generic.js';
 
 export function op<K extends QueryReturnType>(
   operator: string,

@@ -1,6 +1,6 @@
-import { op } from './utils';
-import { Expression, OperationExpression } from '../generic';
-import { transform_boolean, transform_number } from '../structures';
+import { op } from './utils.js';
+import { Expression, OperationExpression } from '../generic.js';
+import { transform_boolean, transform_number } from '../structures/index.js';
 
 export function eq(...args: [Expression, Expression]): OperationExpression<boolean> {
   return op('=', args, transform_boolean);

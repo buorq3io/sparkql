@@ -4,11 +4,10 @@ import {
   VariableTerm,
   DescribeQuery,
   SparqlClient,
-  DataFactory,
   FactoryFunctions,
-} from '../generic';
-import { Wildcard } from 'sparqljs';
-import { QueryBuilderBase } from './query';
+} from '../generic.js';
+import SparqlJs from 'sparqljs';
+import { QueryBuilderBase } from './query.js';
 
 export type DescribeVariables = (VariableTerm | IriTerm)[];
 
@@ -26,7 +25,7 @@ export class DescribeQueryBuilderBase
       {
         type: 'query',
         queryType: 'DESCRIBE',
-        variables: variables.length !== 0 ? variables : [new Wildcard()],
+        variables: variables.length !== 0 ? variables : [new SparqlJs.Wildcard()],
         base: base,
         prefixes: prefixes,
       },

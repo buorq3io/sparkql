@@ -1,4 +1,4 @@
-import { FactoryFunctions, VariableTerm } from '../generic';
+import { FactoryFunctions, VariableTerm } from '../generic.js';
 
 export type VariableManagerConfig<T extends string> = Exclude<T, '__'>;
 

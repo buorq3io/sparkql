@@ -1,11 +1,11 @@
-import { QueryBuilderBase } from './query';
 import {
-  ConstructQuery,
-  QuadTerm,
   Triple,
+  QuadTerm,
   SparqlClient,
+  ConstructQuery,
   FactoryFunctions,
-} from '../generic';
+} from '../generic.js';
+import { QueryBuilderBase } from './query.js';
 
 export type ConstructTemplates = Triple[];
 

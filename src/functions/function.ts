@@ -6,7 +6,7 @@ import {
   Pattern,
   Expression,
   OperationExpression,
-} from '../generic';
+} from '../generic.js';
 import {
   transform_iri,
   transform_blank,
@@ -14,8 +14,8 @@ import {
   transform_number,
   transform_boolean,
   transform_literal,
-} from '../structures';
-import { op } from './utils';
+} from '../structures/index.js';
+import { op } from './utils.js';
 
 // FUNCTIONAL FORMS
 

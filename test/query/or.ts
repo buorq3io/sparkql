@@ -1,5 +1,5 @@
-import { db, v } from '../index';
-import { and, eq, filter, or, triple } from '../../src';
+import { db, v } from '../index.js';
+import { and, eq, filter, or, triple } from '../../src/index.js';
 
 export default () =>
   db

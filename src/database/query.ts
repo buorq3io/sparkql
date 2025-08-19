@@ -1,5 +1,5 @@
-import { SparqlQueryBuilderBase } from './sparql-query';
-import { Query, Pattern, IriTerm, ValuePatternRow } from '../generic';
+import { SparqlQueryBuilderBase } from './sparql-query.js';
+import { Query, Pattern, IriTerm, ValuePatternRow } from '../generic.js';
 
 export abstract class QueryBuilderBase<
   TConfig extends Query,

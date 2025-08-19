@@ -1,4 +1,4 @@
-import { FactoryFunctions, BlankTerm } from '../generic';
+import { FactoryFunctions, BlankTerm } from '../generic.js';
 
 export type BlankProxy = Record<string, BlankTerm | (() => BlankTerm)>;
 

@@ -1,5 +1,5 @@
-import type * as SparqlJs from 'sparqljs';
-import type * as RdfJs from 'rdf-data-factory';
+import SparqlJs from 'sparqljs';
+import RdfJs from 'rdf-data-factory';
 
 export type { StreamClient as SparqlClient } from 'sparql-http-client';
 

@@ -1,5 +1,5 @@
-import { triples } from '../../src';
-import { db, v, n, b } from '../index';
+import { triples } from '../../src/index.js';
+import { db, v } from '../index.js';
 
 export default () =>
   db

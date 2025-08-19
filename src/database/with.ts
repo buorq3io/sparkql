@@ -1,15 +1,15 @@
 import {
+  Quads,
+  Update,
   IriTerm,
   Pattern,
-  Update,
-  Quads,
+  FactoryFunctions,
   SparqlClient,
   UpdateOperation,
   InsertDeleteOperation,
-  FactoryFunctions,
-} from '../generic';
-import { UpdateQueryBuilderBase } from './update';
-import { SparqlQueryBuilderBase } from './sparql-query';
+} from '../generic.js';
+import { UpdateQueryBuilderBase } from './update.js';
+import { SparqlQueryBuilderBase } from './sparql-query.js';
 
 export class WithQueryBuilderBase
   extends SparqlQueryBuilderBase<Update, void>
