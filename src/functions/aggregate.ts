@@ -1,13 +1,13 @@
-import { agg } from './utils';
-import { Wildcard } from 'sparqljs';
-import { AggregateExpression, Expression } from '../generic';
-import { transform_array, transform_number } from '../structures';
+import SparqlJs from 'sparqljs';
+import { agg } from './utils.js';
+import { AggregateExpression, Expression } from '../generic.js';
+import { transform_array, transform_number } from '../structures/index.js';
 
 export function count(): AggregateExpression<number>;
 export function count(expression: Expression): AggregateExpression<number>;
 
 export function count(expression?: Expression) {
-  return agg(expression ?? new Wildcard(), 'count', undefined, transform_number);
+  return agg(expression ?? new SparqlJs.Wildcard(), 'count', undefined, transform_number);
 }
 
 export function sum(expression: Expression): AggregateExpression<number> {

@@ -1,17 +1,17 @@
-import * as SparqlJs from 'sparqljs';
 import {
-  SparqlClient,
-  Variable,
-  VariableTerm,
   Ordering,
+  Variable,
   SelectQuery,
+  VariableTerm,
+  Expression,
+  VariableExpression,
+  SparqlClient,
+  FactoryFunctions,
   QueryReturnType,
   BaseQueryReturnType,
-  VariableExpression,
-  Expression,
-  FactoryFunctions,
-} from '../generic';
-import { QueryBuilderBase } from './query';
+} from '../generic.js';
+import SparqlJs from 'sparqljs';
+import { QueryBuilderBase } from './query.js';
 
 export type SelectVariables<T extends Record<string, any>> = {
   [K in keyof T]: Variable<T[K]>;

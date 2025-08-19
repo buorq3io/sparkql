@@ -1,24 +1,28 @@
 import {
-  Triple,
   IriTerm,
-  TripleSubject,
-  TriplePredicate,
-  TripleObject,
   Variable,
   BlankTerm,
   LiteralTerm,
   VariableTerm,
-  QueryReturnType,
-  VariableExpression,
+  Triple,
+  TripleObject,
+  TripleSubject,
+  TriplePredicate,
   Expression,
+  VariableExpression,
+  QueryReturnType,
   BaseQueryReturnType,
-} from '../generic';
+} from '../generic.js';
 
 type PredicateObjectArray = Array<[TriplePredicate, TripleObject]>;
 
-export function triple(subject: TripleSubject, predicate: TriplePredicate, object: TripleObject): Triple {
+export function triple(
+  subject: TripleSubject,
+  predicate: TriplePredicate,
+  object: TripleObject
+): Triple {
   return {
-    type: "triple",
+    type: 'triple',
     subject: subject,
     predicate: predicate,
     object: object,
@@ -53,7 +57,9 @@ export function triples(
     return predicateObjectList.map(([predicate, obj]) => triple(subject, predicate, obj));
   }
 
-  function isObjectOrPredicateObjectList(arr: TripleObject[] | PredicateObjectArray): arr is TripleObject[] {
+  function isObjectOrPredicateObjectList(
+    arr: TripleObject[] | PredicateObjectArray
+  ): arr is TripleObject[] {
     return !arr.some(value => Array.isArray(value));
   }
 
@@ -178,5 +184,7 @@ export function cast_bigint<T>(variable: Variable<T>) {
 }
 
 export function cast_array<T>(variable: Variable<T>, separator: string = '\u001f') {
-  return apply_transform(variable as unknown as Variable<string[]>, transform_array);
+  return apply_transform(variable as unknown as Variable<string[]>, self =>
+    transform_array(self, separator)
+  );
 }

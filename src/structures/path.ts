@@ -3,7 +3,7 @@ import {
   PropertySet,
   PropertyPath,
   NegatedPropertySet,
-} from '../generic';
+} from '../generic.js';
 
 export function path(
   pathType: '!',

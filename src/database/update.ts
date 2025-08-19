@@ -1,20 +1,19 @@
 import {
-  IriTerm,
-  Update,
   Quads,
+  Update,
+  IriTerm,
   SparqlClient,
   GraphReference,
   GraphOrDefault,
+  FactoryFunctions,
   LoadOperation,
   UpdateOperation,
   CreateOperation,
   ClearDropOperation,
   CopyMoveAddOperation,
-  DataFactory,
-  FactoryFunctions,
-} from '../generic';
-import { WithQueryBuilderBase } from './with';
-import { SparqlQueryBuilderBase } from './sparql-query';
+} from '../generic.js';
+import { WithQueryBuilderBase } from './with.js';
+import { SparqlQueryBuilderBase } from './sparql-query.js';
 
 export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<Update, void> {
   constructor(

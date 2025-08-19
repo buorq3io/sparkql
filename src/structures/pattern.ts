@@ -16,7 +16,7 @@ import {
   ServicePattern,
   OptionalPattern,
   ValuePatternRow,
-} from '../generic';
+} from '../generic.js';
 
 export function bgp(...triples: Triple[]): BgpPattern {
   return {

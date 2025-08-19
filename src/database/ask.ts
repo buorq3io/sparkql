@@ -1,5 +1,5 @@
-import { QueryBuilderBase } from './query';
-import { AskQuery, DataFactory, FactoryFunctions, SparqlClient } from '../generic';
+import { QueryBuilderBase } from './query.js';
+import { AskQuery, FactoryFunctions, SparqlClient } from '../generic.js';
 
 export class AskQueryBuilderBase
   extends QueryBuilderBase<AskQuery, boolean>

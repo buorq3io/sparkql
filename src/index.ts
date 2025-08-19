@@ -1,3 +1,3 @@
-export * from './database/index';
-export * from './functions/index';
-export * from './structures/index';
+export * from './database/index.js';
+export * from './functions/index.js';
+export * from './structures/index.js';

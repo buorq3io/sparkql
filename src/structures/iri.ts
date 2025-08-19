@@ -1,4 +1,4 @@
-import { FactoryFunctions, IriTerm, SparqlQuery } from '../generic';
+import { FactoryFunctions, IriTerm, SparqlQuery } from '../generic.js';
 
 export type IriManagerConfig = Record<string, { uri: string; fields: readonly string[] }>;
 

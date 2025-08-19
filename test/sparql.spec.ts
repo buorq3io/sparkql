@@ -2,8 +2,8 @@ import { diff } from 'json-diff-ts';
 import { readdirSync, readFileSync } from 'fs';
 import { beforeEach, describe, expect, test } from 'vitest';
 
-import { db, parser } from './index';
-import { SparqlQueryBuilderBase } from '../src/database/sparql-query';
+import { db, parser } from './index.js';
+import { SparqlQueryBuilderBase } from '../src/database/sparql-query.js';
 
 const TEST_PATH = 'test/query/';
 const SPARQL_PATH = 'test/sparql/';

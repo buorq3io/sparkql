@@ -1,6 +1,6 @@
-import { Parser } from 'sparqljs';
-import { SparqlDatabase } from '../src';
-import { DataFactory } from 'rdf-data-factory';
+import SparqlJs from 'sparqljs';
+import RdfJs from 'rdf-data-factory';
+import { SparqlDatabase } from '../src/index.js';
 
 const prefixes = {
   rdf: {
@@ -16,7 +16,7 @@ const prefixes = {
 export const db = new SparqlDatabase(prefixes);
 export const [v, n, b] = db.create([], prefixes, 'allow');
 
-const factory: DataFactory = new DataFactory();
+const factory: RdfJs.DataFactory = new RdfJs.DataFactory();
 const blankNodeOld = factory.blankNode.bind(factory);
 factory.blankNode = (value?: string) => {
   if (value && value.startsWith('e_')) {
@@ -25,4 +25,4 @@ factory.blankNode = (value?: string) => {
   return blankNodeOld(value);
 };
 
-export const parser = new Parser({ factory: factory as any });
+export const parser = new SparqlJs.Parser({ factory: factory as any });

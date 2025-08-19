@@ -1,4 +1,3 @@
-import type * as SparqlJs from 'sparqljs';
 import {
   IriManagerConfig,
   createIriManager,
@@ -6,27 +5,28 @@ import {
   VariableManagerConfig,
   createVariableManager,
   transformIntoPrefixObject,
-} from '../structures';
-import { DataFactory } from 'rdf-data-factory';
-import { AskQueryBuilderBase } from './ask';
-import { UpdateQueryBuilderBase } from './update';
-import { SelectQueryBuilderBase, SelectVariables } from './select';
-import { DescribeQueryBuilderBase, DescribeVariables } from './describe';
-import { ConstructQueryBuilderBase, ConstructTemplates } from './construct';
-import { BlankPrefix, FactoryFunctions, IriTerm } from '../generic';
+} from '../structures/index.js';
+import type SparqlJs from 'sparqljs';
+import RdfJs from 'rdf-data-factory';
+import { AskQueryBuilderBase } from './ask.js';
+import { UpdateQueryBuilderBase } from './update.js';
+import { SelectQueryBuilderBase, SelectVariables } from './select.js';
+import { DescribeQueryBuilderBase, DescribeVariables } from './describe.js';
+import { ConstructQueryBuilderBase, ConstructTemplates } from './construct.js';
+import { BlankPrefix, FactoryFunctions, IriTerm } from '../generic.js';
 
 export class SparqlDatabase<T extends IriManagerConfig> {
   private readonly nodes;
   private readonly queryBase?: string;
   private readonly queryPrefixes;
-  protected readonly factory: DataFactory;
+  protected readonly factory: RdfJs.DataFactory;
   protected readonly factoryFunctions: FactoryFunctions;
 
-  constructor(nodes: T, base?: string, factory?: DataFactory) {
+  constructor(nodes: T, base?: string, factory?: RdfJs.DataFactory) {
     this.nodes = nodes;
     this.queryBase = base;
     this.queryPrefixes = transformIntoPrefixObject(nodes);
-    this.factory = factory ?? new DataFactory({ blankNodePrefix: 'g_' });
+    this.factory = factory ?? new RdfJs.DataFactory({ blankNodePrefix: 'g_' });
 
     this.factoryFunctions = {
       variable: this.variable,
