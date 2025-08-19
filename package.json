@@ -1,21 +1,27 @@
 {
   "name": "sparql-query",
-  "type": "module",
   "version": "0.1.0",
   "description": "A query builder for SPARQL.",
-  "main": "./lib/index.js",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "types": "./dist/index.d.cts",
   "files": [
-    "lib/**/*"
+    "dist/**/*"
   ],
   "scripts": {
     "build": "tsc --project tsconfig.build.json",
-    "clean": "rm -rf ./lib/",
+    "clean": "rm -rf ./dist/",
     "test": "vitest",
     "semantic-release": "semantic-release",
     "typecheck": "tsc --noEmit"
   },
   "repository": {
     "type": "git"
+  },
+  "release": {
+    "branches": [
+      "main"
+    ]
   },
   "license": "MIT",
   "author": {
@@ -24,11 +30,28 @@
     "url": "https://github.com/buorq3io"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=16.0.0"
   },
-  "keywords": [],
+  "keywords": [
+    "sparql",
+    "rdf",
+    "query",
+    "builder",
+    "query builder"
+  ],
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
   "devDependencies": {
-    "@rdfjs/types": "^2.0.1",
     "@types/node": "^18.0.0",
     "@types/sparql-http-client": "^3.0.5",
     "@types/sparqljs": "^3.1.12",
@@ -42,13 +65,8 @@
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"
   },
-  "release": {
-    "branches": [
-      "main"
-    ]
-  },
   "dependencies": {
-    "@rdfjs/data-model": "^2.1.0",
+    "rdf-data-factory": "^2.0.2",
     "sparql-http-client": "^3.0.1",
     "sparqljs": "^3.7.3"
   }
