@@ -4,7 +4,6 @@ import {
   QuadTerm,
   Triple,
   SparqlClient,
-  DataFactory,
   FactoryFunctions,
 } from '../generic';
 
@@ -29,6 +28,7 @@ export class ConstructQueryBuilderBase
             ? variables.map(t => {
                 return {
                   ...t,
+                  subject: this.sanitizeTerm(t.subject),
                   object: this.sanitizeTerm(t.object),
                 };
               })

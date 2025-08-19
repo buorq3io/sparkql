@@ -7,10 +7,10 @@ export type DataFactory = RdfJs.DataFactory;
 
 export type BlankPrefix<T extends string> = T extends `e_${string}` | `g_${string}` ? never : T;
 export type FactoryFunctions = {
-  variable: (value: string) => VariableTerm;
-  iri: <T extends string>(value: T) => IriTerm;
-  blank: <T extends string>(value?: BlankPrefix<T>) => BlankTerm;
-  literal: (value: string, lang?: string | IriTerm) => LiteralTerm;
+  variable: (value: string) => SparqlJs.VariableTerm;
+  iri: <T extends string>(value: T) => SparqlJs.IriTerm;
+  blank: <T extends string>(value?: BlankPrefix<T>) => SparqlJs.BlankTerm;
+  literal: (value: string, lang?: string | IriTerm) => SparqlJs.LiteralTerm;
 };
 
 export type Wildcard = SparqlJs.Wildcard;
@@ -57,7 +57,9 @@ export interface Ordering {
 }
 
 export type IriTerm = SparqlJs.IriTerm;
-export type BlankTerm = SparqlJs.BlankTerm;
+
+export type AnonymousBlankTerm = [] | symbol;
+export type BlankTerm = SparqlJs.BlankTerm | AnonymousBlankTerm;
 
 export type PrimitiveTerm = number | bigint | string | boolean;
 export type LiteralTerm = SparqlJs.LiteralTerm | PrimitiveTerm;
@@ -86,7 +88,10 @@ export type QuadObject = Term;
 
 export type Term = VariableTerm | IriTerm | LiteralTerm | BlankTerm | QuadTerm;
 
-export type BaseQueryReturnType = IriTerm | BlankTerm | Exclude<LiteralTerm, PrimitiveTerm>;
+export type BaseQueryReturnType =
+  | IriTerm
+  | Exclude<BlankTerm, AnonymousBlankTerm>
+  | Exclude<LiteralTerm, PrimitiveTerm>;
 export type QueryReturnType = BaseQueryReturnType | any;
 
 export type PropertyPath = SparqlJs.PropertyPath;

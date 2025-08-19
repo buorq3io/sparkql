@@ -1,3 +1,4 @@
+import type * as SparqlJs from 'sparqljs';
 import {
   IriManagerConfig,
   createIriManager,
@@ -12,14 +13,7 @@ import { UpdateQueryBuilderBase } from './update';
 import { SelectQueryBuilderBase, SelectVariables } from './select';
 import { DescribeQueryBuilderBase, DescribeVariables } from './describe';
 import { ConstructQueryBuilderBase, ConstructTemplates } from './construct';
-import {
-  BlankPrefix,
-  BlankTerm,
-  FactoryFunctions,
-  IriTerm,
-  LiteralTerm,
-  VariableTerm,
-} from '../generic';
+import { BlankPrefix, FactoryFunctions, IriTerm } from '../generic';
 
 export class SparqlDatabase<T extends IriManagerConfig> {
   private readonly nodes;
@@ -114,22 +108,22 @@ export class SparqlDatabase<T extends IriManagerConfig> {
     );
   }
 
-  variable = (value: string): VariableTerm => {
+  variable = (value: string): SparqlJs.VariableTerm => {
     return this.factory.variable(value);
   };
 
-  iri = <T extends string>(value: T): IriTerm => {
+  iri = <T extends string>(value: T): SparqlJs.IriTerm => {
     return this.factory.namedNode(value);
   };
 
-  blank = <T extends string>(value?: BlankPrefix<T>): BlankTerm => {
+  blank = <T extends string>(value?: BlankPrefix<T>): SparqlJs.BlankTerm => {
     if (value && (value.startsWith('e_') || value.startsWith('g_'))) {
       throw Error('For blank terms, prefixes "e_" and "g_" are reserved for internal use.');
     }
     return this.factory.blankNode(value);
   };
 
-  literal = (value: string, lang?: string | IriTerm): LiteralTerm => {
+  literal = (value: string, lang?: string | IriTerm): SparqlJs.LiteralTerm => {
     return this.factory.literal(value, lang);
   };
 

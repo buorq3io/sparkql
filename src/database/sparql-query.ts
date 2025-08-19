@@ -12,6 +12,8 @@ import {
   QueryReturnType,
   SparqlGenerator,
   FactoryFunctions,
+  BlankTerm,
+  AnonymousBlankTerm,
 } from '../generic';
 import { bgp } from '../structures';
 
@@ -21,9 +23,11 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
   protected _promise: Promise<KReturn> | null = null;
   protected readonly sparqlGenerator: SparqlGenerator;
   protected readonly factoryFunctions: FactoryFunctions;
+  protected readonly anonymousBlanks: Map<symbol, Exclude<BlankTerm, AnonymousBlankTerm>>;
 
   protected constructor(initialConfig: TConfig, factoryFunctions: FactoryFunctions) {
     this.config = initialConfig;
+    this.anonymousBlanks = new Map<symbol, Exclude<BlankTerm, AnonymousBlankTerm>>();
     this.factoryFunctions = factoryFunctions;
     this.sparqlGenerator = new SparqlJs.Generator();
     this.endpointUrl = process.env.DATABASE_URL;
@@ -71,7 +75,11 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
 
   protected sanitizeTerm<T extends Term>(
     t: T
-  ): T extends Exclude<Term, PrimitiveTerm> ? T : Exclude<LiteralTerm, PrimitiveTerm> {
+  ): T extends Exclude<Term, PrimitiveTerm | AnonymousBlankTerm>
+    ? T
+    : T extends PrimitiveTerm
+    ? Exclude<LiteralTerm, PrimitiveTerm>
+    : Exclude<BlankTerm, AnonymousBlankTerm> {
     const urls = {
       integer: 'http://www.w3.org/2001/XMLSchema#integer',
       float: 'http://www.w3.org/2001/XMLSchema#decimal',
@@ -79,7 +87,14 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
       boolean: 'http://www.w3.org/2001/XMLSchema#boolean',
     };
 
-    if (typeof t === 'number') {
+    if (Array.isArray(t) && t.length === 0) {
+      return this.factoryFunctions.blank() as any;
+    } else if (typeof t === 'symbol') {
+      if (!this.anonymousBlanks.get(t)) {
+        this.anonymousBlanks.set(t, this.factoryFunctions.blank());
+      }
+      return this.anonymousBlanks.get(t) as any;
+    } else if (typeof t === 'number') {
       if (Number.isInteger(t)) {
         return this.factoryFunctions.literal(
           t.toString(),
@@ -181,6 +196,7 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
         triples: pattern.triples.map(t => {
           return {
             ...t,
+            subject: this.sanitizeTerm(t.subject),
             object: this.sanitizeTerm(t.object),
           };
         }),
