@@ -1,0 +1,5 @@
+SELECT * WHERE {
+  ?s1 ?p1 [].
+  [] ?d1 ?f1.
+  ?v ?s _:b3
+}

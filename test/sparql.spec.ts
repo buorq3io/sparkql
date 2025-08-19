@@ -1,52 +1,51 @@
-import { Parser } from 'sparqljs';
 import { diff } from 'json-diff-ts';
 import { readdirSync, readFileSync } from 'fs';
-import { describe, test, expect } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
 
-import { db } from './index';
+import { db, parser } from './index';
 import { SparqlQueryBuilderBase } from '../src/database/sparql-query';
 
-let parser = new Parser();
-const test_path = 'test/query/';
-const sparql_path = 'test/sparql/';
+const TEST_PATH = 'test/query/';
+const SPARQL_PATH = 'test/sparql/';
 
-const preparedTests: Array<{
-  queryName: string;
-  queryContent: string;
-  testFilePromise: Promise<{ default: SparqlQueryBuilderBase<any, any> }>;
-}> = [];
+async function prepareParallel(queries: string[]) {
+  const promises = queries.map(async query => {
+    const query_file = readFileSync(SPARQL_PATH + query + '.sparql', 'utf8');
 
-let queries = readdirSync(sparql_path);
-queries = queries.map(q => {
-  return q.replace(/\.sparql$/, '');
-});
-queries.sort();
+    const test_file = (await import(TEST_PATH + query + '.ts')) as {
+      default: () => SparqlQueryBuilderBase<any, any>;
+    };
 
-queries.forEach(query => {
-  const query_file = readFileSync(sparql_path + query + '.sparql', 'utf8');
-  const test_file_promise = import(test_path + query + '.ts') as Promise<{
-    default: SparqlQueryBuilderBase<any, any>;
-  }>;
-
-  preparedTests.push({
-    queryName: query,
-    queryContent: query_file,
-    testFilePromise: test_file_promise,
+    return {
+      queryName: query,
+      queryContent: query_file,
+      testContent: test_file,
+    };
   });
-});
 
-describe('SPARQL Queries', () => {
+  return await Promise.all(promises);
+}
+
+describe('SPARQL Queries', async () => {
+  const query_paths = readdirSync(SPARQL_PATH).map(q => {
+    return q.replace(/\.sparql$/, '');
+  });
+  query_paths.sort();
+  const preparedTests = await prepareParallel(query_paths);
+
+  beforeEach(() => {
+    parser._resetBlanks();
+    db.resetBlankCounter();
+  });
+
   preparedTests.forEach(testData => {
-    test(`should correctly generate query "${testData.queryName}"`, async () => {
+    test(`should correctly generate query "${testData.queryName}"`, () => {
       const original = parser.parse(testData.queryContent);
-      const test_file_module = await testData.testFilePromise;
-      const builded = parser.parse(test_file_module.default.toSPARQL());
+      const test_file_module = testData.testContent;
+      const builded = parser.parse(test_file_module.default().toSPARQL());
 
       builded.prefixes = {};
       original.prefixes = {};
-
-      parser._resetBlanks();
-      db.resetBlankCounter();
 
       expect(diff(original, builded)).toStrictEqual([]);
     });
