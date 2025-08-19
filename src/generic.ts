@@ -1,9 +1,17 @@
-import * as SparqlJs from 'sparqljs';
-import * as RdfJs from 'rdf-data-factory';
+import type * as SparqlJs from 'sparqljs';
+import type * as RdfJs from 'rdf-data-factory';
 
 export type { StreamClient as SparqlClient } from 'sparql-http-client';
 
 export type DataFactory = RdfJs.DataFactory;
+
+export type BlankPrefix<T extends string> = T extends `e_${string}` | `g_${string}` ? never : T;
+export type FactoryFunctions = {
+  variable: (value: string) => SparqlJs.VariableTerm;
+  iri: <T extends string>(value: T) => SparqlJs.IriTerm;
+  blank: <T extends string>(value?: BlankPrefix<T>) => SparqlJs.BlankTerm;
+  literal: (value: string, lang?: string | IriTerm) => SparqlJs.LiteralTerm;
+};
 
 export type Wildcard = SparqlJs.Wildcard;
 export type SparqlGenerator = SparqlJs.SparqlGenerator;
@@ -11,11 +19,11 @@ export type SparqlGenerator = SparqlJs.SparqlGenerator;
 export type SparqlQuery = SparqlJs.SparqlQuery;
 export type Query = SparqlJs.Query;
 
-export type SelectQuery = SparqlJs.SelectQuery
-export type ConstructQuery = SparqlJs.ConstructQuery
-export type AskQuery = SparqlJs.AskQuery
-export type DescribeQuery = SparqlJs.DescribeQuery
-export type Update = SparqlJs.Update
+export type SelectQuery = SparqlJs.SelectQuery;
+export type ConstructQuery = SparqlJs.ConstructQuery;
+export type AskQuery = SparqlJs.AskQuery;
+export type DescribeQuery = SparqlJs.DescribeQuery;
+export type Update = SparqlJs.Update;
 
 export type UpdateOperation = InsertDeleteOperation | ManagementOperation;
 export type InsertDeleteOperation = SparqlJs.InsertDeleteOperation;
@@ -49,7 +57,9 @@ export interface Ordering {
 }
 
 export type IriTerm = SparqlJs.IriTerm;
-export type BlankTerm = SparqlJs.BlankTerm;
+
+export type AnonymousBlankTerm = [] | symbol;
+export type BlankTerm = SparqlJs.BlankTerm | AnonymousBlankTerm;
 
 export type PrimitiveTerm = number | bigint | string | boolean;
 export type LiteralTerm = SparqlJs.LiteralTerm | PrimitiveTerm;
@@ -78,7 +88,10 @@ export type QuadObject = Term;
 
 export type Term = VariableTerm | IriTerm | LiteralTerm | BlankTerm | QuadTerm;
 
-export type BaseQueryReturnType = IriTerm | BlankTerm | Exclude<LiteralTerm, PrimitiveTerm>;
+export type BaseQueryReturnType =
+  | IriTerm
+  | Exclude<BlankTerm, AnonymousBlankTerm>
+  | Exclude<LiteralTerm, PrimitiveTerm>;
 export type QueryReturnType = BaseQueryReturnType | any;
 
 export type PropertyPath = SparqlJs.PropertyPath;
@@ -90,7 +103,7 @@ export type TriplePredicate = IriTerm | VariableTerm | PropertyPath;
 export type TripleObject = Term;
 
 export interface Triple extends Record<keyof SparqlJs.Triple, unknown> {
-  type: 'triple'
+  type: 'triple';
   subject: TripleSubject;
   predicate: TriplePredicate;
   object: TripleObject;

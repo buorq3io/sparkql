@@ -5,6 +5,7 @@ import {
   DescribeQuery,
   SparqlClient,
   DataFactory,
+  FactoryFunctions,
 } from '../generic';
 import { Wildcard } from 'sparqljs';
 import { QueryBuilderBase } from './query';
@@ -18,16 +19,18 @@ export class DescribeQueryBuilderBase
   constructor(
     variables: DescribeVariables,
     prefixes: DescribeQuery['prefixes'],
-    factory: DataFactory
+    base: string | undefined,
+    factoryFunctions: FactoryFunctions
   ) {
     super(
       {
         type: 'query',
         queryType: 'DESCRIBE',
         variables: variables.length !== 0 ? variables : [new Wildcard()],
+        base: base,
         prefixes: prefixes,
       },
-      factory
+      factoryFunctions
     );
   }
 

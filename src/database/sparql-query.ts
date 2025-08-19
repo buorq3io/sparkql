@@ -2,16 +2,18 @@ import * as SparqlJs from 'sparqljs';
 import SparqlClient from 'sparql-http-client';
 import {
   Term,
+  Quads,
   LiteralTerm,
   PrimitiveTerm,
-  Expression,
   Pattern,
-  ValuePatternRow,
+  Expression,
   SparqlQuery,
+  ValuePatternRow,
   QueryReturnType,
-  DataFactory,
   SparqlGenerator,
-  Quads,
+  FactoryFunctions,
+  BlankTerm,
+  AnonymousBlankTerm,
 } from '../generic';
 import { bgp } from '../structures';
 
@@ -20,11 +22,13 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
   protected readonly endpointUrl: string | undefined;
   protected _promise: Promise<KReturn> | null = null;
   protected readonly sparqlGenerator: SparqlGenerator;
-  protected readonly factory: DataFactory;
+  protected readonly factoryFunctions: FactoryFunctions;
+  protected readonly anonymousBlanks: Map<symbol, Exclude<BlankTerm, AnonymousBlankTerm>>;
 
-  protected constructor(initialConfig: TConfig, factory: DataFactory) {
-    this.factory = factory;
+  protected constructor(initialConfig: TConfig, factoryFunctions: FactoryFunctions) {
     this.config = initialConfig;
+    this.anonymousBlanks = new Map<symbol, Exclude<BlankTerm, AnonymousBlankTerm>>();
+    this.factoryFunctions = factoryFunctions;
     this.sparqlGenerator = new SparqlJs.Generator();
     this.endpointUrl = process.env.DATABASE_URL;
   }
@@ -71,7 +75,11 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
 
   protected sanitizeTerm<T extends Term>(
     t: T
-  ): T extends Exclude<Term, PrimitiveTerm> ? T : Exclude<LiteralTerm, PrimitiveTerm> {
+  ): T extends Exclude<Term, PrimitiveTerm | AnonymousBlankTerm>
+    ? T
+    : T extends PrimitiveTerm
+    ? Exclude<LiteralTerm, PrimitiveTerm>
+    : Exclude<BlankTerm, AnonymousBlankTerm> {
     const urls = {
       integer: 'http://www.w3.org/2001/XMLSchema#integer',
       float: 'http://www.w3.org/2001/XMLSchema#decimal',
@@ -79,21 +87,37 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
       boolean: 'http://www.w3.org/2001/XMLSchema#boolean',
     };
 
-    if (typeof t === 'number') {
+    if (Array.isArray(t) && t.length === 0) {
+      return this.factoryFunctions.blank() as any;
+    } else if (typeof t === 'symbol') {
+      if (!this.anonymousBlanks.get(t)) {
+        this.anonymousBlanks.set(t, this.factoryFunctions.blank());
+      }
+      return this.anonymousBlanks.get(t) as any;
+    } else if (typeof t === 'number') {
       if (Number.isInteger(t)) {
-        return this.factory.literal(t.toString(), this.factory.namedNode(urls.integer)) as any;
+        return this.factoryFunctions.literal(
+          t.toString(),
+          this.factoryFunctions.iri(urls.integer)
+        ) as any;
       } else {
-        return this.factory.literal(t.toString(), this.factory.namedNode(urls.float)) as any;
+        return this.factoryFunctions.literal(
+          t.toString(),
+          this.factoryFunctions.iri(urls.float)
+        ) as any;
       }
     } else if (typeof t === 'bigint') {
-      return this.factory.literal(t.toString(), this.factory.namedNode(urls.integer)) as any;
+      return this.factoryFunctions.literal(
+        t.toString(),
+        this.factoryFunctions.iri(urls.integer)
+      ) as any;
     } else if (typeof t === 'boolean') {
-      return this.factory.literal(
+      return this.factoryFunctions.literal(
         t ? 'true' : 'false',
-        this.factory.namedNode(urls.boolean)
+        this.factoryFunctions.iri(urls.boolean)
       ) as any;
     } else if (typeof t === 'string') {
-      return this.factory.literal(t) as any;
+      return this.factoryFunctions.literal(t) as any;
     }
 
     return t as any;
@@ -172,6 +196,7 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
         triples: pattern.triples.map(t => {
           return {
             ...t,
+            subject: this.sanitizeTerm(t.subject),
             object: this.sanitizeTerm(t.object),
           };
         }),

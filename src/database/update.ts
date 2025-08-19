@@ -11,19 +11,26 @@ import {
   ClearDropOperation,
   CopyMoveAddOperation,
   DataFactory,
+  FactoryFunctions,
 } from '../generic';
 import { WithQueryBuilderBase } from './with';
 import { SparqlQueryBuilderBase } from './sparql-query';
 
 export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<Update, void> {
-  constructor(updates: UpdateOperation[], prefixes: Update['prefixes'], factory: DataFactory) {
+  constructor(
+    updates: UpdateOperation[],
+    prefixes: Update['prefixes'],
+    base: string | undefined,
+    factoryFunctions: FactoryFunctions
+  ) {
     super(
       {
         type: 'update',
         updates: updates,
+        base: base,
         prefixes: prefixes,
       },
-      factory
+      factoryFunctions
     );
   }
 
@@ -61,7 +68,13 @@ export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<Update, void>
   }
 
   with(iri?: IriTerm) {
-    return new WithQueryBuilderBase(this.config.updates, this.config.prefixes, this.factory, iri);
+    return new WithQueryBuilderBase(
+      this.config.updates,
+      this.config.prefixes,
+      this.config.base,
+      this.factoryFunctions,
+      iri
+    );
   }
 
   private createCopyMoveAddOperation(

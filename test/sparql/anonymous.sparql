@@ -1,0 +1,5 @@
+BASE <ex:>
+SELECT *
+WHERE {
+  ?s3 ?p3 [ <a3> <b3> ].
+}

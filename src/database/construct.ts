@@ -1,5 +1,11 @@
 import { QueryBuilderBase } from './query';
-import { ConstructQuery, QuadTerm, Triple, SparqlClient, DataFactory } from '../generic';
+import {
+  ConstructQuery,
+  QuadTerm,
+  Triple,
+  SparqlClient,
+  FactoryFunctions,
+} from '../generic';
 
 export type ConstructTemplates = Triple[];
 
@@ -10,7 +16,8 @@ export class ConstructQueryBuilderBase
   constructor(
     variables: ConstructTemplates,
     prefixes: ConstructQuery['prefixes'],
-    factory: DataFactory
+    base: string | undefined,
+    factoryFunctions: FactoryFunctions
   ) {
     super(
       {
@@ -21,13 +28,15 @@ export class ConstructQueryBuilderBase
             ? variables.map(t => {
                 return {
                   ...t,
+                  subject: this.sanitizeTerm(t.subject),
                   object: this.sanitizeTerm(t.object),
                 };
               })
             : undefined,
+        base: base,
         prefixes: prefixes,
       },
-      factory
+      factoryFunctions
     );
   }
 
