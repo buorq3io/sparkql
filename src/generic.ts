@@ -102,6 +102,26 @@ export type TripleSubject = IriTerm | BlankTerm | VariableTerm;
 export type TriplePredicate = IriTerm | VariableTerm | PropertyPath;
 export type TripleObject = Term;
 
+export type QualitativeAnonymousBlankTerm =
+  | [TriplePredicate, TriplesObject]
+  | [TriplesPredicatePairs];
+
+export type ExtendedBlankTerm = BlankTerm | QualitativeAnonymousBlankTerm;
+export type ExtendedTerm = VariableTerm | IriTerm | LiteralTerm | ExtendedBlankTerm | QuadTerm;
+
+export type TriplesSubject = IriTerm | ExtendedBlankTerm | VariableTerm;
+export type TriplesObject = ExtendedTerm | TriplesObjectPairs;
+
+export type TriplesPredicatePairs = {
+  type: 'triplespredicatepairs';
+  values: [TriplePredicate, TriplesObject][];
+};
+
+export type TriplesObjectPairs = {
+  type: 'triplesobjectpairs';
+  values: TriplesObject[];
+};
+
 export interface Triple extends Record<keyof SparqlJs.Triple, unknown> {
   type: 'triple';
   subject: TripleSubject;
