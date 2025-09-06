@@ -43,12 +43,9 @@ export abstract class QueryBuilderBase<
     }
 
     if (this.config.values) {
-      this.config.values = [
-        ...this.config.values,
-        ...rows.map(r => this.sanitizeValuePatternRow(r)),
-      ];
+      this.config.values = [...this.config.values, ...rows];
     } else {
-      this.config.values = rows.map(r => this.sanitizeValuePatternRow(r));
+      this.config.values = rows;
     }
     return this;
   }
@@ -59,9 +56,9 @@ export abstract class QueryBuilderBase<
     }
 
     if (this.config.where) {
-      this.config.where = [...this.config.where, ...patterns.map(p => this.sanitizePattern(p))];
+      this.config.where = [...this.config.where, ...patterns];
     } else {
-      this.config.where = patterns.map(p => this.sanitizePattern(p));
+      this.config.where = patterns;
     }
     return this;
   }

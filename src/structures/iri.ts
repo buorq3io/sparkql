@@ -1,6 +1,9 @@
 import { FactoryFunctions, IriTerm, SparqlQuery } from '../generic.js';
 
-export type IriManagerConfig = Record<string, { uri: string; fields: readonly string[] }>;
+export type IriManagerConfig = Record<
+  Exclude<string, '__'>,
+  { uri: string; fields: readonly string[] }
+>;
 
 export type IriProxy = Record<string, IriTerm>;
 
@@ -9,7 +12,7 @@ export type IriManager<T extends IriManagerConfig, K extends 'strict' | 'allow'>
     [F in T[P]['fields'][number]]: IriTerm;
   } &
     (K extends 'allow' ? { [key: string]: IriTerm } : {});
-};
+} & { __: IriProxy };
 
 export function createIriManager<T extends IriManagerConfig, K extends 'strict' | 'allow'>(
   nodes: T,
@@ -21,6 +24,7 @@ export function createIriManager<T extends IriManagerConfig, K extends 'strict' 
     result[prefix] = {};
     result[prefix] = createIriProxy(uri, factoryFunctions, mode === 'strict' ? fields : undefined);
   }
+  result.__ = createIriProxy('', factoryFunctions);
   return result as IriManager<T, K>;
 }
 

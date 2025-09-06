@@ -12,9 +12,12 @@ import {
   VariableExpression,
   QueryReturnType,
   BaseQueryReturnType,
+  TriplesObject,
+  TriplesSubject,
+  TriplesObjectPairs,
+  TriplesPredicatePairs,
+  QualitativeAnonymousBlankTerm,
 } from '../generic.js';
-
-type PredicateObjectArray = Array<[TriplePredicate, TripleObject]>;
 
 export function triple(
   subject: TripleSubject,
@@ -29,57 +32,113 @@ export function triple(
   };
 }
 
+export function objects(...obj: TriplesObject[]): TriplesObjectPairs {
+  return {
+    type: 'triplesobjectpairs',
+    values: obj,
+  };
+}
+
+export function predicates(...obj: [TriplePredicate, TriplesObject][]): TriplesPredicatePairs {
+  return {
+    type: 'triplespredicatepairs',
+    values: obj,
+  };
+}
+
+export function triples(subject: QualitativeAnonymousBlankTerm): Triple[];
+
+export function triples(subject: TriplesSubject, predicate: TriplesPredicatePairs): Triple[];
+
 export function triples(
-  subject: TripleSubject,
+  subject: TriplesSubject,
   predicate: TriplePredicate,
-  objects: TripleObject[]
+  object: TriplesObject
 ): Triple[];
 
 export function triples(
-  subject: TripleSubject,
-  predicateObjectList: PredicateObjectArray
-): Triple[];
+  subject: TriplesSubject,
+  predicate?: TriplePredicate | TriplesPredicatePairs,
+  object?: TriplesObject
+) {
+  function processTerm(term: TriplesSubject): [TripleSubject, Triple[]];
+  function processTerm(term: TriplesObject): [TripleObject, Triple[]];
 
-export function triples(
-  subject: TripleSubject,
-  predicate: TriplePredicate,
-  predicateObjectList: PredicateObjectArray
-): Triple[];
-
-export function triples(
-  subject: TripleSubject,
-  arg2: TriplePredicate | PredicateObjectArray,
-  arg3?: TripleObject[] | PredicateObjectArray
-): Triple[] {
-  // @overload 1 -> TripleSubject, PredicateObjectArray
-  if (Array.isArray(arg2)) {
-    const predicateObjectList = arg2 as PredicateObjectArray;
-    return predicateObjectList.map(([predicate, obj]) => triple(subject, predicate, obj));
+  function processTerm(term: TriplesObject): [TripleObject, Triple[]] {
+    if (isQualitativeAnonymousBlankTerm(term)) {
+      // Recursively call the main function to expand this blank node's properties
+      const extraTriples = triples(term);
+      return [extraTriples[0].subject, extraTriples];
+    }
+    return [term as any, []];
   }
 
-  function isObjectOrPredicateObjectList(
-    arr: TripleObject[] | PredicateObjectArray
-  ): arr is TripleObject[] {
-    return !arr.some(value => Array.isArray(value));
+  // Overload 1: triples2(QualitativeAnonymousBlankTerm)
+  if (arguments.length === 1 && isQualitativeAnonymousBlankTerm(subject)) {
+    const bnode = Symbol();
+    const predicateOrPairs = subject[0];
+    if (isTriplesPredicatePairs(predicateOrPairs)) {
+      return triples(bnode, predicateOrPairs);
+    } else {
+      const obj = subject[1] as any;
+      return triples(bnode, predicateOrPairs, obj);
+    }
   }
 
-  // @overload 2 -> TripleSubject, TriplePredicate, TripleObject[]
-  if (arg3 && Array.isArray(arg3) && isObjectOrPredicateObjectList(arg3)) {
-    const predicate = arg2 as TriplePredicate;
-    return arg3.map(obj => triple(subject, predicate, obj));
+  const [processedSubject, subjectTriples] = processTerm(subject);
+
+  // Overload 2: triples2(subject, TriplesPredicatePairs)
+  if (arguments.length === 2 && isTriplesPredicatePairs(predicate!)) {
+    const predicateObjectTriples = predicate.values.flatMap(([p, o]) =>
+      // Recurse for each predicate-object pair
+      triples(processedSubject, p, o)
+    );
+    return [...predicateObjectTriples, ...subjectTriples];
   }
 
-  // @overload 3 -> TripleSubject, TriplePredicate, PredicateObjectArray
-  if (arg3) {
-    const blank_node = Symbol();
-    const predicate = arg2 as TriplePredicate;
-    return [
-      triple(subject, predicate, blank_node),
-      ...arg3.map(p => triple(blank_node, p[0], p[1])),
-    ];
+  // Overload 3: triples2(subject, predicate, object)
+  if (arguments.length === 3 && predicate && object !== undefined) {
+    const objects = isTriplesObjectPairs(object) ? object.values : [object];
+    const resultTriples: Triple[] = [];
+
+    for (const obj of objects) {
+      const [processedObject, objectTriples] = processTerm(obj);
+      resultTriples.push(triple(processedSubject, predicate as TriplePredicate, processedObject));
+      resultTriples.push(...objectTriples);
+    }
+    return [...resultTriples, ...subjectTriples];
   }
 
-  throw new Error('Invalid arguments supplied to triples function.');
+  // Should not be reached if called correctly
+  throw new Error('Invalid arguments for `triples()` function');
+}
+
+function isQualitativeAnonymousBlankTerm(
+  term: TriplesObject
+): term is QualitativeAnonymousBlankTerm {
+  return Array.isArray(term) && term.length !== 0;
+}
+
+function isTriplesPredicatePairs(
+  object: TriplesPredicatePairs | TriplePredicate
+): object is TriplesPredicatePairs {
+  return (
+    typeof object === 'object' &&
+    'type' in object &&
+    object.type === 'triplespredicatepairs' &&
+    'values' in object &&
+    Array.isArray(object.values)
+  );
+}
+
+function isTriplesObjectPairs(object: TriplesObject): object is TriplesObjectPairs {
+  return (
+    typeof object === 'object' &&
+    'type' in object &&
+    object.type === 'triplesobjectpairs' &&
+    'values' in object &&
+    Array.isArray(object.values)
+  );
 }
 
 export function as<T extends QueryReturnType>(

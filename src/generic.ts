@@ -16,22 +16,121 @@ export type FactoryFunctions = {
 export type Wildcard = SparqlJs.Wildcard;
 export type SparqlGenerator = SparqlJs.SparqlGenerator;
 
-export type SparqlQuery = SparqlJs.SparqlQuery;
-export type Query = SparqlJs.Query;
+export type SparqlQuery = Query | Update;
+export type Query = SelectQuery | ConstructQuery | AskQuery | DescribeQuery;
 
-export type SelectQuery = SparqlJs.SelectQuery;
-export type ConstructQuery = SparqlJs.ConstructQuery;
-export type AskQuery = SparqlJs.AskQuery;
-export type DescribeQuery = SparqlJs.DescribeQuery;
-export type Update = SparqlJs.Update;
+export interface BaseQuery {
+  type: 'query';
+  base?: string | undefined;
+  prefixes: {
+    [p: string]: string;
+  };
+  from?:
+    | {
+        default: IriTerm[];
+        named: IriTerm[];
+      }
+    | undefined;
+  where?: Pattern[] | undefined;
+  values?: ValuePatternRow[] | undefined;
+}
+
+export interface SelectQuery extends BaseQuery {
+  queryType: 'SELECT';
+  variables: Variable[];
+  distinct?: boolean | undefined;
+  reduced?: boolean | undefined;
+  group?: Grouping[] | undefined;
+  having?: Expression[] | undefined;
+  order?: Ordering[] | undefined;
+  limit?: number | undefined;
+  offset?: number | undefined;
+}
+
+export interface ConstructQuery extends BaseQuery {
+  queryType: 'CONSTRUCT';
+  template?: Triple[] | undefined;
+}
+
+export interface AskQuery extends BaseQuery {
+  queryType: 'ASK';
+}
+
+export interface DescribeQuery extends BaseQuery {
+  queryType: 'DESCRIBE';
+  variables: Array<VariableTerm | IriTerm> | [Wildcard];
+}
+
+export interface Update {
+  type: 'update';
+  base?: string | undefined;
+  prefixes: {
+    [p: string]: string;
+  };
+  updates: UpdateOperation[];
+}
 
 export type UpdateOperation = InsertDeleteOperation | ManagementOperation;
-export type InsertDeleteOperation = SparqlJs.InsertDeleteOperation;
-export type ManagementOperation = SparqlJs.ManagementOperation;
-export type CopyMoveAddOperation = SparqlJs.CopyMoveAddOperation;
-export type LoadOperation = SparqlJs.LoadOperation;
-export type CreateOperation = SparqlJs.CreateOperation;
-export type ClearDropOperation = SparqlJs.ClearDropOperation;
+
+export type InsertDeleteOperation =
+  | {
+      updateType: 'insert';
+      graph?: GraphOrDefault;
+      insert: Quads[];
+    }
+  | {
+      updateType: 'delete';
+      graph?: GraphOrDefault;
+      delete: Quads[];
+    }
+  | {
+      updateType: 'insertdelete';
+      graph?: IriTerm;
+      insert: Quads[];
+      delete: Quads[];
+      using?: {
+        default: IriTerm[];
+        named: IriTerm[];
+      };
+      where: Pattern[];
+    }
+  | {
+      updateType: 'deletewhere';
+      graph?: GraphOrDefault;
+      delete: Quads[];
+    };
+
+export type ManagementOperation =
+  | CopyMoveAddOperation
+  | LoadOperation
+  | CreateOperation
+  | ClearDropOperation;
+
+export type CopyMoveAddOperation = {
+  type: 'copy' | 'move' | 'add';
+  silent: boolean;
+  source: GraphOrDefault;
+  destination: GraphOrDefault;
+};
+
+export type LoadOperation = {
+  type: 'load';
+  silent: boolean;
+  source: IriTerm;
+  destination: IriTerm | false;
+};
+
+export type CreateOperation = {
+  type: 'create';
+  silent: boolean;
+  graph: GraphOrDefault;
+};
+
+export type ClearDropOperation = {
+  type: 'clear' | 'drop';
+  silent: boolean;
+  graph: GraphReference;
+};
 
 export type Quads = Triple | BgpPattern | GraphQuads;
 
@@ -46,15 +145,13 @@ export interface GraphReference extends GraphOrDefault {
   all?: boolean | undefined;
 }
 
-export interface Grouping {
-  expression: Expression;
-  variable?: VariableTerm;
-}
-
-export interface Ordering {
-  expression: Expression;
-  descending?: boolean | undefined;
-}
+export type Grouping = Expression | VariableExpression;
+export type Ordering =
+  | Expression
+  | {
+      expression: Expression;
+      descending: boolean | undefined;
+    };
 
 export type IriTerm = SparqlJs.IriTerm;
 
@@ -102,6 +199,26 @@ export type TripleSubject = IriTerm | BlankTerm | VariableTerm;
 export type TriplePredicate = IriTerm | VariableTerm | PropertyPath;
 export type TripleObject = Term;
 
+export type QualitativeAnonymousBlankTerm =
+  | [TriplePredicate, TriplesObject]
+  | [TriplesPredicatePairs];
+
+export type ExtendedBlankTerm = BlankTerm | QualitativeAnonymousBlankTerm;
+export type ExtendedTerm = VariableTerm | IriTerm | LiteralTerm | ExtendedBlankTerm | QuadTerm;
+
+export type TriplesSubject = IriTerm | ExtendedBlankTerm | VariableTerm;
+export type TriplesObject = ExtendedTerm | TriplesObjectPairs;
+
+export type TriplesPredicatePairs = {
+  type: 'triplespredicatepairs';
+  values: [TriplePredicate, TriplesObject][];
+};
+
+export type TriplesObjectPairs = {
+  type: 'triplesobjectpairs';
+  values: TriplesObject[];
+};
+
 export interface Triple extends Record<keyof SparqlJs.Triple, unknown> {
   type: 'triple';
   subject: TripleSubject;
@@ -116,7 +233,7 @@ export type Pattern =
   | FilterPattern
   | BindPattern
   | ValuesPattern
-  | SelectQuery;
+  | SparqlJs.SelectQuery;
 
 export interface BgpPattern {
   type: 'bgp';
