@@ -38,7 +38,7 @@ export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<Update, void>
       ...this.config.updates,
       {
         updateType: 'insert',
-        insert: quads.map(q => this.sanitizeQuads(q)),
+        insert: quads,
       },
     ];
     return this;
@@ -49,7 +49,7 @@ export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<Update, void>
       ...this.config.updates,
       {
         updateType: 'delete',
-        delete: quads.map(q => this.sanitizeQuads(q)),
+        delete: quads,
       },
     ];
     return this;
@@ -60,7 +60,7 @@ export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<Update, void>
       ...this.config.updates,
       {
         updateType: 'deletewhere',
-        delete: quads.map(q => this.sanitizeQuads(q)),
+        delete: quads,
       },
     ];
     return this;

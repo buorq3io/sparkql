@@ -56,7 +56,7 @@ export class WithQueryBuilderBase
       return this;
     }
 
-    this._operation.insert = [...this._operation.insert, ...quads.map(q => this.sanitizeQuads(q))];
+    this._operation.insert = [...this._operation.insert, ...quads];
     this.insert_call = true;
     return this;
   }
@@ -66,16 +66,13 @@ export class WithQueryBuilderBase
       return this;
     }
 
-    this._operation.delete = [...this._operation.delete, ...quads.map(q => this.sanitizeQuads(q))];
+    this._operation.delete = [...this._operation.delete, ...quads];
     this.delete_call = true;
     return this;
   }
 
   where(...patterns: Pattern[]) {
-    this._operation.where = [
-      ...this._operation.where,
-      ...patterns.map(p => this.sanitizePattern(p)),
-    ];
+    this._operation.where = [...this._operation.where, ...patterns];
     this.where_call = true;
     return this;
   }

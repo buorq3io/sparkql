@@ -1,17 +1,17 @@
 import {
-  Term,
-  Quads,
-  BlankTerm,
-  LiteralTerm,
-  PrimitiveTerm,
   AnonymousBlankTerm,
-  Pattern,
+  BlankTerm,
   Expression,
-  SparqlQuery,
-  ValuePatternRow,
+  FactoryFunctions,
+  LiteralTerm,
+  Pattern,
+  PrimitiveTerm,
+  Quads,
   QueryReturnType,
   SparqlGenerator,
-  FactoryFunctions,
+  SparqlQuery,
+  Term,
+  ValuePatternRow,
 } from '../generic.js';
 import SparqlJs from 'sparqljs';
 import SparqlClient from 'sparql-http-client';
@@ -33,8 +33,122 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
     this.endpointUrl = process.env.DATABASE_URL;
   }
 
-  public getSPARQL() {
-    return this.config;
+  public getSPARQL(): SparqlJs.SparqlQuery {
+    const sparqlQueryBase = {
+      base: this.config.base,
+      prefixes: this.config.prefixes,
+    };
+
+    if (this.config.type === 'query') {
+      const queryBase = {
+        ...sparqlQueryBase,
+        type: this.config.type,
+        from: this.config.from,
+        where: this.config.where?.map(p => this.sanitizePattern(p)),
+        values: this.config.values?.map(r => this.sanitizeValuePatternRow(r)),
+      };
+
+      if (this.config.queryType === 'SELECT') {
+        return {
+          ...queryBase,
+          queryType: this.config.queryType,
+          variables:
+            this.config.variables.length === 0
+              ? [new SparqlJs.Wildcard()]
+              : this.config.variables.map(v => {
+                if ('expression' in v) {
+                  return { ...v, expression: this.sanitizeExpression(v.expression) };
+                }
+                return v;
+              }),
+          distinct: this.config.distinct,
+          reduced: this.config.reduced,
+          group: this.config.group?.map(g => {
+            if (typeof g === 'object' && 'variable' in g) {
+              return {
+                ...g,
+                expression: this.sanitizeExpression(g.expression),
+              };
+            } else {
+              return {
+                expression: this.sanitizeExpression(g),
+              };
+            }
+          }),
+          having: this.config.having?.map(e => this.sanitizeExpression(e)),
+          order: this.config.order?.map(o => {
+            if (typeof o === 'object' && 'descending' in o) {
+              return {
+                ...o,
+                expression: this.sanitizeExpression(o.expression),
+              };
+            } else {
+              return {
+                expression: this.sanitizeExpression(o),
+              };
+            }
+          }),
+          limit: this.config.limit,
+          offset: this.config.offset,
+        } satisfies SparqlJs.SelectQuery;
+      } else if (this.config.queryType === 'CONSTRUCT') {
+        return {
+          ...queryBase,
+          queryType: this.config.queryType,
+          template:
+            this.config.template && this.config.template.length !== 0
+              ? this.config.template.map(t => {
+                return {
+                  ...t,
+                  subject: this.sanitizeTerm(t.subject),
+                  object: this.sanitizeTerm(t.object),
+                };
+              })
+              : undefined,
+        } satisfies SparqlJs.ConstructQuery;
+      } else if (this.config.queryType === 'DESCRIBE') {
+        return {
+          ...queryBase,
+          queryType: this.config.queryType,
+          variables: this.config.variables,
+        } satisfies SparqlJs.DescribeQuery;
+      } else if (this.config.queryType === 'ASK') {
+        return { ...queryBase, queryType: this.config.queryType } satisfies SparqlJs.AskQuery;
+      }
+      throw Error('Invalid queryType for query.');
+    } else if (this.config.type === 'update') {
+      return {
+        ...sparqlQueryBase,
+        type: this.config.type,
+        updates: this.config.updates.map(u => {
+          if ('updateType' in u) {
+            if (u.updateType === 'insert') {
+              return { ...u, insert: u.insert.map(q => this.sanitizeQuads(q)) };
+            } else if (u.updateType === 'delete') {
+              return { ...u, delete: u.delete.map(q => this.sanitizeQuads(q)) };
+            } else if (u.updateType === 'insertdelete') {
+              return {
+                ...u,
+                insert: u.insert.map(q => this.sanitizeQuads(q)),
+                delete: u.delete.map(q => this.sanitizeQuads(q)),
+                where: u.where.map(p => this.sanitizePattern(p)),
+              };
+            } else if (u.updateType === 'deletewhere') {
+              return { ...u, delete: u.delete.map(q => this.sanitizeQuads(q)) };
+            }
+
+            throw Error('Invalid updateType for update.');
+          } else if ('type' in u) {
+            if (['clear', 'drop', 'create', 'copy', 'move', 'add', 'load'].includes(u.type)) {
+              return u;
+            }
+            throw Error('Invalid type for update.');
+          }
+          throw Error('Invalid object for update.');
+        }),
+      };
+    }
+    throw Error('Invalid type for sparql query.');
   }
 
   public toSPARQL() {
@@ -46,7 +160,7 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
   protected execute(): Promise<KReturn> {
     if (!this.endpointUrl) {
       throw Error(
-        '$DATABASE_URL environment variable ' + 'should be defined as your SPARQL endpoint!'
+        '$DATABASE_URL environment variable ' + 'should be defined as your SPARQL endpoint!',
       );
     }
 
@@ -68,18 +182,18 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
 
   public then<TResult1 = KReturn, TResult2 = never>(
     onfulfilled?: ((value: KReturn) => TResult1 | PromiseLike<TResult1>) | null,
-    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
+    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null,
   ): Promise<TResult1 | TResult2> {
     return this.execute().then(onfulfilled, onrejected);
   }
 
   protected sanitizeTerm<T extends Term>(
-    t: T
+    t: T,
   ): T extends Exclude<Term, PrimitiveTerm | AnonymousBlankTerm>
     ? T
     : T extends PrimitiveTerm
-    ? Exclude<LiteralTerm, PrimitiveTerm>
-    : Exclude<BlankTerm, AnonymousBlankTerm> {
+      ? Exclude<LiteralTerm, PrimitiveTerm>
+      : Exclude<BlankTerm, AnonymousBlankTerm> {
     const urls = {
       integer: 'http://www.w3.org/2001/XMLSchema#integer',
       float: 'http://www.w3.org/2001/XMLSchema#decimal',
@@ -98,23 +212,23 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
       if (Number.isInteger(t)) {
         return this.factoryFunctions.literal(
           t.toString(),
-          this.factoryFunctions.iri(urls.integer)
+          this.factoryFunctions.iri(urls.integer),
         ) as any;
       } else {
         return this.factoryFunctions.literal(
           t.toString(),
-          this.factoryFunctions.iri(urls.float)
+          this.factoryFunctions.iri(urls.float),
         ) as any;
       }
     } else if (typeof t === 'bigint') {
       return this.factoryFunctions.literal(
         t.toString(),
-        this.factoryFunctions.iri(urls.integer)
+        this.factoryFunctions.iri(urls.integer),
       ) as any;
     } else if (typeof t === 'boolean') {
       return this.factoryFunctions.literal(
         t ? 'true' : 'false',
-        this.factoryFunctions.iri(urls.boolean)
+        this.factoryFunctions.iri(urls.boolean),
       ) as any;
     } else if (typeof t === 'string') {
       return this.factoryFunctions.literal(t) as any;
@@ -124,7 +238,7 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
   }
 
   protected sanitizeExpression<T extends QueryReturnType>(
-    expression: Expression<T>
+    expression: Expression<T>,
   ): SparqlJs.Expression {
     const isExpressionOrPattern = (o: Expression | Pattern): o is Expression => {
       if (typeof o !== 'object') {

@@ -1,16 +1,15 @@
 import {
+  Grouping,
   Ordering,
   Variable,
   SelectQuery,
   VariableTerm,
   Expression,
-  VariableExpression,
   SparqlClient,
   FactoryFunctions,
   QueryReturnType,
   BaseQueryReturnType,
 } from '../generic.js';
-import SparqlJs from 'sparqljs';
 import { QueryBuilderBase } from './query.js';
 
 export type SelectVariables<T extends Record<string, any>> = {
@@ -39,12 +38,7 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
       {
         type: 'query',
         queryType: 'SELECT',
-        variables: variables ? <SparqlJs.Variable[]>Object.values(variables).map(v => {
-              if ('expression' in v) {
-                return { ...v, expression: this.sanitizeExpression(v.expression) };
-              }
-              return v;
-            }) : [new SparqlJs.Wildcard()],
+        variables: variables ? <Variable[]>Object.values(variables) : [],
         base: base,
         prefixes: prefixes,
       },
@@ -96,61 +90,38 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
     }
 
     if (this.config.having) {
-      this.config.having = [
-        ...this.config.having,
-        ...expressions.map(e => this.sanitizeExpression(e)),
-      ];
+      this.config.having = [...this.config.having, ...expressions];
     } else {
-      this.config.having = expressions.map(e => this.sanitizeExpression(e));
+      this.config.having = expressions;
     }
     return this;
   }
 
-  groupBy(...groupings: (Expression | VariableExpression)[]) {
+  groupBy(...groupings: Grouping[]) {
     if (groupings.length === 0) {
       return this;
     }
 
-    if (!this.config.group) {
-      this.config.group = [];
+    if (this.config.group) {
+      this.config.group = [...this.config.group, ...groupings];
+    } else {
+      this.config.group = groupings;
     }
 
-    for (const grouping of groupings) {
-      if (typeof grouping === 'object' && 'variable' in grouping) {
-        this.config.group.push({
-          ...grouping,
-          expression: this.sanitizeExpression(grouping.expression),
-        });
-      } else {
-        this.config.group.push({
-          expression: this.sanitizeExpression(grouping),
-        });
-      }
-    }
     return this;
   }
 
-  orderBy(...orderings: (Expression | Required<Ordering>)[]) {
+  orderBy(...orderings: Ordering[]) {
     if (orderings.length === 0) {
       return this;
     }
 
-    if (!this.config.order) {
-      this.config.order = [];
+    if (this.config.order) {
+      this.config.order = [...this.config.order, ...orderings];
+    } else {
+      this.config.order = orderings;
     }
 
-    for (const ordering of orderings) {
-      if (typeof ordering === 'object' && 'descending' in ordering) {
-        this.config.order.push({
-          ...ordering,
-          expression: this.sanitizeExpression(ordering.expression),
-        });
-      } else {
-        this.config.order.push({
-          expression: this.sanitizeExpression(ordering),
-        });
-      }
-    }
     return this;
   }
 
