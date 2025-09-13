@@ -1,19 +1,32 @@
 import {
-  Grouping,
-  Ordering,
-  Variable,
-  SelectQuery,
-  VariableTerm,
-  Expression,
-  SparqlClient,
-  FactoryFunctions,
-  QueryReturnType,
   BaseQueryReturnType,
+  Expression,
+  FactoryFunctions,
+  Grouping,
+  OptionalTransform,
+  Ordering,
+  Presence,
+  SelectQuery,
+  SparqlClient,
+  Transform,
+  Variable,
+  VariableTerm,
 } from '../generic.js';
 import { QueryBuilderBase } from './query.js';
 
 export type SelectVariables<T extends Record<string, any>> = {
-  [K in keyof T]: Variable<T[K]>;
+  [K in keyof T]-?: undefined extends T[K]
+    ? Variable<Exclude<T[K], undefined>, Presence.optional> | Variable<T[K], Presence>
+    : Variable<T[K]>;
+};
+
+export type ExtractDataType<V> = V extends Variable<infer T, any> ? T : never;
+export type ExtractPresenceType<V> = V extends Variable<any, infer P> ? P : never;
+
+export type InferredSelectResult<T extends Record<string, Variable<any, any>>> = {
+  [K in keyof T]: ExtractPresenceType<T[K]> extends Presence.optional
+    ? ExtractDataType<T[K]> | undefined
+    : ExtractDataType<T[K]>;
 };
 
 export class SelectQueryBuilderBase<T extends Record<string, any>>
@@ -21,10 +34,7 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
   implements PromiseLike<T[]>
 {
   private lookup: Record<string, string> = {};
-  private lookupTransform: Record<
-    string,
-    ((self: BaseQueryReturnType) => QueryReturnType) | undefined
-  > = {};
+  private lookupTransform: Record<string, OptionalTransform | Transform | undefined> = {};
 
   constructor(
     variables: SelectVariables<T> | undefined,
@@ -45,10 +55,23 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
       factoryFunctions
     );
 
-    function isVariableTerm(obj: any): obj is VariableTerm {
+    function isVariableTerm<T extends BaseQueryReturnType, K extends Presence>(
+      obj: any
+    ): obj is VariableTerm<T, K> {
       return (
         typeof obj === 'object' && obj !== null && 'termType' in obj && obj.termType === 'Variable'
       );
+    }
+
+    function createMaybeTransform<T extends BaseQueryReturnType, K extends any[]>(
+      t: Transform<T, K>
+    ): OptionalTransform<T, K> {
+      return (self: BaseQueryReturnType | undefined, ...other: K) => {
+        if (!self) {
+          return;
+        }
+        return t(self, ...other);
+      };
     }
 
     for (const key in variables) {
@@ -57,7 +80,13 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
         // Case 1: The value is a Variable directly
         if (isVariableTerm(value)) {
           this.lookup[value.value] = key;
-          this.lookupTransform[value.value] = value.transform;
+          if (value.presence === Presence.optional) {
+            this.lookupTransform[value.value] = value.transform
+              ? createMaybeTransform(value.transform)
+              : undefined;
+          } else {
+            this.lookupTransform[value.value] = value.transform ? value.transform : undefined;
+          }
         }
         // Case 2: The value is an object that contains a 'variable' property
         else if (
@@ -67,10 +96,15 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
           isVariableTerm(value.variable)
         ) {
           this.lookup[value.variable.value] = key;
-          this.lookupTransform[value.variable.value] =
-            typeof value.expression === 'object' && 'transform' in value.expression
-              ? value.expression.transform
+          if (value.variable.presence === Presence.optional) {
+            this.lookupTransform[value.variable.value] = value.variable.transform
+              ? createMaybeTransform(value.variable.transform)
               : undefined;
+          } else {
+            this.lookupTransform[value.variable.value] = value.variable.transform
+              ? value.variable.transform
+              : undefined;
+          }
         }
       }
     }

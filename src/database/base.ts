@@ -10,10 +10,10 @@ import type SparqlJs from 'sparqljs';
 import RdfJs from 'rdf-data-factory';
 import { AskQueryBuilderBase } from './ask.js';
 import { UpdateQueryBuilderBase } from './update.js';
-import { SelectQueryBuilderBase, SelectVariables } from './select.js';
+import { InferredSelectResult, SelectQueryBuilderBase, SelectVariables } from './select.js';
 import { DescribeQueryBuilderBase, DescribeVariables } from './describe.js';
 import { ConstructQueryBuilderBase, ConstructTemplates } from './construct.js';
-import { BlankPrefix, FactoryFunctions, IriTerm } from '../generic.js';
+import { BlankPrefix, FactoryFunctions, IriTerm, Variable } from '../generic.js';
 
 export class SparqlDatabase<T extends IriManagerConfig> {
   private readonly nodes;
@@ -40,9 +40,13 @@ export class SparqlDatabase<T extends IriManagerConfig> {
     return new SparqlDatabase(this.nodes, value, this.factory);
   }
 
-  select<U extends Record<string, any> = Record<string, any>>(
-    variables?: SelectVariables<U>
-  ): SelectQueryBuilderBase<U> {
+  select<U extends Record<string, Variable<any, any>>>(
+    variables?: U
+  ): SelectQueryBuilderBase<InferredSelectResult<U>>;
+
+  select<U extends Record<string, any>>(variables?: SelectVariables<U>): SelectQueryBuilderBase<U>;
+
+  select<U extends Record<string, any>>(variables?: SelectVariables<U>): SelectQueryBuilderBase<U> {
     return new SelectQueryBuilderBase(
       variables,
       this.queryPrefixes,
@@ -51,7 +55,15 @@ export class SparqlDatabase<T extends IriManagerConfig> {
     );
   }
 
-  selectDistinct<U extends Record<string, any> = Record<string, any>>(
+  selectDistinct<U extends Record<string, Variable<any, any>>>(
+    variables?: U
+  ): SelectQueryBuilderBase<InferredSelectResult<U>>;
+
+  selectDistinct<U extends Record<string, any>>(
+    variables?: SelectVariables<U>
+  ): SelectQueryBuilderBase<U>;
+
+  selectDistinct<U extends Record<string, any>>(
     variables?: SelectVariables<U>
   ): SelectQueryBuilderBase<U> {
     return new SelectQueryBuilderBase(
@@ -64,7 +76,15 @@ export class SparqlDatabase<T extends IriManagerConfig> {
     );
   }
 
-  selectReduced<U extends Record<string, any> = Record<string, any>>(
+  selectReduced<U extends Record<string, Variable<any, any>>>(
+    variables?: U
+  ): SelectQueryBuilderBase<InferredSelectResult<U>>;
+
+  selectReduced<U extends Record<string, any>>(
+    variables?: SelectVariables<U>
+  ): SelectQueryBuilderBase<U>;
+
+  selectReduced<U extends Record<string, any>>(
     variables?: SelectVariables<U>
   ): SelectQueryBuilderBase<U> {
     return new SelectQueryBuilderBase(

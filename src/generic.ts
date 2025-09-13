@@ -161,18 +161,41 @@ export type BlankTerm = SparqlJs.BlankTerm | AnonymousBlankTerm;
 export type PrimitiveTerm = number | bigint | string | boolean;
 export type LiteralTerm = SparqlJs.LiteralTerm | PrimitiveTerm;
 
-export type Variable<T extends QueryReturnType = QueryReturnType> =
-  | VariableExpression<T>
-  | VariableTerm<T>;
+export type Variable<
+  T extends QueryReturnType = QueryReturnType,
+  K extends Presence = Presence.required
+> = VariableExpression<T, K> | VariableTerm<T, K>;
 
-export interface VariableExpression<T extends QueryReturnType = QueryReturnType> {
+export interface VariableExpression<
+  T extends QueryReturnType = QueryReturnType,
+  K extends Presence = Presence.required
+> {
   expression: Expression<T>;
-  variable: VariableTerm;
+  variable: VariableTerm<T, K>;
 }
 
-export interface VariableTerm<T extends QueryReturnType = QueryReturnType>
-  extends SparqlJs.VariableTerm {
-  transform?: (self: BaseQueryReturnType) => T;
+export enum Presence {
+  required = 'required',
+  optional = 'optional',
+}
+
+export type Transform<T extends QueryReturnType = QueryReturnType, K extends any[] = []> = (
+  self: BaseQueryReturnType,
+  ...other: K
+) => T;
+
+export type OptionalTransform<T extends QueryReturnType = QueryReturnType, K extends any[] = []> = (
+  self: BaseQueryReturnType | undefined,
+  ...other: K
+) => T | undefined;
+
+export interface VariableTerm<
+  T extends QueryReturnType = QueryReturnType,
+  K extends Presence = Presence.required
+> extends SparqlJs.VariableTerm {
+  presence?: K;
+  transform?: Transform<T>;
+  _invariant?: (arg: T) => T;
 }
 
 export type DefaultGraph = RdfJs.DefaultGraph;
