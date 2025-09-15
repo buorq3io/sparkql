@@ -1,21 +1,21 @@
 import SparqlJs from 'sparqljs';
 import { agg } from './utils.js';
 import { AggregateExpression, Expression } from '../generic.js';
-import { transform_array, transform_number } from '../structures/index.js';
+import { transformArray, transformNumber } from '../structures/index.js';
 
 export function count(): AggregateExpression<number>;
 export function count(expression: Expression): AggregateExpression<number>;
 
 export function count(expression?: Expression) {
-  return agg(expression ?? new SparqlJs.Wildcard(), 'count', undefined, transform_number);
+  return agg(expression ?? new SparqlJs.Wildcard(), 'count', undefined, transformNumber);
 }
 
 export function sum(expression: Expression): AggregateExpression<number> {
-  return agg(expression, 'sum', undefined, transform_number);
+  return agg(expression, 'sum', undefined, transformNumber);
 }
 
 export function avg(expression: Expression): AggregateExpression<number> {
-  return agg(expression, 'avg', undefined, transform_number);
+  return agg(expression, 'avg', undefined, transformNumber);
 }
 
 export function min(expression: Expression) {
@@ -34,5 +34,5 @@ export function groupConcat(
   expression: Expression,
   separator: string = '\u001f'
 ): AggregateExpression<string[]> {
-  return agg(expression, 'group_concat', separator, self => transform_array(self, separator));
+  return agg(expression, 'group_concat', separator, self => transformArray(self, separator));
 }

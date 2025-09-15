@@ -1,29 +1,29 @@
 import { op } from './utils.js';
 import { Expression, OperationExpression } from '../generic.js';
-import { transform_boolean, transform_number } from '../structures/index.js';
+import { transformBoolean, transformNumber } from '../structures/index.js';
 
 export function eq(...args: [Expression, Expression]): OperationExpression<boolean> {
-  return op('=', args, transform_boolean);
+  return op('=', args, transformBoolean);
 }
 
 export function ne(...args: [Expression, Expression]): OperationExpression<boolean> {
-  return op('!=', args, transform_boolean);
+  return op('!=', args, transformBoolean);
 }
 
 export function gt(...args: [Expression, Expression]): OperationExpression<boolean> {
-  return op('>', args, transform_boolean);
+  return op('>', args, transformBoolean);
 }
 
 export function gte(...args: [Expression, Expression]): OperationExpression<boolean> {
-  return op('>=', args, transform_boolean);
+  return op('>=', args, transformBoolean);
 }
 
 export function lt(...args: [Expression, Expression]): OperationExpression<boolean> {
-  return op('<', args, transform_boolean);
+  return op('<', args, transformBoolean);
 }
 
 export function lte(...args: [Expression, Expression]): OperationExpression<boolean> {
-  return op('<=', args, transform_boolean);
+  return op('<=', args, transformBoolean);
 }
 
 export function and(
@@ -32,7 +32,7 @@ export function and(
   const [first, ...rest] = args;
 
   return rest.reduce(
-    (acc, current) => op('&&', [acc, current], transform_boolean),
+    (acc, current) => op('&&', [acc, current], transformBoolean),
     first
   ) as OperationExpression<boolean>;
 }
@@ -43,7 +43,7 @@ export function or(
   const [first, ...rest] = args;
 
   return rest.reduce(
-    (acc, current) => op('||', [acc, current], transform_boolean),
+    (acc, current) => op('||', [acc, current], transformBoolean),
     first
   ) as OperationExpression<boolean>;
 }
@@ -54,13 +54,13 @@ export function add(
   const [first, ...rest] = args;
 
   return rest.reduce(
-    (acc, current) => op('+', [acc, current], transform_number),
+    (acc, current) => op('+', [acc, current], transformNumber),
     first
   ) as OperationExpression<number>;
 }
 
 export function subs(...args: [Expression, Expression]): OperationExpression<number> {
-  return op('-', args, transform_number);
+  return op('-', args, transformNumber);
 }
 
 export function mul(
@@ -69,23 +69,23 @@ export function mul(
   const [first, ...rest] = args;
 
   return rest.reduce(
-    (acc, current) => op('*', [acc, current], transform_number),
+    (acc, current) => op('*', [acc, current], transformNumber),
     first
   ) as OperationExpression<number>;
 }
 
 export function div(...args: [Expression, Expression]): OperationExpression<number> {
-  return op('/', args, transform_number);
+  return op('/', args, transformNumber);
 }
 
 export function not(...args: [Expression]): OperationExpression<boolean> {
-  return op('!', args, transform_boolean);
+  return op('!', args, transformBoolean);
 }
 
 export function uplus(...args: [Expression]): OperationExpression<number> {
-  return op('uplus', args, transform_number);
+  return op('uplus', args, transformNumber);
 }
 
 export function uminus(...args: [Expression]): OperationExpression<number> {
-  return op('uminus', args, transform_number);
+  return op('uminus', args, transformNumber);
 }

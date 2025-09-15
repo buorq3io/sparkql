@@ -1,28 +1,30 @@
 import {
-  IriTerm,
-  Variable,
+  BaseQueryReturnType,
   BlankTerm,
+  Expression,
+  IriTerm,
   LiteralTerm,
-  VariableTerm,
+  Presence,
+  QualitativeAnonymousBlankTerm,
+  QueryReturnType,
+  Transform,
   Triple,
   TripleObject,
-  TripleSubject,
   TriplePredicate,
-  Expression,
-  VariableExpression,
-  QueryReturnType,
-  BaseQueryReturnType,
   TriplesObject,
-  TriplesSubject,
   TriplesObjectPairs,
   TriplesPredicatePairs,
-  QualitativeAnonymousBlankTerm,
+  TriplesSubject,
+  TripleSubject,
+  Variable,
+  VariableExpression,
+  VariableTerm,
 } from '../generic.js';
 
 export function triple(
   subject: TripleSubject,
   predicate: TriplePredicate,
-  object: TripleObject
+  object: TripleObject,
 ): Triple {
   return {
     type: 'triple',
@@ -53,13 +55,13 @@ export function triples(subject: TriplesSubject, predicate: TriplesPredicatePair
 export function triples(
   subject: TriplesSubject,
   predicate: TriplePredicate,
-  object: TriplesObject
+  object: TriplesObject,
 ): Triple[];
 
 export function triples(
   subject: TriplesSubject,
   predicate?: TriplePredicate | TriplesPredicatePairs,
-  object?: TriplesObject
+  object?: TriplesObject,
 ) {
   function processTerm(term: TriplesSubject): [TripleSubject, Triple[]];
   function processTerm(term: TriplesObject): [TripleObject, Triple[]];
@@ -91,7 +93,7 @@ export function triples(
   if (arguments.length === 2 && isTriplesPredicatePairs(predicate!)) {
     const predicateObjectTriples = predicate.values.flatMap(([p, o]) =>
       // Recurse for each predicate-object pair
-      triples(processedSubject, p, o)
+      triples(processedSubject, p, o),
     );
     return [...predicateObjectTriples, ...subjectTriples];
   }
@@ -114,13 +116,13 @@ export function triples(
 }
 
 function isQualitativeAnonymousBlankTerm(
-  term: TriplesObject
+  term: TriplesObject,
 ): term is QualitativeAnonymousBlankTerm {
   return Array.isArray(term) && term.length !== 0;
 }
 
 function isTriplesPredicatePairs(
-  object: TriplesPredicatePairs | TriplePredicate
+  object: TriplesPredicatePairs | TriplePredicate,
 ): object is TriplesPredicatePairs {
   return (
     typeof object === 'object' &&
@@ -143,21 +145,25 @@ function isTriplesObjectPairs(object: TriplesObject): object is TriplesObjectPai
 
 export function as<T extends QueryReturnType>(
   expression: Expression<T>,
-  value: VariableTerm
+  variableTerm: VariableTerm,
 ): VariableExpression<T> {
+  if (typeof expression === 'object' && 'type' in expression) {
+    variableTerm.transform = expression.transform;
+  }
   return {
-    variable: value,
+    variable: variableTerm,
     expression: expression,
   };
 }
 
 export function apply_transform<T>(
-  variable: Variable<T>,
-  transform: (self: BaseQueryReturnType, ...other: any[]) => T
-) {
+  variable: Variable,
+  transform: (self: BaseQueryReturnType, ...other: any[]) => T,
+): Variable<T> {
   if ('expression' in variable) {
     if (typeof variable.expression === 'object' && 'type' in variable.expression) {
       variable.expression.transform = transform;
+      variable.variable.transform = transform;
     }
   } else {
     variable.transform = transform;
@@ -165,85 +171,71 @@ export function apply_transform<T>(
   return variable;
 }
 
-export function transform_iri(self: BaseQueryReturnType) {
+export function transformIri(self: BaseQueryReturnType) {
   if ('language' in self) {
     console.warn('W: Wrongful static cast of LiteralTerm to IriTerm');
   }
   return self as IriTerm;
 }
 
-export function transform_literal(self: BaseQueryReturnType) {
+export function transformLiteral(self: BaseQueryReturnType) {
   if (!('language' in self)) {
     console.error('W: Wrongful static cast of IriTerm to LiteralTerm');
   }
   return self as LiteralTerm;
 }
 
-export function transform_blank(self: BaseQueryReturnType) {
+export function transformBlank(self: BaseQueryReturnType) {
   if (!('language' in self)) {
     console.error('W: Wrongful static cast of BlankTerm to LiteralTerm');
   }
   return self as BlankTerm;
 }
 
-export function transform_string(self: BaseQueryReturnType) {
-  return self.value;
+export const transformString = (self => self.value) satisfies Transform;
+
+export const transformLangstring = (self =>
+  'language' in self ? `'${self.value}'@${self.language}` : self.value) satisfies Transform;
+
+export const transformBigint = (self => BigInt(self.value)) satisfies Transform;
+
+export const transformNumber = (self => parseFloat(self.value)) satisfies Transform;
+
+export const transformBoolean = (self => self.value.toLowerCase() === 'true') satisfies Transform;
+
+export const transformArray = ((self, separator: string = '\u001f') =>
+  self.value.split(separator)) satisfies Transform;
+
+export const castIri = createCast(transformIri);
+export const castLiteral = createCast(transformLiteral);
+export const castBlank = createCast(transformBlank);
+export const castString = createCast(transformString);
+export const castLangstring = createCast(transformLangstring);
+export const castBoolean = createCast(transformBoolean);
+export const castNumber = createCast(transformNumber);
+export const castBigint = createCast(transformBigint);
+export const castArray = createCast(transformArray);
+
+export function createCast<T, K extends any[] = []>(transform: Transform<T, K>) {
+  return (variable: Variable, ...other: K) =>
+    apply_transform(variable, self => transform(self, ...other));
 }
 
-export function transform_langstring(self: BaseQueryReturnType) {
-  return 'language' in self ? `'${self.value}'@${self.language}` : self.value;
+export function always<T>(variable: Variable<T, Presence>): Variable<T> {
+  if ('expression' in variable) {
+    variable.variable.presence = Presence.required;
+  } else {
+    variable.presence = Presence.required;
+  }
+  return variable as Variable<T>;
 }
 
-export function transform_boolean(self: BaseQueryReturnType) {
-  return self.value.toLowerCase() === 'true';
-}
-
-export function transform_number(self: BaseQueryReturnType) {
-  return parseFloat(self.value);
-}
-
-export function transform_bigint(self: BaseQueryReturnType) {
-  return BigInt(self.value);
-}
-
-export function transform_array(self: BaseQueryReturnType, separator: string) {
-  return self ? self.value.split(separator) : [];
-}
-
-export function cast_iri<T>(variable: Variable<T>) {
-  return apply_transform(variable as unknown as Variable<IriTerm>, transform_iri);
-}
-
-export function cast_literal<T>(variable: Variable<T>) {
-  return apply_transform(variable as unknown as Variable<LiteralTerm>, transform_literal);
-}
-
-export function cast_blank<T>(variable: Variable<T>) {
-  return apply_transform(variable as unknown as Variable<BlankTerm>, transform_blank);
-}
-
-export function cast_string<T>(variable: Variable<T>) {
-  return apply_transform(variable as unknown as Variable<string>, transform_string);
-}
-
-export function cast_langstring<T>(variable: Variable<T>) {
-  return apply_transform(variable as unknown as Variable<string>, transform_langstring);
-}
-
-export function cast_boolean<T>(variable: Variable<T>) {
-  return apply_transform(variable as unknown as Variable<boolean>, transform_boolean);
-}
-
-export function cast_number<T>(variable: Variable<T>) {
-  return apply_transform(variable as unknown as Variable<number>, transform_number);
-}
-
-export function cast_bigint<T>(variable: Variable<T>) {
-  return apply_transform(variable as unknown as Variable<bigint>, transform_bigint);
-}
-
-export function cast_array<T>(variable: Variable<T>, separator: string = '\u001f') {
-  return apply_transform(variable as unknown as Variable<string[]>, self =>
-    transform_array(self, separator)
-  );
+export function maybe<T>(variable: Variable<T>): Variable<T, Presence.optional> {
+  const resultVariable: Variable<T, Presence.optional> = variable as any;
+  if ('expression' in resultVariable) {
+    resultVariable.variable.presence = Presence.optional;
+  } else {
+    resultVariable.presence = Presence.optional;
+  }
+  return resultVariable;
 }
