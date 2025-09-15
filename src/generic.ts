@@ -5,11 +5,14 @@ export type { StreamClient as SparqlClient } from 'sparql-http-client';
 
 export type DataFactory = RdfJs.DataFactory;
 
-export type BlankPrefix<T extends string> = T extends `e_${string}` | `g_${string}` ? never : T;
-export type FactoryFunctions = {
+export type ExcludePrefix<T extends string, K extends string> = T extends `${K}${number}`
+  ? never
+  : T;
+
+export type FactoryFunctions<K extends string = string> = {
   variable: (value: string) => SparqlJs.VariableTerm;
   iri: <T extends string>(value: T) => SparqlJs.IriTerm;
-  blank: <T extends string>(value?: BlankPrefix<T>) => SparqlJs.BlankTerm;
+  blank: <T extends string>(value?: ExcludePrefix<T, K>) => SparqlJs.BlankTerm;
   literal: (value: string, lang?: string | IriTerm) => SparqlJs.LiteralTerm;
 };
 

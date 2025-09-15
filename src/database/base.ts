@@ -7,26 +7,28 @@ import {
   transformIntoPrefixObject,
 } from '../structures/index.js';
 import type SparqlJs from 'sparqljs';
-import RdfJs from 'rdf-data-factory';
+import * as RdfJs from 'rdf-data-factory';
 import { AskQueryBuilderBase } from './ask.js';
 import { UpdateQueryBuilderBase } from './update.js';
 import { InferredSelectResult, SelectQueryBuilderBase, SelectVariables } from './select.js';
 import { DescribeQueryBuilderBase, DescribeVariables } from './describe.js';
 import { ConstructQueryBuilderBase, ConstructTemplates } from './construct.js';
-import { BlankPrefix, FactoryFunctions, IriTerm, Variable } from '../generic.js';
+import { ExcludePrefix, FactoryFunctions, IriTerm, Variable } from '../generic.js';
 
-export class SparqlDatabase<T extends IriManagerConfig> {
+export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'> {
   private readonly nodes;
   private readonly queryBase?: string;
   private readonly queryPrefixes;
+  private readonly blankNodePrefix: K;
   protected readonly factory: RdfJs.DataFactory;
-  protected readonly factoryFunctions: FactoryFunctions;
+  protected readonly factoryFunctions: FactoryFunctions<K>;
 
-  constructor(nodes: T, base?: string, factory?: RdfJs.DataFactory) {
+  constructor(nodes: T, base?: string, factory?: RdfJs.DataFactory, blankNodePrefix?: K) {
     this.nodes = nodes;
     this.queryBase = base;
+    this.blankNodePrefix = blankNodePrefix ?? ('g_' as K);
     this.queryPrefixes = transformIntoPrefixObject(nodes);
-    this.factory = factory ?? new RdfJs.DataFactory({ blankNodePrefix: 'g_' });
+    this.factory = factory ?? new RdfJs.DataFactory({ blankNodePrefix: this.blankNodePrefix });
 
     this.factoryFunctions = {
       variable: this.variable,
@@ -136,9 +138,11 @@ export class SparqlDatabase<T extends IriManagerConfig> {
     return this.factory.namedNode(value);
   };
 
-  blank = <T extends string>(value?: BlankPrefix<T>): SparqlJs.BlankTerm => {
-    if (value && (value.startsWith('e_') || value.startsWith('g_'))) {
-      throw Error('For blank terms, prefixes "e_" and "g_" are reserved for internal use.');
+  blank = <T extends string>(value?: ExcludePrefix<T, K>): SparqlJs.BlankTerm => {
+    if (value && value.startsWith(this.blankNodePrefix)) {
+      throw Error(
+        `For blank terms, the prefix "${this.blankNodePrefix}" is reserved for internal use.`
+      );
     }
     return this.factory.blankNode(value);
   };
