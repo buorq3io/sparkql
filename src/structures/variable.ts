@@ -1,23 +1,23 @@
-import { FactoryFunctions, VariableTerm } from '../generic.js';
+import { FactoryFunctions, Strictness, VariableTerm } from '../generic.js';
 
 export type VariableManagerConfig<T extends string> = Exclude<T, '__'>;
 
 export type VariableProxy = Record<string, VariableTerm | (() => VariableTerm)>;
 
-export type VariableManager<T extends string, K extends 'strict' | 'allow'> = {
+export type VariableManager<T extends string, K extends Strictness> = {
   [P in T]: VariableTerm;
 } & {
   __: () => VariableTerm;
-} & (K extends 'allow' ? { [key: Exclude<string, '__'>]: VariableTerm } : {});
+} & (K extends Strictness.loose ? { [key: Exclude<string, '__'>]: VariableTerm } : {});
 
-export function createVariableManager<T extends string, K extends 'strict' | 'allow'>(
+export function createVariableManager<T extends string, K extends Strictness>(
   keys: readonly VariableManagerConfig<T>[],
   mode: K,
   factoryFunctions: FactoryFunctions
 ): VariableManager<T, K> {
   return createVariableProxy(
     factoryFunctions,
-    mode === 'strict' ? keys : undefined
+    mode === Strictness.strict ? keys : undefined
   ) as VariableManager<T, K>;
 }
 

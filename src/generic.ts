@@ -182,6 +182,11 @@ export enum Presence {
   optional = 'optional',
 }
 
+export enum Strictness {
+  strict = 'strict',
+  loose = 'loose',
+}
+
 export type Transform<T extends QueryReturnType = QueryReturnType, K extends any[] = []> = (
   self: BaseQueryReturnType,
   ...other: K

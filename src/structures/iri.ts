@@ -1,4 +1,4 @@
-import { FactoryFunctions, IriTerm, SparqlQuery } from '../generic.js';
+import { FactoryFunctions, IriTerm, SparqlQuery, Strictness } from '../generic.js';
 
 export type IriManagerConfig = Record<
   Exclude<string, '__'>,
@@ -7,14 +7,14 @@ export type IriManagerConfig = Record<
 
 export type IriProxy = Record<string, IriTerm>;
 
-export type IriManager<T extends IriManagerConfig, K extends 'strict' | 'allow'> = {
+export type IriManager<T extends IriManagerConfig, K extends Strictness> = {
   [P in keyof T]: {
     [F in T[P]['fields'][number]]: IriTerm;
   } &
-    (K extends 'allow' ? { [key: string]: IriTerm } : {});
+    (K extends Strictness.loose ? { [key: string]: IriTerm } : {});
 } & { __: IriProxy };
 
-export function createIriManager<T extends IriManagerConfig, K extends 'strict' | 'allow'>(
+export function createIriManager<T extends IriManagerConfig, K extends Strictness>(
   nodes: T,
   mode: K,
   factoryFunctions: FactoryFunctions
@@ -22,7 +22,11 @@ export function createIriManager<T extends IriManagerConfig, K extends 'strict' 
   const result: Record<string, IriProxy> = {};
   for (const [prefix, { uri, fields }] of Object.entries(nodes)) {
     result[prefix] = {};
-    result[prefix] = createIriProxy(uri, factoryFunctions, mode === 'strict' ? fields : undefined);
+    result[prefix] = createIriProxy(
+      uri,
+      factoryFunctions,
+      mode === Strictness.strict ? fields : undefined
+    );
   }
   result.__ = createIriProxy('', factoryFunctions);
   return result as IriManager<T, K>;

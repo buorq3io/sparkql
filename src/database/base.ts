@@ -1,10 +1,10 @@
 import {
-  IriManagerConfig,
-  createIriManager,
   createBlankManager,
-  VariableManagerConfig,
+  createIriManager,
   createVariableManager,
+  IriManagerConfig,
   transformIntoPrefixObject,
+  VariableManagerConfig,
 } from '../structures/index.js';
 import type SparqlJs from 'sparqljs';
 import * as RdfJs from 'rdf-data-factory';
@@ -13,7 +13,7 @@ import { UpdateQueryBuilderBase } from './update.js';
 import { InferredSelectResult, SelectQueryBuilderBase, SelectVariables } from './select.js';
 import { DescribeQueryBuilderBase, DescribeVariables } from './describe.js';
 import { ConstructQueryBuilderBase, ConstructTemplates } from './construct.js';
-import { ExcludePrefix, FactoryFunctions, IriTerm, Variable } from '../generic.js';
+import { ExcludePrefix, FactoryFunctions, IriTerm, Strictness, Variable } from '../generic.js';
 
 export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'> {
   private readonly nodes;
@@ -155,14 +155,18 @@ export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'>
     this.factory.resetBlankNodeCounter();
   }
 
-  create<T extends string, K extends IriManagerConfig, P extends 'strict' | 'allow' = 'allow'>(
+  create<T extends string, K extends IriManagerConfig, P extends Strictness = Strictness.loose>(
     variableKeys: readonly VariableManagerConfig<T>[],
     nodeConfig: K,
     mode?: P
   ) {
     const blanks = createBlankManager(this.factoryFunctions);
-    const nodes = createIriManager(nodeConfig, mode ?? 'allow', this.factoryFunctions);
-    const variables = createVariableManager(variableKeys, mode ?? 'allow', this.factoryFunctions);
+    const nodes = createIriManager(nodeConfig, mode ?? Strictness.loose, this.factoryFunctions);
+    const variables = createVariableManager(
+      variableKeys,
+      mode ?? Strictness.loose,
+      this.factoryFunctions
+    );
     return [variables, nodes, blanks] as const;
   }
 }
