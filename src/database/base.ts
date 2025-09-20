@@ -23,11 +23,11 @@ export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'>
   protected readonly factory: RdfJs.DataFactory;
   protected readonly factoryFunctions: FactoryFunctions<K>;
 
-  constructor(nodes: T, base?: string, factory?: RdfJs.DataFactory, blankNodePrefix?: K) {
+  private constructor(nodes?: T, base?: string, factory?: RdfJs.DataFactory, blankNodePrefix?: K) {
     this.nodes = nodes;
     this.queryBase = base;
     this.blankNodePrefix = blankNodePrefix ?? ('g_' as K);
-    this.queryPrefixes = transformIntoPrefixObject(nodes);
+    this.queryPrefixes = transformIntoPrefixObject(nodes ?? {});
     this.factory = factory ?? new RdfJs.DataFactory({ blankNodePrefix: this.blankNodePrefix });
 
     this.factoryFunctions = {
@@ -38,8 +38,17 @@ export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'>
     };
   }
 
+  static create<T extends IriManagerConfig, K extends string = 'g_'>(
+    nodes?: T,
+    options?: { blankNodePrefix?: K }
+  ): SparqlDatabase<T, K> {
+    const blankNodePrefix = (options?.blankNodePrefix ?? ('g_' as K)) as K;
+    const factory = new RdfJs.DataFactory({ blankNodePrefix });
+    return new SparqlDatabase<T, K>(nodes, undefined, factory, blankNodePrefix);
+  }
+
   public base(value: string) {
-    return new SparqlDatabase(this.nodes, value, this.factory);
+    return new SparqlDatabase<T, K>(this.nodes, value, this.factory, this.blankNodePrefix);
   }
 
   select<U extends Record<string, Variable<any, any>>>(
