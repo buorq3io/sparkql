@@ -4,7 +4,7 @@ import {
   Expression,
   FactoryFunctions,
   LiteralTerm,
-  Pattern,
+  Pattern, PatternWithSelectQuery,
   PrimitiveTerm,
   Quads,
   QueryReturnType,
@@ -16,6 +16,18 @@ import {
 import SparqlJs from 'sparqljs';
 import SparqlClient from 'sparql-http-client';
 import { bgp } from '../structures/index.js';
+
+type ToSparqlJsQuery<T extends SparqlQuery> = T extends { type: 'update' }
+  ? SparqlJs.Update
+  : T extends { queryType: 'SELECT' }
+    ? SparqlJs.SelectQuery
+    : T extends { queryType: 'CONSTRUCT' }
+      ? SparqlJs.ConstructQuery
+      : T extends { queryType: 'DESCRIBE' }
+        ? SparqlJs.DescribeQuery
+        : T extends { queryType: 'ASK' }
+          ? SparqlJs.AskQuery
+          : never;
 
 export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KReturn> {
   protected readonly config: TConfig;
@@ -33,7 +45,7 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
     this.endpointUrl = process.env.DATABASE_URL;
   }
 
-  public getSPARQL(): SparqlJs.SparqlQuery {
+  public getSPARQL(): ToSparqlJsQuery<TConfig> {
     const sparqlQueryBase = {
       base: this.config.base,
       prefixes: this.config.prefixes,
@@ -90,7 +102,7 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
           }),
           limit: this.config.limit,
           offset: this.config.offset,
-        } satisfies SparqlJs.SelectQuery;
+        } satisfies SparqlJs.SelectQuery as any;
       } else if (this.config.queryType === 'CONSTRUCT') {
         return {
           ...queryBase,
@@ -105,15 +117,15 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
                 };
               })
               : undefined,
-        } satisfies SparqlJs.ConstructQuery;
+        } satisfies SparqlJs.ConstructQuery as any;
       } else if (this.config.queryType === 'DESCRIBE') {
         return {
           ...queryBase,
           queryType: this.config.queryType,
           variables: this.config.variables,
-        } satisfies SparqlJs.DescribeQuery;
+        } satisfies SparqlJs.DescribeQuery as any;
       } else if (this.config.queryType === 'ASK') {
-        return { ...queryBase, queryType: this.config.queryType } satisfies SparqlJs.AskQuery;
+        return { ...queryBase, queryType: this.config.queryType } satisfies SparqlJs.AskQuery as any;
       }
       throw Error('Invalid queryType for query.');
     } else if (this.config.type === 'update') {
@@ -146,7 +158,7 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
           }
           throw Error('Invalid object for update.');
         }),
-      };
+      } as any;
     }
     throw Error('Invalid type for sparql query.');
   }
@@ -299,9 +311,16 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
     return result;
   }
 
-  protected sanitizePattern(pattern: Pattern): SparqlJs.Pattern {
+  protected sanitizePattern(pattern: PatternWithSelectQuery): SparqlJs.Pattern {
+    if (typeof pattern === 'object' && 'config' in pattern) {
+      const query = pattern.getSPARQL();
+      query.prefixes = {};
+      query.base = undefined;
+      return query;
+    }
+
     if (pattern.type === 'triple') {
-      return this.sanitizePattern(bgp(pattern));
+      pattern = bgp(pattern);
     }
 
     if (pattern.type === 'bgp') {
@@ -339,8 +358,6 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
         ...pattern,
         values: pattern.values?.map(v => this.sanitizeValuePatternRow(v)),
       };
-    } else if (pattern.type === 'query') {
-      return pattern;
     }
     throw Error();
   }

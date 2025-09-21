@@ -1,18 +1,19 @@
 import {
-  BaseQueryReturnType,
-  Expression,
-  FactoryFunctions,
+  Variable,
+  VariableTerm,
   Grouping,
-  OptionalTransform,
   Ordering,
   Presence,
+  Expression,
   SelectQuery,
   SparqlClient,
   Transform,
-  Variable,
-  VariableTerm,
+  OptionalTransform,
+  FactoryFunctions,
+  BaseQueryReturnType,
 } from '../generic.js';
 import { QueryBuilderBase } from './query.js';
+import { group } from '../structures/index.js';
 
 export type SelectVariables<T extends Record<string, any>> = {
   [K in keyof T]-?: undefined extends T[K]
@@ -167,6 +168,10 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
   offset(offset: number) {
     this.config.offset = offset;
     return this;
+  }
+
+  asSubQuery() {
+    return group(this);
   }
 
   protected async makeQuery(client: SparqlClient): Promise<T[]> {

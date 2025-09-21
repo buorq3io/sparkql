@@ -2,7 +2,6 @@ import {
   IriTerm,
   VariableTerm,
   Triple,
-  Pattern,
   Expression,
   GraphQuads,
   BgpPattern,
@@ -16,6 +15,7 @@ import {
   ServicePattern,
   OptionalPattern,
   ValuePatternRow,
+  PatternWithSelectQuery,
 } from '../generic.js';
 
 export function bgp(...triples: Triple[]): BgpPattern {
@@ -25,28 +25,31 @@ export function bgp(...triples: Triple[]): BgpPattern {
   };
 }
 
-export function optional(...patterns: Pattern[]): OptionalPattern {
+export function optional(...patterns: PatternWithSelectQuery[]): OptionalPattern {
   return {
     type: 'optional',
     patterns: patterns,
   };
 }
 
-export function union(...patterns: Pattern[]): UnionPattern {
+export function union(...patterns: PatternWithSelectQuery[]): UnionPattern {
   return {
     type: 'union',
     patterns: patterns,
   };
 }
 
-export function group(...patterns: Pattern[]): GroupPattern {
+export function group(...patterns: PatternWithSelectQuery[]): GroupPattern {
   return {
     type: 'group',
     patterns: patterns,
   };
 }
 
-export function graph(name: IriTerm | VariableTerm, ...patterns: Pattern[]): GraphPattern {
+export function graph(
+  name: IriTerm | VariableTerm,
+  ...patterns: PatternWithSelectQuery[]
+): GraphPattern {
   return {
     type: 'graph',
     name: name,
@@ -62,7 +65,7 @@ export function quadgraph(name: IriTerm | VariableTerm, ...triples: Triple[]): G
   };
 }
 
-export function minus(...patterns: Pattern[]): MinusPattern {
+export function minus(...patterns: PatternWithSelectQuery[]): MinusPattern {
   return {
     type: 'minus',
     patterns: patterns,
@@ -72,7 +75,7 @@ export function minus(...patterns: Pattern[]): MinusPattern {
 function serviceBase(
   name: IriTerm | VariableTerm,
   silent: boolean,
-  ...patterns: Pattern[]
+  ...patterns: PatternWithSelectQuery[]
 ): ServicePattern {
   return {
     type: 'service',
@@ -82,13 +85,16 @@ function serviceBase(
   };
 }
 
-export function service(name: IriTerm | VariableTerm, ...patterns: Pattern[]): ServicePattern {
+export function service(
+  name: IriTerm | VariableTerm,
+  ...patterns: PatternWithSelectQuery[]
+): ServicePattern {
   return serviceBase(name, false, ...patterns);
 }
 
 export function serviceSilent(
   name: IriTerm | VariableTerm,
-  ...patterns: Pattern[]
+  ...patterns: PatternWithSelectQuery[]
 ): ServicePattern {
   return serviceBase(name, true, ...patterns);
 }

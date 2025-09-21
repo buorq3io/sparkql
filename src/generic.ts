@@ -1,5 +1,6 @@
 import SparqlJs from 'sparqljs';
 import RdfJs from 'rdf-data-factory';
+import { SelectQueryBuilderBase } from './database/select.js';
 
 export type { StreamClient as SparqlClient } from 'sparql-http-client';
 
@@ -263,8 +264,9 @@ export type Pattern =
   | BlockPattern
   | FilterPattern
   | BindPattern
-  | ValuesPattern
-  | SparqlJs.SelectQuery;
+  | ValuesPattern;
+
+export type PatternWithSelectQuery = Pattern | SelectQueryBuilderBase<any>;
 
 export interface BgpPattern {
   type: 'bgp';
@@ -287,35 +289,35 @@ export type BlockPattern =
 
 export interface OptionalPattern {
   type: 'optional';
-  patterns: Pattern[];
+  patterns: PatternWithSelectQuery[];
 }
 
 export interface UnionPattern {
   type: 'union';
-  patterns: Pattern[];
+  patterns: PatternWithSelectQuery[];
 }
 
 export interface GroupPattern {
   type: 'group';
-  patterns: Pattern[];
+  patterns: PatternWithSelectQuery[];
 }
 
 export interface GraphPattern {
   type: 'graph';
   name: IriTerm | VariableTerm;
-  patterns: Pattern[];
+  patterns: PatternWithSelectQuery[];
 }
 
 export interface MinusPattern {
   type: 'minus';
-  patterns: Pattern[];
+  patterns: PatternWithSelectQuery[];
 }
 
 export interface ServicePattern {
   type: 'service';
   name: IriTerm | VariableTerm;
   silent: boolean;
-  patterns: Pattern[];
+  patterns: PatternWithSelectQuery[];
 }
 
 export interface FilterPattern {

@@ -53,6 +53,10 @@ export function notinArray(...args: [Expression, Expression[]]): OperationExpres
 
 // FUNCTIONS ON RDF TERMS
 
+export function isIRI(...args: [Expression]): OperationExpression<boolean> {
+  return op('isiri', args, transformBoolean);
+}
+
 export function isURI(...args: [Expression]): OperationExpression<boolean> {
   return op('isuri', args, transformBoolean);
 }
