@@ -162,7 +162,7 @@ export type IriTerm = SparqlJs.IriTerm;
 export type AnonymousBlankTerm = [] | symbol;
 export type BlankTerm = SparqlJs.BlankTerm | AnonymousBlankTerm;
 
-export type PrimitiveTerm = number | bigint | string | boolean;
+export type PrimitiveTerm = number | bigint | string | boolean | Date;
 export type LiteralTerm = SparqlJs.LiteralTerm | PrimitiveTerm;
 
 export type Variable<

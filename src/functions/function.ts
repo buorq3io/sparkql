@@ -14,6 +14,7 @@ import {
   transformNumber,
   transformBoolean,
   transformLiteral,
+  transformDate,
 } from '../structures/index.js';
 import { op } from './utils.js';
 
@@ -83,6 +84,10 @@ export function lang(...args: [Expression]): OperationExpression<string> {
 
 export function datatype(...args: [Expression]): OperationExpression<IriTerm> {
   return op('datatype', args, transformIri);
+}
+
+export function iri(...args: [Expression]): OperationExpression<IriTerm> {
+  return op('iri', args, transformIri);
 }
 
 export function uri(...args: [Expression]): OperationExpression<IriTerm> {
@@ -193,6 +198,44 @@ export function floor(...args: [Expression]): OperationExpression<number> {
 
 export function rand(): OperationExpression<number> {
   return op('rand', [], transformNumber);
+}
+
+// FUNCTIONS ON DATES AND TIMES
+
+export function now(): OperationExpression<Date> {
+  return op('now', [], transformDate);
+}
+
+export function year(...args: [Expression]): OperationExpression<number> {
+  return op('year', args, transformNumber);
+}
+
+export function month(...args: [Expression]): OperationExpression<number> {
+  return op('month', args, transformNumber);
+}
+
+export function day(...args: [Expression]): OperationExpression<number> {
+  return op('day', args, transformNumber);
+}
+
+export function hours(...args: [Expression]): OperationExpression<number> {
+  return op('day', args, transformNumber);
+}
+
+export function minutes(...args: [Expression]): OperationExpression<number> {
+  return op('day', args, transformNumber);
+}
+
+export function seconds(...args: [Expression]): OperationExpression<number> {
+  return op('day', args, transformNumber);
+}
+
+export function timezone(...args: [Expression]): OperationExpression<LiteralTerm> {
+  return op('day', args, transformLiteral);
+}
+
+export function tz(...args: [Expression]): OperationExpression<LiteralTerm> {
+  return op('day', args, transformLiteral);
 }
 
 // HASH FUNCTIONS

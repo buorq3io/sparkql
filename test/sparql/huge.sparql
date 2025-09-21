@@ -75,7 +75,7 @@ WHERE {
   MINUS { ?subject ex:status "inactive" . }
 
   # [BIND & EXPRESSIONS] Create a new variable based on a calculation.
-  # BIND( (YEAR(NOW()) - ?birthYear) AS ?age )
+  BIND( (YEAR(NOW()) - ?birthYear) AS ?age )
   BIND(COALESCE(?nickname, ?firstName, "N/A") AS ?bestName)
   BIND(UUID() AS ?generatedId) # Function BIND
 

@@ -206,6 +206,8 @@ export const transformBoolean = (self => self.value.toLowerCase() === 'true') sa
 export const transformArray = ((self, separator: string = '\u001f') =>
   self.value.split(separator)) satisfies Transform;
 
+export const transformDate = (self => new Date(self.value)) satisfies Transform;
+
 export const castIri = createCast(transformIri);
 export const castLiteral = createCast(transformLiteral);
 export const castBlank = createCast(transformBlank);
@@ -215,6 +217,7 @@ export const castBoolean = createCast(transformBoolean);
 export const castNumber = createCast(transformNumber);
 export const castBigint = createCast(transformBigint);
 export const castArray = createCast(transformArray);
+export const castDate = createCast(transformDate);
 
 export function createCast<T, K extends any[] = []>(transform: Transform<T, K>) {
   return (variable: Variable, ...other: K) =>

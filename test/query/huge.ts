@@ -8,8 +8,11 @@ import {
   seq,
   str,
   max,
+  now,
   asc,
   desc,
+  subs,
+  year,
   bind,
   lang,
   uuid,
@@ -99,7 +102,7 @@ export default () =>
         filter(eq(lang(v.comment), 'en'))
       ),
       minus(triple(v.subject, n.ex.status, 'inactive')),
-      // bind(subs(year(now()), v.birthYear), v.age),
+      bind(subs(year(now()), v.birthYear), v.age),
       bind(coalesce(v.nickname, v.firstName, 'N/A'), v.bestName),
       bind(uuid(), v.generatedId),
 

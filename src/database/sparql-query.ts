@@ -211,8 +211,15 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
       float: 'http://www.w3.org/2001/XMLSchema#decimal',
       bigint: 'http://www.w3.org/2001/XMLSchema#integer',
       boolean: 'http://www.w3.org/2001/XMLSchema#boolean',
+      dateTime: 'http://www.w3.org/2001/XMLSchema#datetime',
     };
 
+    if (t instanceof Date) {
+      if (isNaN(t.getTime())) {
+        throw new Error(`Invalid Date literal: ${t.toString()}`);
+      }
+      return this.factoryFunctions.literal(t.toISOString(), urls.dateTime) as any;
+    }
     if (Array.isArray(t) && t.length === 0) {
       return this.factoryFunctions.blank() as any;
     } else if (typeof t === 'symbol') {
@@ -265,7 +272,7 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
 
     if (Array.isArray(expression)) {
       return expression.map(e => this.sanitizeExpression(e));
-    } else if (typeof expression !== 'object') {
+    } else if (typeof expression !== 'object' || expression instanceof Date) {
       return this.sanitizeTerm(expression);
     } else if ('type' in expression) {
       if (expression.type === 'operation') {
