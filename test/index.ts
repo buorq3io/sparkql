@@ -11,10 +11,31 @@ const prefixes = {
     uri: 'http://www.w3.org/2000/01/rdf-schema#',
     fields: [],
   },
+  xsd: {
+    uri: 'http://www.w3.org/2001/XMLSchema#',
+    fields: [],
+  },
+  foaf: {
+    uri: 'http://xmlns.com/foaf/0.1/',
+    fields: [],
+  },
+  dc: {
+    uri: 'http://purl.org/dc/elements/1.1/',
+    fields: [],
+  },
+  ex: {
+    uri: 'http://example.org/ontology#',
+    fields: [],
+  },
+  schema: {
+    uri: 'http://schema.org/',
+    fields: [],
+  },
 } as const;
 
-export const db = new SparqlDatabase(prefixes);
-export const [v, n, b] = db.create([], prefixes, 'allow');
+export const blankNodePrefix = 'g_';
+export const db = SparqlDatabase.create(prefixes, { blankNodePrefix: blankNodePrefix });
+export const [v, n, b] = db.create([], prefixes);
 
 const factory: RdfJs.DataFactory = new RdfJs.DataFactory();
 const blankNodeOld = factory.blankNode.bind(factory);
@@ -25,4 +46,4 @@ factory.blankNode = (value?: string) => {
   return blankNodeOld(value);
 };
 
-export const parser = new SparqlJs.Parser({ factory: factory as any });
+export const parser = new SparqlJs.Parser({ factory: factory });

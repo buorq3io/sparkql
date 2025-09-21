@@ -2,7 +2,8 @@ import { diff } from 'json-diff-ts';
 import { readdirSync, readFileSync } from 'fs';
 import { beforeEach, describe, expect, test } from 'vitest';
 
-import { db, parser } from './index.js';
+import { canonicalizeQuery } from './helpers.js';
+import { blankNodePrefix, db, parser } from './index.js';
 import { SparqlQueryBuilderBase } from '../src/database/sparql-query.js';
 
 const TEST_PATH = 'test/query/';
@@ -40,12 +41,15 @@ describe('SPARQL Queries', async () => {
 
   preparedTests.forEach(testData => {
     test(`should correctly generate query "${testData.queryName}"`, () => {
-      const original = parser.parse(testData.queryContent);
+      const originalParsed = parser.parse(testData.queryContent);
       const test_file_module = testData.testContent;
-      const builded = parser.parse(test_file_module.default().toSPARQL());
+      const buildedParsed = parser.parse(test_file_module.default().toSPARQL());
 
-      builded.prefixes = {};
-      original.prefixes = {};
+      originalParsed.prefixes = {};
+      buildedParsed.prefixes = {};
+
+      const original = canonicalizeQuery(originalParsed, blankNodePrefix);
+      const builded = canonicalizeQuery(buildedParsed, blankNodePrefix);
 
       expect(diff(original, builded)).toStrictEqual([]);
     });

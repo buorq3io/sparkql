@@ -1,0 +1,115 @@
+# [PROLOGUE] Demonstrates BASE and various PREFIX declarations.
+BASE <http://example.org/default-resource/>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+PREFIX dc: <http://purl.org/dc/elements/1.1/>
+PREFIX ex: <http://example.org/ontology#>
+PREFIX schema: <http://schema.org/>
+
+# [QUERY FORM] A SELECT query with DISTINCT and expression-based projection.
+# Other forms like CONSTRUCT, ASK, DESCRIBE are not used here but are part of the spec.
+SELECT DISTINCT
+  ?subject
+  ?knownType
+  (SAMPLE(?comment) AS ?sampleComment) # Aggregate: Sample
+  (COUNT(?friend) AS ?friendCount) # Aggregate: Count
+  (GROUP_CONCAT(DISTINCT ?hobby; separator=" | ") AS ?hobbies) # Aggregate: Group Concat
+  (UCASE(CONCAT(?firstName, " ", ?lastName)) AS ?fullName) # Expression in projection
+  (IF(BOUND(?nickname), ?nickname, ?firstName) AS ?displayName) # Conditional expression
+  ?ageInDecades # A variable bound in the WHERE clause
+  ?dbpediaLink # A variable from a federated query
+
+# [DATASET CLAUSE] Specifies the graphs to be queried.
+FROM <http://example.org/mainGraph>
+FROM NAMED <http://example.org/namedGraph1>
+FROM NAMED <http://example.org/namedGraph2>
+
+WHERE {
+  # [DATA BLOCK] Using VALUES to provide an inline data source.
+  VALUES (?knownType ?typeLabel) {
+    (foaf:Person "Person")
+    (ex:Robot "Robot")
+    (UNDEF "Unknown") # UNDEF is a special value in VALUES
+  }
+
+  # [BASIC & COMPLEX GRAPH PATTERNS]
+  # Using 'a' as a shortcut for rdf:type and semicolons for multiple properties.
+  ?subject a ?knownType ;
+           foaf:firstName ?firstName ;
+           foaf:lastName ?lastName ;
+           # [PROPERTY PATH] Zero or more foaf:knows, then one ex:relatedTo.
+           (foaf:knows* / ex:relatedTo) ?friend .
+
+  # [BLANK NODES] Using square brackets for a blank node with properties.
+  ?subject ex:hasAddress [
+    a schema:PostalAddress ;
+    schema:streetAddress "123 SPARQL St."
+  ] .
+
+  # [OPTIONAL PATTERN] The nickname is not required to exist.
+  OPTIONAL { ?subject foaf:nick ?nickname . }
+
+  # [UNION PATTERN] The subject can have a homepage OR a work page.
+  { ?subject foaf:homepage ?webpage . } UNION { ?subject foaf:workplaceHomepage ?webpage . }
+
+  # [SUBQUERY] Find subjects who are prolific authors (more than 5 works).
+  {
+    SELECT ?subject
+    WHERE {
+      ?subject dc:creator ?work .
+    }
+    GROUP BY ?subject
+    HAVING (COUNT(?work) > 5) # HAVING clause in a subquery
+  }
+
+  # [GRAPH PATTERN] Matching a pattern within a specific named graph.
+  GRAPH <http://example.org/namedGraph1> {
+    ?subject rdfs:comment ?comment .
+    # [FILTER with Language Tag]
+    FILTER(lang(?comment) = "en")
+  }
+
+  # [MINUS PATTERN] Exclude subjects who are explicitly marked as inactive.
+  MINUS { ?subject ex:status "inactive" . }
+
+  # [BIND & EXPRESSIONS] Create a new variable based on a calculation.
+  # BIND( (YEAR(NOW()) - ?birthYear) AS ?age )
+  BIND(COALESCE(?nickname, ?firstName, "N/A") AS ?bestName)
+  BIND(UUID() AS ?generatedId) # Function BIND
+
+  # [FILTERS with various functions and operators]
+  # Logical, comparison, and type checking operators.
+  FILTER (?age > 25 && ?age < 65)
+  FILTER (isLiteral(?firstName) || isIRI(?subject))
+  FILTER NOT EXISTS { ?subject ex:isBanned true . } # NOT EXISTS clause
+  FILTER (?friend IN (<http://example.org/friend/Bob>, <http://example.org/friend/Alice>))
+  FILTER (REGEX(?lastName, "^[A-F]", "i")) # Regex filter
+  FILTER (STRSTARTS(STR(?webpage), "http://")) # String function
+  FILTER sameTerm(?knownType, foaf:Person) # Term equality
+
+  # [FEDERATED QUERY] Using SERVICE to query a remote endpoint.
+  SERVICE SILENT <https://dbpedia.org/sparql> {
+    ?subject ex:sameAs ?dbpediaLink .
+  }
+
+  # A final pattern to get some data for aggregation.
+  OPTIONAL { ?subject ex:hasHobby ?hobby . }
+}
+
+# [SOLUTION MODIFIERS]
+# These are applied after the patterns in the WHERE clause are matched.
+
+# [GROUP BY] Group results for aggregation.
+GROUP BY ?subject ?knownType ?firstName ?lastName ?ageInDecades ?dbpediaLink ?nickname
+
+# [HAVING] Filter aggregated results.
+HAVING (MAX(?age) < 100 && STRLEN(?fullName) > 3)
+
+# [ORDER BY] Order the final result set.
+ORDER BY DESC(?friendCount) ASC(?fullName)
+
+# [LIMIT & OFFSET] Paginate the results.
+LIMIT 100
+OFFSET 20
