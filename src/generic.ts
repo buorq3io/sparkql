@@ -344,12 +344,14 @@ export type Expression<T extends QueryReturnType = QueryReturnType> =
   | OperationExpression<T>
   | FunctionCallExpression<T>
   | AggregateExpression<T>
-  | Tuple
   | IriTerm
   | VariableTerm<T>
   | LiteralTerm;
 
-export interface Tuple extends Array<Expression> {}
+export interface ExpressionTuple extends Array<Expression> {}
+export type ExpressionWithTuple<T extends QueryReturnType = QueryReturnType> =
+  | Expression<T>
+  | ExpressionTuple;
 
 export interface BaseExpression<T extends QueryReturnType = QueryReturnType>
   extends SparqlJs.BaseExpression {
@@ -360,20 +362,20 @@ export interface OperationExpression<T extends QueryReturnType = QueryReturnType
   extends BaseExpression<T> {
   type: 'operation';
   operator: string;
-  args: Array<Expression | Pattern>;
+  args: Array<ExpressionWithTuple | Pattern>;
 }
 
 export interface FunctionCallExpression<T extends QueryReturnType = QueryReturnType>
   extends BaseExpression<T> {
   type: 'functionCall';
   function: string | IriTerm;
-  args: Expression[];
+  args: ExpressionWithTuple[];
 }
 
 export interface AggregateExpression<T extends QueryReturnType = QueryReturnType>
   extends BaseExpression<T> {
   type: 'aggregate';
-  expression: Expression | Wildcard;
+  expression: ExpressionWithTuple | Wildcard;
   aggregation: string;
   separator?: string | undefined;
 }

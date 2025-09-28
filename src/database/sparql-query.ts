@@ -1,7 +1,7 @@
 import {
   AnonymousBlankTerm,
   BlankTerm,
-  Expression,
+  ExpressionWithTuple,
   FactoryFunctions,
   LiteralTerm,
   Pattern, PatternWithSelectQuery,
@@ -257,9 +257,9 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
   }
 
   protected sanitizeExpression<T extends QueryReturnType>(
-    expression: Expression<T>,
+    expression: ExpressionWithTuple<T>,
   ): SparqlJs.Expression {
-    const isExpressionOrPattern = (o: Expression | Pattern): o is Expression => {
+    const isExpressionOrPattern = (o: ExpressionWithTuple | Pattern): o is ExpressionWithTuple => {
       if (typeof o !== 'object') {
         return true;
       } else if (!('type' in o)) {
