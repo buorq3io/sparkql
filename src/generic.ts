@@ -2,6 +2,8 @@ import SparqlJs from 'sparqljs';
 import RdfJs from 'rdf-data-factory';
 import { SelectQueryBuilderBase } from './database/select.js';
 
+export { SparqlJs, RdfJs };
+
 export type { StreamClient as SparqlClient } from 'sparql-http-client';
 
 export type DataFactory = RdfJs.DataFactory;
@@ -166,12 +168,12 @@ export type PrimitiveTerm = number | bigint | string | boolean | Date;
 export type LiteralTerm = SparqlJs.LiteralTerm | PrimitiveTerm;
 
 export type Variable<
-  T extends QueryReturnType = QueryReturnType,
+  T extends QueryReturnType = BaseQueryReturnType,
   K extends Presence = Presence.required
 > = VariableExpression<T, K> | VariableTerm<T, K>;
 
 export interface VariableExpression<
-  T extends QueryReturnType = QueryReturnType,
+  T extends QueryReturnType = BaseQueryReturnType,
   K extends Presence = Presence.required
 > {
   expression: Expression<T>;
@@ -199,7 +201,7 @@ export type OptionalTransform<T extends QueryReturnType = QueryReturnType, K ext
 ) => T | undefined;
 
 export interface VariableTerm<
-  T extends QueryReturnType = QueryReturnType,
+  T extends QueryReturnType = BaseQueryReturnType,
   K extends Presence = Presence.required
 > extends SparqlJs.VariableTerm {
   presence?: K;
@@ -355,7 +357,7 @@ export type ExpressionWithTuple<T extends QueryReturnType = QueryReturnType> =
 
 export interface BaseExpression<T extends QueryReturnType = QueryReturnType>
   extends SparqlJs.BaseExpression {
-  transform?: (self: BaseQueryReturnType, ...other: any[]) => T;
+  transform?: Transform<T>;
 }
 
 export interface OperationExpression<T extends QueryReturnType = QueryReturnType>
