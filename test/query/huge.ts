@@ -65,11 +65,10 @@ export default () =>
     .fromNamed(db.iri('http://example.org/namedGraph1'))
     .fromNamed(db.iri('http://example.org/namedGraph2'))
     .where(
-      values(
-        { '?knownType': n.foaf.Person, '?typeLabel': 'Person' },
-        { '?knownType': n.ex.Robot, '?typeLabel': 'Robot' },
-        { '?knownType': undefined, '?typeLabel': 'Unknown' }
-      ),
+      values({
+        [v.knownType.value]: [n.foaf.Person, n.ex.Robot, undefined],
+        [v.typeLabel.value]: ['Person', 'Robot', 'Unknown'],
+      }),
       ...triples(
         v.subject,
         predicates(

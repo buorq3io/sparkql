@@ -14,7 +14,7 @@ import {
   ValuesPattern,
   ServicePattern,
   OptionalPattern,
-  ValuePatternRow,
+  ValuePatternColumns,
   PatternWithSelectQuery,
 } from '../generic.js';
 
@@ -114,7 +114,7 @@ export function bind(expression: Expression, variable: VariableTerm): BindPatter
   };
 }
 
-export function values(...values: ValuePatternRow[]): ValuesPattern {
+export function values(values: ValuePatternColumns): ValuesPattern {
   return {
     type: 'values',
     values: values,

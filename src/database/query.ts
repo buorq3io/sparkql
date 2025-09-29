@@ -1,5 +1,5 @@
 import { SparqlQueryBuilderBase } from './sparql-query.js';
-import { Query, Pattern, IriTerm, ValuePatternRow } from '../generic.js';
+import { Query, Pattern, IriTerm, ValuePatternColumns } from '../generic.js';
 
 export abstract class QueryBuilderBase<
   TConfig extends Query,
@@ -37,15 +37,15 @@ export abstract class QueryBuilderBase<
     return this;
   }
 
-  values(...rows: ValuePatternRow[]) {
-    if (rows.length === 0) {
+  values(columns: ValuePatternColumns) {
+    if (Object.keys(columns).length === 0) {
       return this;
     }
 
     if (this.config.values) {
-      this.config.values = [...this.config.values, ...rows];
+      this.config.values = {...this.config.values, ...columns};
     } else {
-      this.config.values = rows;
+      this.config.values = columns;
     }
     return this;
   }

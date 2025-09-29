@@ -11,7 +11,7 @@ import {
   SparqlGenerator,
   SparqlQuery,
   Term,
-  ValuePatternRow,
+  ValuePatternColumns,
 } from '../generic.js';
 import SparqlJs from 'sparqljs';
 import SparqlClient from 'sparql-http-client';
@@ -57,7 +57,7 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
         type: this.config.type,
         from: this.config.from,
         where: this.config.where?.map(p => this.sanitizePattern(p)),
-        values: this.config.values?.map(r => this.sanitizeValuePatternRow(r)),
+        values: this.config.values ? this.sanitizeValuePatternColumns(this.config.values) : undefined,
       };
 
       if (this.config.queryType === 'SELECT') {
@@ -310,12 +310,21 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
     return expression;
   }
 
-  protected sanitizeValuePatternRow(row: ValuePatternRow): SparqlJs.ValuePatternRow {
-    const result = {} as Record<string, any>;
-    for (const key in row) {
-      result[key] = row[key] ? this.sanitizeTerm(row[key]) : undefined;
+  protected sanitizeValuePatternColumns(columns: ValuePatternColumns): SparqlJs.ValuePatternRow[] {
+    const properties = Object.keys(columns);
+    const rowLength = columns[properties[0]].length ?? 0;
+
+    const rows: SparqlJs.ValuePatternRow[] = [];
+    for (let i = 0; i < rowLength; i++) {
+      const row: SparqlJs.ValuePatternRow = {};
+      for (const prop of properties) {
+        row['?' + prop] = columns[prop][i] !== undefined
+          ? this.sanitizeTerm(columns[prop][i]!) : undefined;
+      }
+      rows.push(row);
     }
-    return result;
+
+    return rows;
   }
 
   protected sanitizePattern(pattern: PatternWithSelectQuery): SparqlJs.Pattern {
@@ -363,7 +372,7 @@ export abstract class SparqlQueryBuilderBase<TConfig extends SparqlQuery, KRetur
     } else if (pattern.type === 'values') {
       return {
         ...pattern,
-        values: pattern.values?.map(v => this.sanitizeValuePatternRow(v)),
+        values: this.sanitizeValuePatternColumns(pattern.values),
       };
     }
     throw Error();

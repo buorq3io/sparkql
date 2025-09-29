@@ -38,7 +38,7 @@ export interface BaseQuery {
       }
     | undefined;
   where?: Pattern[] | undefined;
-  values?: ValuePatternRow[] | undefined;
+  values?: ValuePatternColumns | undefined;
 }
 
 export interface SelectQuery extends BaseQuery {
@@ -335,11 +335,11 @@ export interface BindPattern {
 
 export interface ValuesPattern {
   type: 'values';
-  values: ValuePatternRow[];
+  values: ValuePatternColumns;
 }
 
-export interface ValuePatternRow {
-  [variable: string]: IriTerm | BlankTerm | LiteralTerm | undefined;
+export interface ValuePatternColumns {
+  [variable: string]: (IriTerm | BlankTerm | LiteralTerm | undefined)[];
 }
 
 export type Expression<T extends QueryReturnType = QueryReturnType> =
