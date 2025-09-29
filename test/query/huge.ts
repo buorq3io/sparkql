@@ -94,7 +94,7 @@ export default () =>
         .where(triple(v.subject, n.dc.creator, v.work))
         .groupBy(v.subject)
         .having(gt(count(v.work), 5))
-        .asSubQuery(),
+        .$asSubQuery(),
       graph(
         db.iri('http://example.org/namedGraph1'),
         triple(v.subject, n.rdfs.comment, v.comment),

@@ -140,11 +140,11 @@ export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'>
   }
 
   variable = (value: string): SparqlJs.VariableTerm => {
-    return this.factory.variable(value);
+    return Object.freeze(this.factory.variable(value));
   };
 
   iri = <T extends string>(value: T): SparqlJs.IriTerm => {
-    return this.factory.namedNode(value);
+    return Object.freeze(this.factory.namedNode(value));
   };
 
   blank = <T extends string>(value?: ExcludePrefix<T, K>): SparqlJs.BlankTerm => {
@@ -153,11 +153,11 @@ export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'>
         `For blank terms, the prefix "${this.blankNodePrefix}" is reserved for internal use.`
       );
     }
-    return this.factory.blankNode(value);
+    return Object.freeze(this.factory.blankNode(value));
   };
 
   literal = (value: string, lang?: string | IriTerm): SparqlJs.LiteralTerm => {
-    return this.factory.literal(value, lang);
+    return Object.freeze(this.factory.literal(value, lang));
   };
 
   resetBlankCounter() {

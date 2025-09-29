@@ -170,7 +170,7 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
     return this;
   }
 
-  asSubQuery() {
+  $asSubQuery() {
     return group(this);
   }
 
