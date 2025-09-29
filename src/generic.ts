@@ -159,13 +159,16 @@ export type Ordering =
       descending: boolean | undefined;
     };
 
-export type IriTerm = SparqlJs.IriTerm;
+export type BaseIriTerm = SparqlJs.IriTerm;
+export type IriTerm = BaseIriTerm;
 
 export type AnonymousBlankTerm = [] | symbol;
-export type BlankTerm = SparqlJs.BlankTerm | AnonymousBlankTerm;
+export type BaseBlankTerm = SparqlJs.BlankTerm;
+export type BlankTerm = BaseBlankTerm | AnonymousBlankTerm;
 
 export type PrimitiveTerm = number | bigint | string | boolean | Date;
-export type LiteralTerm = SparqlJs.LiteralTerm | PrimitiveTerm;
+export type BaseLiteralTerm = SparqlJs.LiteralTerm;
+export type LiteralTerm = BaseLiteralTerm | PrimitiveTerm;
 
 export type Variable<
   T extends QueryReturnType = BaseQueryReturnType,
@@ -219,10 +222,7 @@ export type QuadObject = Term;
 
 export type Term = VariableTerm | IriTerm | LiteralTerm | BlankTerm | QuadTerm;
 
-export type BaseQueryReturnType =
-  | IriTerm
-  | Exclude<BlankTerm, AnonymousBlankTerm>
-  | Exclude<LiteralTerm, PrimitiveTerm>;
+export type BaseQueryReturnType = BaseIriTerm | BaseBlankTerm | BaseLiteralTerm;
 export type QueryReturnType = BaseQueryReturnType | any;
 
 export type PropertyPath = SparqlJs.PropertyPath;

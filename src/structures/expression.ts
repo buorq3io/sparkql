@@ -1,9 +1,9 @@
 import {
+  BaseIriTerm,
+  BaseBlankTerm,
+  BaseLiteralTerm,
   BaseQueryReturnType,
-  BlankTerm,
   Expression,
-  IriTerm,
-  LiteralTerm,
   Presence,
   QualitativeAnonymousBlankTerm,
   Transform,
@@ -142,25 +142,28 @@ function isTriplesObjectPairs(object: TriplesObject): object is TriplesObjectPai
   );
 }
 
-export function transformIri(self: BaseQueryReturnType) {
-  if ('language' in self) {
-    console.warn('W: Wrongful static cast of LiteralTerm to IriTerm');
-  }
-  return self as IriTerm;
+export function transformIri(self: BaseQueryReturnType): BaseIriTerm {
+  if (self.termType === 'NamedNode') return self;
+  return {termType: 'NamedNode', value: self.value, equals: self.equals};
 }
 
-export function transformLiteral(self: BaseQueryReturnType) {
-  if (!('language' in self)) {
-    console.error('W: Wrongful static cast of IriTerm to LiteralTerm');
-  }
-  return self as LiteralTerm;
+export function transformLiteral(self: BaseQueryReturnType): BaseLiteralTerm {
+  if (self.termType === 'Literal') return self;
+
+  return {
+    ...self,
+    language: '',
+    termType: 'Literal',
+    datatype: {
+      termType: 'NamedNode',
+      value: 'http://www.w3.org/2001/XMLSchema#string',
+      equals: self.equals},
+  };
 }
 
-export function transformBlank(self: BaseQueryReturnType) {
-  if (!('language' in self)) {
-    console.error('W: Wrongful static cast of BlankTerm to LiteralTerm');
-  }
-  return self as BlankTerm;
+export function transformBlank(self: BaseQueryReturnType): BaseBlankTerm {
+  if (self.termType === 'BlankNode') return self;
+  return { termType: 'BlankNode', value: self.value, equals: self.equals};
 }
 
 export const transformString = (self => self.value) satisfies Transform;
