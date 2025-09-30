@@ -1,5 +1,5 @@
-import SparqlJs from 'sparqljs';
-import RdfJs from 'rdf-data-factory';
+import type * as SparqlJs from 'sparqljs';
+import type * as RdfJs from 'rdf-data-factory';
 import { SelectQueryBuilderBase } from './database/select.js';
 
 export { SparqlJs, RdfJs };
