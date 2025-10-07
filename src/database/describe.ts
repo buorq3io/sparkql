@@ -6,7 +6,7 @@ import {
   SparqlClient,
   FactoryFunctions,
 } from '../generic.js';
-import SparqlJs from 'sparqljs';
+import * as SparqlJs from 'sparqljs';
 import { QueryBuilderBase } from './query.js';
 
 export type DescribeVariables = (VariableTerm | IriTerm)[];

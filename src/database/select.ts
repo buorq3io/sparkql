@@ -10,7 +10,6 @@ import {
   Transform,
   OptionalTransform,
   FactoryFunctions,
-  // QueryReturnType,
   BaseQueryReturnType,
 } from '../generic.js';
 import { QueryBuilderBase } from './query.js';
@@ -18,10 +17,20 @@ import { group } from '../structures/index.js';
 
 export type SelectedVariables = Record<string, Variable<any, Presence>>;
 
+type RequiredKeys<T> = {
+  [K in keyof T]-?: {} extends Pick<T, K> ? never : K;
+}[keyof T];
+
+type OptionalKeys<T> = keyof {
+  [Key in keyof T as Omit<T, Key> extends T ? Key : never]: T[Key];
+};
+
 export type TypedSelectedVariables<T extends Record<string, any>> = {
-  [K in keyof T]-?: undefined extends T[K]
+  [K in RequiredKeys<T>]-?: undefined extends T[K]
     ? Variable<Exclude<T[K], undefined>, Presence.optional> | Variable<T[K], Presence>
     : Variable<T[K]>;
+} & {
+  [K in OptionalKeys<T>]?: Variable<Exclude<T[K], undefined>, Presence> | Variable<T[K], Presence>;
 };
 
 export type ExtractDataType<V> = V extends Variable<infer T, any> ? T : never;
@@ -80,7 +89,7 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
 
     for (const key in variables) {
       if (Object.prototype.hasOwnProperty.call(variables, key)) {
-        const value = variables[key];
+        const value = variables[key as keyof T] as Variable<any, Presence>;
         // Case 1: The value is a Variable directly
         if (isVariableTerm(value)) {
           this.lookup[value.value] = key;

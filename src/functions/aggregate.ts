@@ -1,4 +1,4 @@
-import SparqlJs from 'sparqljs';
+import * as SparqlJs from 'sparqljs';
 import { agg, distinct } from './utils.js';
 import { AggregateExpression, Expression } from '../generic.js';
 import { transformArray, transformNumber } from '../structures/index.js';

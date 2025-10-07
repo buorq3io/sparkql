@@ -13,7 +13,7 @@ import {
   Term,
   ValuePatternColumns,
 } from '../generic.js';
-import SparqlJs from 'sparqljs';
+import * as SparqlJs from 'sparqljs';
 import SparqlClient from 'sparql-http-client';
 import { bgp } from '../structures/index.js';
 

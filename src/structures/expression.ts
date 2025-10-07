@@ -192,6 +192,7 @@ export const castNumber = createCast(transformNumber);
 export const castBigint = createCast(transformBigint);
 export const castArray = createCast(transformArray);
 export const castDate = createCast(transformDate);
+export const castUndefinedString = createCast((self) => self.value as string | undefined);
 
 export function as<R1>(
   expression: Expression<R1>,

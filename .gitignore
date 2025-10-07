@@ -117,7 +117,8 @@ dist
 
 # Compiled code
 lib/
-__temp__/
+local/
 
 .vscode/
+.fleet/
 .idea/
