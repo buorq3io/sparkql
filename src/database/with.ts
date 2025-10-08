@@ -27,7 +27,8 @@ export class WithQueryBuilderBase
     prefixes: Update['prefixes'],
     base: string | undefined,
     factoryFunctions: FactoryFunctions,
-    iri?: IriTerm
+    endpointUrl?: string,
+    iri?: IriTerm,
   ) {
     super(
       {
@@ -36,7 +37,8 @@ export class WithQueryBuilderBase
         base: base,
         prefixes: prefixes,
       },
-      factoryFunctions
+      factoryFunctions,
+      endpointUrl
     );
     this._operation = {
       updateType: 'insertdelete',
@@ -115,7 +117,8 @@ export class WithQueryBuilderBase
       this.config.updates,
       this.config.prefixes,
       this.config.base,
-      this.factoryFunctions
+      this.factoryFunctions,
+      this.endpointUrl
     );
   }
 

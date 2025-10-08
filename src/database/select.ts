@@ -55,7 +55,8 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
     base: string | undefined,
     factoryFunctions: FactoryFunctions,
     distict: SelectQuery['distinct'] = undefined,
-    reduced: SelectQuery['reduced'] = undefined
+    reduced: SelectQuery['reduced'] = undefined,
+    endpointUrl?: string
   ) {
     super(
       {
@@ -65,7 +66,8 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
         base: base,
         prefixes: prefixes,
       },
-      factoryFunctions
+      factoryFunctions,
+      endpointUrl
     );
 
     function isVariableTerm<T extends BaseQueryReturnType, K extends Presence>(

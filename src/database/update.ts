@@ -20,7 +20,8 @@ export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<Update, void>
     updates: UpdateOperation[],
     prefixes: Update['prefixes'],
     base: string | undefined,
-    factoryFunctions: FactoryFunctions
+    factoryFunctions: FactoryFunctions,
+    endpointUrl?: string
   ) {
     super(
       {
@@ -29,7 +30,8 @@ export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<Update, void>
         base: base,
         prefixes: prefixes,
       },
-      factoryFunctions
+      factoryFunctions,
+      endpointUrl
     );
   }
 
@@ -72,6 +74,7 @@ export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<Update, void>
       this.config.prefixes,
       this.config.base,
       this.factoryFunctions,
+      this.endpointUrl,
       iri
     );
   }

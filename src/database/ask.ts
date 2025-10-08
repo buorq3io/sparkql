@@ -8,7 +8,8 @@ export class AskQueryBuilderBase
   constructor(
     prefixes: AskQuery['prefixes'],
     base: string | undefined,
-    factoryFunctions: FactoryFunctions
+    factoryFunctions: FactoryFunctions,
+    endpointUrl?: string
   ) {
     super(
       {
@@ -17,7 +18,8 @@ export class AskQueryBuilderBase
         base: base,
         prefixes: prefixes,
       },
-      factoryFunctions
+      factoryFunctions,
+      endpointUrl
     );
   }
 

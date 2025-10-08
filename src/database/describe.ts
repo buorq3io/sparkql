@@ -19,7 +19,8 @@ export class DescribeQueryBuilderBase
     variables: DescribeVariables,
     prefixes: DescribeQuery['prefixes'],
     base: string | undefined,
-    factoryFunctions: FactoryFunctions
+    factoryFunctions: FactoryFunctions,
+    endpointUrl?: string
   ) {
     super(
       {
@@ -29,7 +30,8 @@ export class DescribeQueryBuilderBase
         base: base,
         prefixes: prefixes,
       },
-      factoryFunctions
+      factoryFunctions,
+      endpointUrl
     );
   }
 
