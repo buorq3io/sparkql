@@ -34,7 +34,11 @@ const prefixes = {
 } as const;
 
 export const blankNodePrefix = 'g_';
-export const db = SparqlDatabase.create(prefixes, { blankNodePrefix: blankNodePrefix });
+export const db = SparqlDatabase.create({
+  prefixes: prefixes,
+  blankNodePrefix: blankNodePrefix,
+  endpointUrl: process.env.DATABASE_URL,
+});
 export const [v, n, b] = db.create([], prefixes);
 
 const factory: RdfJs.DataFactory = new RdfJs.DataFactory();
