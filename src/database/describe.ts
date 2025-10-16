@@ -6,7 +6,7 @@ import {
   SparqlClient,
   FactoryFunctions,
 } from '../generic.js';
-import SparqlJs from 'sparqljs';
+import * as SparqlJs from 'sparqljs';
 import { QueryBuilderBase } from './query.js';
 
 export type DescribeVariables = (VariableTerm | IriTerm)[];
@@ -19,7 +19,8 @@ export class DescribeQueryBuilderBase
     variables: DescribeVariables,
     prefixes: DescribeQuery['prefixes'],
     base: string | undefined,
-    factoryFunctions: FactoryFunctions
+    factoryFunctions: FactoryFunctions,
+    endpointUrl?: string
   ) {
     super(
       {
@@ -29,7 +30,8 @@ export class DescribeQueryBuilderBase
         base: base,
         prefixes: prefixes,
       },
-      factoryFunctions
+      factoryFunctions,
+      endpointUrl
     );
   }
 

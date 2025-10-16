@@ -15,16 +15,28 @@ import {
 import { QueryBuilderBase } from './query.js';
 import { group } from '../structures/index.js';
 
-export type SelectVariables<T extends Record<string, any>> = {
-  [K in keyof T]-?: undefined extends T[K]
+export type SelectedVariables = Record<string, Variable<any, Presence>>;
+
+type RequiredKeys<T> = {
+  [K in keyof T]-?: {} extends Pick<T, K> ? never : K;
+}[keyof T];
+
+type OptionalKeys<T> = keyof {
+  [Key in keyof T as Omit<T, Key> extends T ? Key : never]: T[Key];
+};
+
+export type TypedSelectedVariables<T extends Record<string, any>> = {
+  [K in RequiredKeys<T>]-?: undefined extends T[K]
     ? Variable<Exclude<T[K], undefined>, Presence.optional> | Variable<T[K], Presence>
     : Variable<T[K]>;
+} & {
+  [K in OptionalKeys<T>]?: Variable<Exclude<T[K], undefined>, Presence> | Variable<T[K], Presence>;
 };
 
 export type ExtractDataType<V> = V extends Variable<infer T, any> ? T : never;
 export type ExtractPresenceType<V> = V extends Variable<any, infer P> ? P : never;
 
-export type InferredSelectResult<T extends Record<string, Variable<any, any>>> = {
+export type InferredSelectResult<T extends SelectedVariables> = {
   [K in keyof T]: ExtractPresenceType<T[K]> extends Presence.optional
     ? ExtractDataType<T[K]> | undefined
     : ExtractDataType<T[K]>;
@@ -38,12 +50,13 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
   private lookupTransform: Record<string, OptionalTransform | Transform | undefined> = {};
 
   constructor(
-    variables: SelectVariables<T> | undefined,
+    variables: TypedSelectedVariables<T> | undefined,
     prefixes: SelectQuery['prefixes'],
     base: string | undefined,
     factoryFunctions: FactoryFunctions,
     distict: SelectQuery['distinct'] = undefined,
-    reduced: SelectQuery['reduced'] = undefined
+    reduced: SelectQuery['reduced'] = undefined,
+    endpointUrl?: string
   ) {
     super(
       {
@@ -53,7 +66,8 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
         base: base,
         prefixes: prefixes,
       },
-      factoryFunctions
+      factoryFunctions,
+      endpointUrl
     );
 
     function isVariableTerm<T extends BaseQueryReturnType, K extends Presence>(
@@ -77,7 +91,7 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
 
     for (const key in variables) {
       if (Object.prototype.hasOwnProperty.call(variables, key)) {
-        const value = variables[key];
+        const value = variables[key as keyof T] as Variable<any, Presence>;
         // Case 1: The value is a Variable directly
         if (isVariableTerm(value)) {
           this.lookup[value.value] = key;
@@ -170,7 +184,7 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
     return this;
   }
 
-  asSubQuery() {
+  $asSubQuery() {
     return group(this);
   }
 

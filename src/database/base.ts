@@ -6,29 +6,49 @@ import {
   transformIntoPrefixObject,
   VariableManagerConfig,
 } from '../structures/index.js';
-import type SparqlJs from 'sparqljs';
+import * as SparqlJs from 'sparqljs';
 import * as RdfJs from 'rdf-data-factory';
 import { AskQueryBuilderBase } from './ask.js';
 import { UpdateQueryBuilderBase } from './update.js';
-import { InferredSelectResult, SelectQueryBuilderBase, SelectVariables } from './select.js';
+import {
+  SelectedVariables,
+  InferredSelectResult,
+  SelectQueryBuilderBase,
+  TypedSelectedVariables,
+} from './select.js';
 import { DescribeQueryBuilderBase, DescribeVariables } from './describe.js';
 import { ConstructQueryBuilderBase, ConstructTemplates } from './construct.js';
 import { ExcludePrefix, FactoryFunctions, IriTerm, Strictness, Variable } from '../generic.js';
 
+interface PrivateSparqlDatabaseOptions<T extends IriManagerConfig, K extends string = 'g_'>
+  extends SparqlDatabaseOptions<T, K> {
+  base?: string;
+  factory?: RdfJs.DataFactory;
+}
+
+export interface SparqlDatabaseOptions<T extends IriManagerConfig, K extends string = 'g_'> {
+  prefixes?: T;
+  blankNodePrefix?: K;
+  endpointUrl?: string;
+}
+
 export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'> {
   private readonly nodes;
   private readonly queryBase?: string;
+  private readonly endpointUrl?: string;
   private readonly queryPrefixes;
   private readonly blankNodePrefix: K;
   protected readonly factory: RdfJs.DataFactory;
   protected readonly factoryFunctions: FactoryFunctions<K>;
 
-  private constructor(nodes?: T, base?: string, factory?: RdfJs.DataFactory, blankNodePrefix?: K) {
-    this.nodes = nodes;
-    this.queryBase = base;
-    this.blankNodePrefix = blankNodePrefix ?? ('g_' as K);
-    this.queryPrefixes = transformIntoPrefixObject(nodes ?? {});
-    this.factory = factory ?? new RdfJs.DataFactory({ blankNodePrefix: this.blankNodePrefix });
+  private constructor(options?: PrivateSparqlDatabaseOptions<T, K>) {
+    this.nodes = options?.prefixes;
+    this.queryBase = options?.base;
+    this.endpointUrl = options?.endpointUrl;
+    this.blankNodePrefix = options?.blankNodePrefix ?? ('g_' as K);
+    this.queryPrefixes = transformIntoPrefixObject(options?.prefixes ?? {});
+    this.factory =
+      options?.factory ?? new RdfJs.DataFactory({ blankNodePrefix: this.blankNodePrefix });
 
     this.factoryFunctions = {
       variable: this.variable,
@@ -39,30 +59,44 @@ export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'>
   }
 
   static create<T extends IriManagerConfig, K extends string = 'g_'>(
-    nodes?: T,
-    options?: { blankNodePrefix?: K }
+    options?: SparqlDatabaseOptions<T, K>
   ): SparqlDatabase<T, K> {
-    const blankNodePrefix = (options?.blankNodePrefix ?? ('g_' as K)) as K;
+    const blankNodePrefix = options?.blankNodePrefix ?? 'g_';
     const factory = new RdfJs.DataFactory({ blankNodePrefix });
-    return new SparqlDatabase<T, K>(nodes, undefined, factory, blankNodePrefix);
+    return new SparqlDatabase<T, K>({
+      ...options,
+      factory: factory,
+    });
   }
 
   public base(value: string) {
-    return new SparqlDatabase<T, K>(this.nodes, value, this.factory, this.blankNodePrefix);
+    return new SparqlDatabase<T, K>({
+      blankNodePrefix: this.blankNodePrefix,
+      prefixes: this.nodes,
+      factory: this.factory,
+      base: value,
+    });
   }
 
-  select<U extends Record<string, Variable<any, any>>>(
+  select<U extends SelectedVariables>(
     variables?: U
   ): SelectQueryBuilderBase<InferredSelectResult<U>>;
 
-  select<U extends Record<string, any>>(variables?: SelectVariables<U>): SelectQueryBuilderBase<U>;
+  select<U extends Record<string, any>>(
+    variables?: TypedSelectedVariables<U>
+  ): SelectQueryBuilderBase<U>;
 
-  select<U extends Record<string, any>>(variables?: SelectVariables<U>): SelectQueryBuilderBase<U> {
+  select<U extends Record<string, any>>(
+    variables?: TypedSelectedVariables<U>
+  ): SelectQueryBuilderBase<U> {
     return new SelectQueryBuilderBase(
       variables,
       this.queryPrefixes,
       this.queryBase,
-      this.factoryFunctions
+      this.factoryFunctions,
+      undefined,
+      undefined,
+      this.endpointUrl
     );
   }
 
@@ -71,11 +105,11 @@ export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'>
   ): SelectQueryBuilderBase<InferredSelectResult<U>>;
 
   selectDistinct<U extends Record<string, any>>(
-    variables?: SelectVariables<U>
+    variables?: TypedSelectedVariables<U>
   ): SelectQueryBuilderBase<U>;
 
   selectDistinct<U extends Record<string, any>>(
-    variables?: SelectVariables<U>
+    variables?: TypedSelectedVariables<U>
   ): SelectQueryBuilderBase<U> {
     return new SelectQueryBuilderBase(
       variables,
@@ -83,7 +117,8 @@ export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'>
       this.queryBase,
       this.factoryFunctions,
       true,
-      undefined
+      undefined,
+      this.endpointUrl
     );
   }
 
@@ -92,11 +127,11 @@ export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'>
   ): SelectQueryBuilderBase<InferredSelectResult<U>>;
 
   selectReduced<U extends Record<string, any>>(
-    variables?: SelectVariables<U>
+    variables?: TypedSelectedVariables<U>
   ): SelectQueryBuilderBase<U>;
 
   selectReduced<U extends Record<string, any>>(
-    variables?: SelectVariables<U>
+    variables?: TypedSelectedVariables<U>
   ): SelectQueryBuilderBase<U> {
     return new SelectQueryBuilderBase(
       variables,
@@ -104,12 +139,18 @@ export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'>
       this.queryBase,
       this.factoryFunctions,
       undefined,
-      true
+      true,
+      this.endpointUrl
     );
   }
 
   ask() {
-    return new AskQueryBuilderBase(this.queryPrefixes, this.queryBase, this.factoryFunctions);
+    return new AskQueryBuilderBase(
+      this.queryPrefixes,
+      this.queryBase,
+      this.factoryFunctions,
+      this.endpointUrl
+    );
   }
 
   describe(...variables: DescribeVariables): DescribeQueryBuilderBase {
@@ -117,7 +158,8 @@ export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'>
       variables,
       this.queryPrefixes,
       this.queryBase,
-      this.factoryFunctions
+      this.factoryFunctions,
+      this.endpointUrl
     );
   }
 
@@ -126,7 +168,8 @@ export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'>
       templates,
       this.queryPrefixes,
       this.queryBase,
-      this.factoryFunctions
+      this.factoryFunctions,
+      this.endpointUrl
     );
   }
 
@@ -135,16 +178,17 @@ export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'>
       [],
       this.queryPrefixes,
       this.queryBase,
-      this.factoryFunctions
+      this.factoryFunctions,
+      this.endpointUrl
     );
   }
 
   variable = (value: string): SparqlJs.VariableTerm => {
-    return this.factory.variable(value);
+    return Object.freeze(this.factory.variable(value));
   };
 
   iri = <T extends string>(value: T): SparqlJs.IriTerm => {
-    return this.factory.namedNode(value);
+    return Object.freeze(this.factory.namedNode(value));
   };
 
   blank = <T extends string>(value?: ExcludePrefix<T, K>): SparqlJs.BlankTerm => {
@@ -153,11 +197,11 @@ export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'>
         `For blank terms, the prefix "${this.blankNodePrefix}" is reserved for internal use.`
       );
     }
-    return this.factory.blankNode(value);
+    return Object.freeze(this.factory.blankNode(value));
   };
 
   literal = (value: string, lang?: string | IriTerm): SparqlJs.LiteralTerm => {
-    return this.factory.literal(value, lang);
+    return Object.freeze(this.factory.literal(value, lang));
   };
 
   resetBlankCounter() {

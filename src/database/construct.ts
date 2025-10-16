@@ -11,7 +11,8 @@ export class ConstructQueryBuilderBase
     variables: ConstructTemplates,
     prefixes: ConstructQuery['prefixes'],
     base: string | undefined,
-    factoryFunctions: FactoryFunctions
+    factoryFunctions: FactoryFunctions,
+    endpointUrl?: string
   ) {
     super(
       {
@@ -21,7 +22,8 @@ export class ConstructQueryBuilderBase
         base: base,
         prefixes: prefixes,
       },
-      factoryFunctions
+      factoryFunctions,
+      endpointUrl
     );
   }
 

@@ -2,8 +2,8 @@ import {
   IriTerm,
   Pattern,
   Wildcard,
-  Expression,
   QueryReturnType,
+  ExpressionWithTuple,
   BaseQueryReturnType,
   OperationExpression,
   AggregateExpression,
@@ -12,7 +12,7 @@ import {
 
 export function op<K extends QueryReturnType>(
   operator: string,
-  args: (Expression | Pattern)[],
+  args: (ExpressionWithTuple | Pattern)[],
   transform?: (self: BaseQueryReturnType, ...other: any[]) => K
 ): OperationExpression<K> {
   return {
@@ -25,7 +25,7 @@ export function op<K extends QueryReturnType>(
 
 export function func<K extends QueryReturnType>(
   func: string | IriTerm,
-  args: Expression[],
+  args: ExpressionWithTuple[],
   transform?: (self: BaseQueryReturnType, ...other: any[]) => K
 ): FunctionCallExpression<K> {
   return {
@@ -37,7 +37,7 @@ export function func<K extends QueryReturnType>(
 }
 
 export function agg<K extends QueryReturnType>(
-  expression: Expression | Wildcard,
+  expression: ExpressionWithTuple | Wildcard,
   aggregation: string,
   separator?: string | undefined,
   transform?: (self: BaseQueryReturnType, ...other: any[]) => K

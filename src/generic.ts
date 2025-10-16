@@ -1,6 +1,8 @@
-import SparqlJs from 'sparqljs';
-import RdfJs from 'rdf-data-factory';
+import type * as SparqlJs from 'sparqljs';
+import type * as RdfJs from 'rdf-data-factory';
 import { SelectQueryBuilderBase } from './database/select.js';
+
+export { SparqlJs, RdfJs };
 
 export type { StreamClient as SparqlClient } from 'sparql-http-client';
 
@@ -36,7 +38,7 @@ export interface BaseQuery {
       }
     | undefined;
   where?: Pattern[] | undefined;
-  values?: ValuePatternRow[] | undefined;
+  values?: ValuePatternColumns | undefined;
 }
 
 export interface SelectQuery extends BaseQuery {
@@ -157,21 +159,24 @@ export type Ordering =
       descending: boolean | undefined;
     };
 
-export type IriTerm = SparqlJs.IriTerm;
+export type BaseIriTerm = SparqlJs.IriTerm;
+export type IriTerm = BaseIriTerm;
 
 export type AnonymousBlankTerm = [] | symbol;
-export type BlankTerm = SparqlJs.BlankTerm | AnonymousBlankTerm;
+export type BaseBlankTerm = SparqlJs.BlankTerm;
+export type BlankTerm = BaseBlankTerm | AnonymousBlankTerm;
 
 export type PrimitiveTerm = number | bigint | string | boolean | Date;
-export type LiteralTerm = SparqlJs.LiteralTerm | PrimitiveTerm;
+export type BaseLiteralTerm = SparqlJs.LiteralTerm;
+export type LiteralTerm = BaseLiteralTerm | PrimitiveTerm;
 
 export type Variable<
-  T extends QueryReturnType = QueryReturnType,
+  T extends QueryReturnType = BaseQueryReturnType,
   K extends Presence = Presence.required
 > = VariableExpression<T, K> | VariableTerm<T, K>;
 
 export interface VariableExpression<
-  T extends QueryReturnType = QueryReturnType,
+  T extends QueryReturnType = BaseQueryReturnType,
   K extends Presence = Presence.required
 > {
   expression: Expression<T>;
@@ -199,7 +204,7 @@ export type OptionalTransform<T extends QueryReturnType = QueryReturnType, K ext
 ) => T | undefined;
 
 export interface VariableTerm<
-  T extends QueryReturnType = QueryReturnType,
+  T extends QueryReturnType = BaseQueryReturnType,
   K extends Presence = Presence.required
 > extends SparqlJs.VariableTerm {
   presence?: K;
@@ -217,10 +222,7 @@ export type QuadObject = Term;
 
 export type Term = VariableTerm | IriTerm | LiteralTerm | BlankTerm | QuadTerm;
 
-export type BaseQueryReturnType =
-  | IriTerm
-  | Exclude<BlankTerm, AnonymousBlankTerm>
-  | Exclude<LiteralTerm, PrimitiveTerm>;
+export type BaseQueryReturnType = BaseIriTerm | BaseBlankTerm | BaseLiteralTerm;
 export type QueryReturnType = BaseQueryReturnType | any;
 
 export type PropertyPath = SparqlJs.PropertyPath;
@@ -333,47 +335,49 @@ export interface BindPattern {
 
 export interface ValuesPattern {
   type: 'values';
-  values: ValuePatternRow[];
+  values: ValuePatternColumns;
 }
 
-export interface ValuePatternRow {
-  [variable: string]: IriTerm | BlankTerm | LiteralTerm | undefined;
+export interface ValuePatternColumns {
+  [variable: string]: (IriTerm | BlankTerm | LiteralTerm | undefined)[];
 }
 
 export type Expression<T extends QueryReturnType = QueryReturnType> =
   | OperationExpression<T>
   | FunctionCallExpression<T>
   | AggregateExpression<T>
-  | Tuple
   | IriTerm
   | VariableTerm<T>
   | LiteralTerm;
 
-export interface Tuple extends Array<Expression> {}
+export interface ExpressionTuple extends Array<Expression> {}
+export type ExpressionWithTuple<T extends QueryReturnType = QueryReturnType> =
+  | Expression<T>
+  | ExpressionTuple;
 
 export interface BaseExpression<T extends QueryReturnType = QueryReturnType>
   extends SparqlJs.BaseExpression {
-  transform?: (self: BaseQueryReturnType, ...other: any[]) => T;
+  transform?: Transform<T>;
 }
 
 export interface OperationExpression<T extends QueryReturnType = QueryReturnType>
   extends BaseExpression<T> {
   type: 'operation';
   operator: string;
-  args: Array<Expression | Pattern>;
+  args: Array<ExpressionWithTuple | Pattern>;
 }
 
 export interface FunctionCallExpression<T extends QueryReturnType = QueryReturnType>
   extends BaseExpression<T> {
   type: 'functionCall';
   function: string | IriTerm;
-  args: Expression[];
+  args: ExpressionWithTuple[];
 }
 
 export interface AggregateExpression<T extends QueryReturnType = QueryReturnType>
   extends BaseExpression<T> {
   type: 'aggregate';
-  expression: Expression | Wildcard;
+  expression: ExpressionWithTuple | Wildcard;
   aggregation: string;
   separator?: string | undefined;
 }

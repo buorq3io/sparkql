@@ -1,12 +1,11 @@
 import {
+  BaseIriTerm,
+  BaseBlankTerm,
+  BaseLiteralTerm,
   BaseQueryReturnType,
-  BlankTerm,
   Expression,
-  IriTerm,
-  LiteralTerm,
   Presence,
   QualitativeAnonymousBlankTerm,
-  QueryReturnType,
   Transform,
   Triple,
   TripleObject,
@@ -143,53 +142,28 @@ function isTriplesObjectPairs(object: TriplesObject): object is TriplesObjectPai
   );
 }
 
-export function as<T extends QueryReturnType>(
-  expression: Expression<T>,
-  variableTerm: VariableTerm,
-): VariableExpression<T> {
-  if (typeof expression === 'object' && 'type' in expression) {
-    variableTerm.transform = expression.transform;
-  }
+export function transformIri(self: BaseQueryReturnType): BaseIriTerm {
+  if (self.termType === 'NamedNode') return self;
+  return {termType: 'NamedNode', value: self.value, equals: self.equals};
+}
+
+export function transformLiteral(self: BaseQueryReturnType): BaseLiteralTerm {
+  if (self.termType === 'Literal') return self;
+
   return {
-    variable: variableTerm,
-    expression: expression,
+    ...self,
+    language: '',
+    termType: 'Literal',
+    datatype: {
+      termType: 'NamedNode',
+      value: 'http://www.w3.org/2001/XMLSchema#string',
+      equals: self.equals},
   };
 }
 
-export function apply_transform<T>(
-  variable: Variable,
-  transform: (self: BaseQueryReturnType, ...other: any[]) => T,
-): Variable<T> {
-  if ('expression' in variable) {
-    if (typeof variable.expression === 'object' && 'type' in variable.expression) {
-      variable.expression.transform = transform;
-      variable.variable.transform = transform;
-    }
-  } else {
-    variable.transform = transform;
-  }
-  return variable;
-}
-
-export function transformIri(self: BaseQueryReturnType) {
-  if ('language' in self) {
-    console.warn('W: Wrongful static cast of LiteralTerm to IriTerm');
-  }
-  return self as IriTerm;
-}
-
-export function transformLiteral(self: BaseQueryReturnType) {
-  if (!('language' in self)) {
-    console.error('W: Wrongful static cast of IriTerm to LiteralTerm');
-  }
-  return self as LiteralTerm;
-}
-
-export function transformBlank(self: BaseQueryReturnType) {
-  if (!('language' in self)) {
-    console.error('W: Wrongful static cast of BlankTerm to LiteralTerm');
-  }
-  return self as BlankTerm;
+export function transformBlank(self: BaseQueryReturnType): BaseBlankTerm {
+  if (self.termType === 'BlankNode') return self;
+  return { termType: 'BlankNode', value: self.value, equals: self.equals};
 }
 
 export const transformString = (self => self.value) satisfies Transform;
@@ -218,10 +192,41 @@ export const castNumber = createCast(transformNumber);
 export const castBigint = createCast(transformBigint);
 export const castArray = createCast(transformArray);
 export const castDate = createCast(transformDate);
+export const castUndefinedString = createCast((self) => self.value as string | undefined);
 
-export function createCast<T, K extends any[] = []>(transform: Transform<T, K>) {
-  return (variable: Variable, ...other: K) =>
-    apply_transform(variable, self => transform(self, ...other));
+export function as<R1>(
+  expression: Expression<R1>,
+  variableTerm: VariableTerm<any, Presence>
+): VariableExpression<R1> {
+  const newTerm = { ...variableTerm } as VariableTerm<R1>;
+  if (typeof expression === 'object' && 'type' in expression) {
+    newTerm.transform = expression.transform;
+  }
+  return {
+    variable: newTerm,
+    expression: expression,
+  };
+}
+
+export function applyTransform<R1, R2, P extends Presence>(
+  variable: Variable<R1, P>,
+  transform: Transform<R2>
+): Variable<R2, P> {
+  const newTerm = { ...variable } as Variable<R2, P>;
+  if ('expression' in newTerm) {
+    if (typeof newTerm.expression === 'object' && 'type' in newTerm.expression) {
+      newTerm.expression.transform = transform;
+      newTerm.variable.transform = transform;
+    }
+  } else {
+    newTerm.transform = transform;
+  }
+  return newTerm;
+}
+
+export function createCast<R1, O extends any[] = []>(transform: Transform<R1, O>) {
+  return <R2, P extends Presence>(variable: Variable<R2, P>, ...other: O) =>
+    applyTransform(variable, self => transform(self, ...other));
 }
 
 export function always<T>(variable: Variable<T, Presence>): Variable<T> {
@@ -233,7 +238,7 @@ export function always<T>(variable: Variable<T, Presence>): Variable<T> {
   return variable as Variable<T>;
 }
 
-export function maybe<T>(variable: Variable<T>): Variable<T, Presence.optional> {
+export function maybe<T>(variable: Variable<T, Presence>): Variable<T, Presence.optional> {
   const resultVariable: Variable<T, Presence.optional> = variable as any;
   if ('expression' in resultVariable) {
     resultVariable.variable.presence = Presence.optional;
