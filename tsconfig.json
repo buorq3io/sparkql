@@ -21,6 +21,7 @@
     "declaration": true,
     "declarationMap": true,
     "outDir": "./dist/",
+    "rootDir": "src",
     "sourceMap": true,
     "skipLibCheck": true,
     /* Interop Options */
@@ -32,6 +33,5 @@
   "include": [
     "src/**/*.ts",
     "test/**/*.ts",
-    "local/**/*.ts"
   ]
 }
