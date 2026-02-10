@@ -17,8 +17,13 @@
     "typecheck": "tsc --noEmit"
   },
   "repository": {
-    "type": "git"
+    "type": "git",
+    "url": "git+https://github.com/buorq3io/sparkql.git"
   },
+  "bugs": {
+    "url": "https://github.com/buorq3io/sparkql/issues"
+  },
+  "homepage": "https://github.com/buorq3io/sparkql#readme",
   "publishConfig": {
     "access": "public"
   },
