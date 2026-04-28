@@ -1,64 +1,158 @@
+import { values, group } from '../structures/pattern.js';
 import { SparqlQueryBuilderBase } from './sparql-query.js';
-import { Query, Pattern, IriTerm, ValuePatternColumns } from '../generic.js';
+import {
+  ContextDefinitionBaseInput,
+  ExpressionInput,
+  OrderingInput,
+  PatternInput,
+  QueryInput,
+  SolutionModifierGroupBindInput,
+  TermIriFullInput,
+  TermIriInput,
+  ValuePatternColumnsInput,
+} from '../helpers/types.js';
 
 export abstract class QueryBuilderBase<
-  TConfig extends Query,
+  TConfig extends QueryInput,
   KReturn
 > extends SparqlQueryBuilderBase<TConfig, KReturn> {
-  from(...iris: IriTerm[]) {
-    if (iris.length === 0) {
-      return this;
+  private fromBase(fromType: 'default' | 'named', iris: TermIriInput[]) {
+    this.config.datasets.clauses = [
+      ...this.config.datasets.clauses,
+      ...iris.map(
+        i =>
+          ({
+            clauseType: fromType,
+            value: i,
+          } as const)
+      ),
+    ];
+
+    return this;
+  }
+
+  from(iri: TermIriInput) {
+    return this.fromBase('default', [iri]);
+  }
+
+  fromNamed(iri: TermIriInput) {
+    return this.fromBase('named', [iri]);
+  }
+
+  base(base: TermIriFullInput | string) {
+    this.config.context.push({
+      type: 'contextDef',
+      subType: 'base',
+      value:
+        typeof base === 'string'
+          ? {
+              type: 'term',
+              subType: 'namedNode',
+              value: base,
+              loc: {
+                sourceLocationType: 'autoGenerate',
+              },
+            }
+          : base,
+      loc: {
+        sourceLocationType: 'autoGenerate',
+      },
+    } satisfies ContextDefinitionBaseInput);
+
+    return this;
+  }
+
+  values(columns: ValuePatternColumnsInput) {
+    if (!this.config.values) {
+      this.config.values = values(columns);
     }
 
-    if (this.config.from) {
-      this.config.from.default = [...this.config.from.default, ...iris];
+    return this;
+  }
+
+  where(...patterns: PatternInput[]) {
+    if (!this.config.where) {
+      this.config.where = group(...patterns);
     } else {
-      this.config.from = {
-        default: iris,
-        named: [],
+      this.config.where.patterns = [...this.config.where.patterns, ...patterns];
+    }
+    return this;
+  }
+
+  having(...expressions: ExpressionInput[]) {
+    if (!this.config.solutionModifiers.having) {
+      this.config.solutionModifiers.having = {
+        type: 'solutionModifier',
+        subType: 'having',
+        having: expressions,
+        loc: {
+          sourceLocationType: 'autoGenerate',
+        },
       };
     }
     return this;
   }
 
-  fromNamed(...iris: IriTerm[]) {
-    if (iris.length === 0) {
-      return this;
-    }
-
-    if (this.config.from) {
-      this.config.from.named = [...this.config.from.named, ...iris];
-    } else {
-      this.config.from = {
-        default: [],
-        named: iris,
+  groupBy(...expressions: (ExpressionInput | SolutionModifierGroupBindInput)[]) {
+    if (!this.config.solutionModifiers.group) {
+      this.config.solutionModifiers.group = {
+        type: 'solutionModifier',
+        subType: 'group',
+        groupings: expressions,
+        loc: {
+          sourceLocationType: 'autoGenerate',
+        },
       };
     }
     return this;
   }
 
-  values(columns: ValuePatternColumns) {
-    if (Object.keys(columns).length === 0) {
-      return this;
-    }
-
-    if (this.config.values) {
-      this.config.values = {...this.config.values, ...columns};
-    } else {
-      this.config.values = columns;
+  orderBy(...orderings: OrderingInput[]) {
+    if (!this.config.solutionModifiers.order) {
+      this.config.solutionModifiers.order = {
+        type: 'solutionModifier',
+        subType: 'order',
+        orderDefs: orderings,
+        loc: {
+          sourceLocationType: 'autoGenerate',
+        },
+      };
     }
     return this;
   }
 
-  where(...patterns: Pattern[]) {
-    if (patterns.length === 0) {
-      return this;
+  limit(limit: number) {
+    if (
+      !this.config.solutionModifiers.limitOffset ||
+      !this.config.solutionModifiers.limitOffset?.limit
+    ) {
+      this.config.solutionModifiers.limitOffset = {
+        type: 'solutionModifier',
+        subType: 'limitOffset',
+        limit: limit,
+        offset: this.config.solutionModifiers.limitOffset?.offset,
+        loc: {
+          sourceLocationType: 'autoGenerate',
+        },
+      };
     }
+    return this;
+  }
 
-    if (this.config.where) {
-      this.config.where = [...this.config.where, ...patterns];
-    } else {
-      this.config.where = patterns;
+  offset(offset: number) {
+    if (
+      !this.config.solutionModifiers.limitOffset ||
+      !this.config.solutionModifiers.limitOffset?.offset
+    ) {
+      this.config.solutionModifiers.limitOffset = {
+        type: 'solutionModifier',
+        subType: 'limitOffset',
+        limit: this.config.solutionModifiers.limitOffset?.limit,
+        offset: offset,
+        loc: {
+          sourceLocationType: 'autoGenerate',
+        },
+      };
     }
     return this;
   }

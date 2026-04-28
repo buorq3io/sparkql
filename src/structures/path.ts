@@ -1,65 +1,60 @@
 import {
-  IriTerm,
-  PropertySet,
-  PropertyPath,
-  NegatedPropertySet,
-} from '../generic.js';
+  PathAlternativeLimitedInput,
+  PathInput,
+  PathModifiedInput,
+  PathNegatedEltInput,
+  PathNegatedInput,
+  PropertyPathChainInput,
+  TermIriInput,
+} from '../helpers/types.js';
 
-export function path(
-  pathType: '!',
-  items: (IriTerm | InvPropertyPath<IriTerm>)[]
-): NegatedPropertySet;
-
-export function path(
-  pathType: '|' | '/' | '^' | '+' | '*' | '?',
-  items: (IriTerm | PropertyPath)[]
-): PropertySet;
-
-export function path(
-  pathType: '|' | '/' | '^' | '+' | '*' | '?' | '!',
-  items: (IriTerm | PropertyPath)[] | (IriTerm | InvPropertyPath<IriTerm>)[]
-): PropertyPath {
+function path(subtype: '/' | '|', items: PathInput[]): PropertyPathChainInput;
+function path(subtype: '?' | '*' | '+' | '^', items: [PathInput]): PathModifiedInput;
+function path(
+  subtype: '!',
+  items: [TermIriInput | PathNegatedEltInput | PathAlternativeLimitedInput]
+): PathNegatedInput;
+function path(subtype: '/' | '|' | '?' | '*' | '+' | '^' | '!', items: PathInput[]): PathInput {
   return {
     type: 'path',
-    pathType: pathType,
+    subType: subtype,
     items: items,
-  } as PropertyPath;
+    loc: {
+      sourceLocationType: 'autoGenerate',
+    },
+  } as PathInput;
 }
 
-export function seq(...items: (IriTerm | PropertyPath)[]) {
+export function seq(...items: PathInput[]) {
   return path('/', items);
 }
 
-export function alt(...items: (IriTerm | PropertyPath)[]) {
+export function alt(...items: (TermIriInput | PathNegatedEltInput)[]): PathAlternativeLimitedInput;
+export function alt(...items: PathInput[]): PropertyPathChainInput;
+export function alt(...items: PathInput[]) {
   return path('|', items);
 }
 
-type InvPropertyPath<T extends IriTerm | PropertyPath> = {
-  type: 'path';
-  pathType: '^';
-  items: [T];
-};
-
-export function inv<T extends IriTerm>(item: T): InvPropertyPath<T>;
-export function inv<T extends PropertyPath>(item: T): InvPropertyPath<T>;
-export function inv(item: IriTerm | PropertySet) {
-  return path('^', [item]);
+export function zeroOrOne(items: PathInput) {
+  return path('?', [items]);
 }
 
-export function zeroOrMore(item: IriTerm | PropertyPath): PropertySet {
-  return path('*', [item]);
+export function zeroOrMore(items: PathInput) {
+  return path('*', [items]);
 }
 
-export function oneOrMore(item: IriTerm | PropertyPath): PropertySet {
-  return path('+', [item]);
+export function oneOrMore(items: PathInput) {
+  return path('+', [items]);
 }
 
-export function zeroOrOne(item: IriTerm | PropertyPath): PropertySet {
-  return path('?', [item]);
+export function inv(items: TermIriInput): PathNegatedEltInput;
+export function inv(items: PathInput): PathModifiedInput;
+export function inv(items: PathInput) {
+  return path('^', [items]);
 }
 
 export function neg(
-  ...items: (IriTerm | InvPropertyPath<IriTerm>)[]
-): NegatedPropertySet {
-  return path('!', items);
+  items: TermIriInput | PathNegatedEltInput | PathAlternativeLimitedInput
+): PathNegatedInput {
+  return path('!', [items]);
 }

@@ -44,6 +44,7 @@ import {
   zeroOrMore,
   groupConcat,
   serviceSilent,
+  group,
 } from '../../src/index.mjs';
 import { db, v, n } from '../index.js';
 
@@ -86,8 +87,8 @@ export default () =>
       ]),
       optional(triple(v.subject, n.foaf.nick, v.nickname)),
       union(
-        triple(v.subject, n.foaf.homepage, v.webpage),
-        triple(v.subject, n.foaf.workplaceHomepage, v.webpage)
+        group(triple(v.subject, n.foaf.homepage, v.webpage)),
+        group(triple(v.subject, n.foaf.workplaceHomepage, v.webpage))
       ),
       db
         .select({ subject: v.subject })
@@ -114,7 +115,7 @@ export default () =>
           db.iri('http://example.org/friend/Alice'),
         ])
       ),
-      filter(regex(v.lastName, '^[A-F]', 'i')),
+      filter(regex(v.lastName, /^[A-F]/, 'i')),
       filter(strstarts(str(v.webpage), 'http://')),
       filter(sameTerm(v.knownType, n.foaf.Person)),
 

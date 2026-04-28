@@ -1,59 +1,124 @@
 import {
-  IriTerm,
-  Pattern,
-  Wildcard,
+  ExpressionAggregateDefaultInput,
+  ExpressionAggregateInput,
+  ExpressionAggregateOnWildcardInput,
+  ExpressionAggregateSeparatorInput,
+  ExpressionFunctionCallInput,
+  ExpressionInput,
+  ExpressionOperationInput,
+  ExpressionPatternOperationInput,
+  PatternGroupInput,
   QueryReturnType,
-  ExpressionWithTuple,
-  BaseQueryReturnType,
-  OperationExpression,
-  AggregateExpression,
-  FunctionCallExpression,
-} from '../generic.js';
+  TermIriInput,
+  TermVariableTransform,
+  WildcardInput,
+} from '../helpers/types.js';
 
-export function op<K extends QueryReturnType>(
+export function createOperationExpression<T extends QueryReturnType>(
   operator: string,
-  args: (ExpressionWithTuple | Pattern)[],
-  transform?: (self: BaseQueryReturnType, ...other: any[]) => K
-): OperationExpression<K> {
+  args: ExpressionInput[],
+  transform?: TermVariableTransform<T>
+): ExpressionOperationInput<T> {
   return {
-    type: 'operation',
+    type: 'expression',
+    subType: 'operation',
+    loc: {
+      sourceLocationType: 'autoGenerate',
+    },
     operator: operator,
     args: args,
     transform: transform,
   };
 }
 
-export function func<K extends QueryReturnType>(
-  func: string | IriTerm,
-  args: ExpressionWithTuple[],
-  transform?: (self: BaseQueryReturnType, ...other: any[]) => K
-): FunctionCallExpression<K> {
+export function createPatternOperationExpression<T extends QueryReturnType>(
+  operator: string,
+  args: PatternGroupInput,
+  transform?: TermVariableTransform<T>
+): ExpressionPatternOperationInput<T> {
   return {
-    type: 'functionCall',
+    type: 'expression',
+    subType: 'patternOperation',
+    loc: {
+      sourceLocationType: 'autoGenerate',
+    },
+    operator: operator,
+    args: args,
+    transform: transform,
+  };
+}
+
+export function createFunctionCallExpression<T extends QueryReturnType>(
+  func: TermIriInput,
+  args: ExpressionInput[],
+  transform?: TermVariableTransform<T>
+): ExpressionFunctionCallInput<T> {
+  return {
+    type: 'expression',
+    subType: 'functionCall',
+    loc: {
+      sourceLocationType: 'autoGenerate',
+    },
+    distinct: false,
     function: func,
     args: args,
     transform: transform,
   };
 }
 
-export function agg<K extends QueryReturnType>(
-  expression: ExpressionWithTuple | Wildcard,
+export function createAggregateExpression<T extends QueryReturnType>(
   aggregation: string,
-  separator?: string | undefined,
-  transform?: (self: BaseQueryReturnType, ...other: any[]) => K
-): AggregateExpression<K> {
+  expression: [ExpressionInput],
+  separator: undefined,
+  transform?: TermVariableTransform<T>
+): ExpressionAggregateDefaultInput<T>;
+
+export function createAggregateExpression<T extends QueryReturnType>(
+  aggregation: string,
+  expression: [WildcardInput],
+  separator: undefined,
+  transform?: TermVariableTransform<T>
+): ExpressionAggregateOnWildcardInput<T>;
+
+export function createAggregateExpression<T extends QueryReturnType>(
+  aggregation: string,
+  expression: [ExpressionInput],
+  separator: string,
+  transform?: TermVariableTransform<T>
+): ExpressionAggregateSeparatorInput<T>;
+
+export function createAggregateExpression<T extends QueryReturnType>(
+  aggregation: string,
+  expression: [WildcardInput] | [ExpressionInput],
+  separator?: string,
+  transform?: TermVariableTransform<T>
+): ExpressionAggregateInput<T> {
   return {
-    type: 'aggregate',
-    expression: expression,
+    type: 'expression',
+    subType: 'aggregate',
+    loc: {
+      sourceLocationType: 'autoGenerate',
+    },
+    distinct: false,
     aggregation: aggregation,
-    separator: separator,
+    ...(separator ? { separator: separator } : {}),
+    expression: expression,
     transform: transform,
   };
 }
 
 export function distinct<
-  K extends QueryReturnType,
-  T extends OperationExpression<K> | FunctionCallExpression<K> | AggregateExpression<K>
->(expression: T): T {
+  T extends QueryReturnType,
+  K extends ExpressionFunctionCallInput<T> | ExpressionAggregateInput<T>
+>(expression: K): K {
   return { ...expression, distinct: true };
+}
+
+export function createWildCardInput(): WildcardInput {
+  return {
+    type: 'wildcard',
+    loc: {
+      sourceLocationType: 'autoGenerate',
+    },
+  };
 }

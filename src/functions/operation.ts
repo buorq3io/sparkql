@@ -1,91 +1,97 @@
-import { op } from './utils.js';
-import { Expression, OperationExpression } from '../generic.js';
+import { createOperationExpression } from './utils.js';
 import { transformBoolean, transformNumber } from '../structures/index.js';
+import { ExpressionInput, ExpressionOperationInput } from '../helpers/types.js';
 
-export function eq(...args: [Expression, Expression]): OperationExpression<boolean> {
-  return op('=', args, transformBoolean);
+export function eq(...args: [ExpressionInput, ExpressionInput]): ExpressionOperationInput<boolean> {
+  return createOperationExpression('=', args, transformBoolean);
 }
 
-export function ne(...args: [Expression, Expression]): OperationExpression<boolean> {
-  return op('!=', args, transformBoolean);
+export function ne(...args: [ExpressionInput, ExpressionInput]): ExpressionOperationInput<boolean> {
+  return createOperationExpression('!=', args, transformBoolean);
 }
 
-export function gt(...args: [Expression, Expression]): OperationExpression<boolean> {
-  return op('>', args, transformBoolean);
+export function gt(...args: [ExpressionInput, ExpressionInput]): ExpressionOperationInput<boolean> {
+  return createOperationExpression('>', args, transformBoolean);
 }
 
-export function gte(...args: [Expression, Expression]): OperationExpression<boolean> {
-  return op('>=', args, transformBoolean);
+export function gte(
+  ...args: [ExpressionInput, ExpressionInput]
+): ExpressionOperationInput<boolean> {
+  return createOperationExpression('>=', args, transformBoolean);
 }
 
-export function lt(...args: [Expression, Expression]): OperationExpression<boolean> {
-  return op('<', args, transformBoolean);
+export function lt(...args: [ExpressionInput, ExpressionInput]): ExpressionOperationInput<boolean> {
+  return createOperationExpression('<', args, transformBoolean);
 }
 
-export function lte(...args: [Expression, Expression]): OperationExpression<boolean> {
-  return op('<=', args, transformBoolean);
+export function lte(
+  ...args: [ExpressionInput, ExpressionInput]
+): ExpressionOperationInput<boolean> {
+  return createOperationExpression('<=', args, transformBoolean);
 }
 
 export function and(
-  ...args: [Expression, Expression, ...Expression[]]
-): OperationExpression<boolean> {
+  ...args: [ExpressionInput, ExpressionInput, ...ExpressionInput[]]
+): ExpressionOperationInput<boolean> {
   const [first, ...rest] = args;
 
   return rest.reduce(
-    (acc, current) => op('&&', [acc, current], transformBoolean),
+    (acc, current) => createOperationExpression('&&', [acc, current], transformBoolean),
     first
-  ) as OperationExpression<boolean>;
+  ) as ExpressionOperationInput<boolean>;
 }
 
 export function or(
-  ...args: [Expression, Expression, ...Expression[]]
-): OperationExpression<boolean> {
+  ...args: [ExpressionInput, ExpressionInput, ...ExpressionInput[]]
+): ExpressionOperationInput<boolean> {
   const [first, ...rest] = args;
 
   return rest.reduce(
-    (acc, current) => op('||', [acc, current], transformBoolean),
+    (acc, current) => createOperationExpression('||', [acc, current], transformBoolean),
     first
-  ) as OperationExpression<boolean>;
+  ) as ExpressionOperationInput<boolean>;
 }
 
 export function add(
-  ...args: [Expression, Expression, ...Expression[]]
-): OperationExpression<number> {
+  ...args: [ExpressionInput, ExpressionInput, ...ExpressionInput[]]
+): ExpressionOperationInput<number> {
   const [first, ...rest] = args;
 
   return rest.reduce(
-    (acc, current) => op('+', [acc, current], transformNumber),
+    (acc, current) => createOperationExpression('+', [acc, current], transformNumber),
     first
-  ) as OperationExpression<number>;
+  ) as ExpressionOperationInput<number>;
 }
 
-export function subs(...args: [Expression, Expression]): OperationExpression<number> {
-  return op('-', args, transformNumber);
+export function subs(
+  ...args: [ExpressionInput, ExpressionInput]
+): ExpressionOperationInput<number> {
+  return createOperationExpression('-', args, transformNumber);
 }
 
 export function mul(
-  ...args: [Expression, Expression, ...Expression[]]
-): OperationExpression<number> {
+  ...args: [ExpressionInput, ExpressionInput, ...ExpressionInput[]]
+): ExpressionOperationInput<number> {
   const [first, ...rest] = args;
 
   return rest.reduce(
-    (acc, current) => op('*', [acc, current], transformNumber),
+    (acc, current) => createOperationExpression('*', [acc, current], transformNumber),
     first
-  ) as OperationExpression<number>;
+  ) as ExpressionOperationInput<number>;
 }
 
-export function div(...args: [Expression, Expression]): OperationExpression<number> {
-  return op('/', args, transformNumber);
+export function div(...args: [ExpressionInput, ExpressionInput]): ExpressionOperationInput<number> {
+  return createOperationExpression('/', args, transformNumber);
 }
 
-export function not(...args: [Expression]): OperationExpression<boolean> {
-  return op('!', args, transformBoolean);
+export function not(...args: [ExpressionInput]): ExpressionOperationInput<boolean> {
+  return createOperationExpression('!', args, transformBoolean);
 }
 
-export function uplus(...args: [Expression]): OperationExpression<number> {
-  return op('uplus', args, transformNumber);
+export function uplus(...args: [ExpressionInput]): ExpressionOperationInput<number> {
+  return createOperationExpression('uplus', args, transformNumber);
 }
 
-export function uminus(...args: [Expression]): OperationExpression<number> {
-  return op('uminus', args, transformNumber);
+export function uminus(...args: [ExpressionInput]): ExpressionOperationInput<number> {
+  return createOperationExpression('uminus', args, transformNumber);
 }

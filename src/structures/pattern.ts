@@ -1,122 +1,181 @@
+import { Presence } from '../generic.js';
 import {
-  IriTerm,
-  VariableTerm,
-  Triple,
-  Expression,
-  GraphQuads,
-  BgpPattern,
-  BindPattern,
-  UnionPattern,
-  GroupPattern,
-  GraphPattern,
-  MinusPattern,
-  FilterPattern,
-  ValuesPattern,
-  ServicePattern,
-  OptionalPattern,
-  ValuePatternColumns,
-  PatternWithSelectQuery,
-} from '../generic.js';
+    BasicGraphPatternInput,
+  ExpressionInput,
+  GraphQuadsInput,
+  PatternBgpInput,
+  PatternBindInput,
+  PatternFilterInput,
+  PatternGraphInput,
+  PatternGroupInput,
+  PatternInput,
+  PatternMinusInput,
+  PatternOptionalInput,
+  PatternServiceInput,
+  PatternUnionInput,
+  PatternValuesInput,
+  TermIriInput,
+  TermVariableInput,
+  TripleNestingInput,
+  ValuePatternColumnsInput,
+} from '../helpers/types.js';
 
-export function bgp(...triples: Triple[]): BgpPattern {
+export function bgp(...triples: BasicGraphPatternInput): PatternBgpInput {
   return {
-    type: 'bgp',
+    type: 'pattern',
+    subType: 'bgp',
+    loc: {
+      sourceLocationType: 'autoGenerate',
+    },
     triples: triples,
   };
 }
 
-export function optional(...patterns: PatternWithSelectQuery[]): OptionalPattern {
+export function optional(...patterns: PatternInput[]): PatternOptionalInput {
   return {
-    type: 'optional',
+    type: 'pattern',
+    subType: 'optional',
+    loc: {
+      sourceLocationType: 'autoGenerate',
+    },
     patterns: patterns,
   };
 }
 
-export function union(...patterns: PatternWithSelectQuery[]): UnionPattern {
+export function union(...patterns: PatternGroupInput[]): PatternUnionInput {
   return {
-    type: 'union',
+    type: 'pattern',
+    subType: 'union',
     patterns: patterns,
+    loc: {
+      sourceLocationType: 'autoGenerate',
+    },
   };
 }
 
-export function group(...patterns: PatternWithSelectQuery[]): GroupPattern {
+export function group(...patterns: PatternInput[]): PatternGroupInput {
   return {
-    type: 'group',
+    type: 'pattern',
+    subType: 'group',
     patterns: patterns,
+    loc: {
+      sourceLocationType: 'autoGenerate',
+    },
   };
 }
 
 export function graph(
-  name: IriTerm | VariableTerm,
-  ...patterns: PatternWithSelectQuery[]
-): GraphPattern {
+  name: TermIriInput | TermVariableInput,
+  ...patterns: PatternInput[]
+): PatternGraphInput {
   return {
-    type: 'graph',
+    type: 'pattern',
+    subType: 'graph',
     name: name,
     patterns: patterns,
+    loc: {
+      sourceLocationType: 'autoGenerate',
+    },
   };
 }
 
-export function quadgraph(name: IriTerm | VariableTerm, ...triples: Triple[]): GraphQuads {
+export function quadgraph(
+  name: TermIriInput | TermVariableInput,
+  ...triples: TripleNestingInput[]
+): GraphQuadsInput {
   return {
     type: 'graph',
-    name: name,
-    triples: triples,
+    graph: name,
+    triples: bgp(...triples),
+    loc: {
+      sourceLocationType: 'autoGenerate',
+    },
   };
 }
 
-export function minus(...patterns: PatternWithSelectQuery[]): MinusPattern {
+export function minus(...patterns: PatternInput[]): PatternMinusInput {
   return {
-    type: 'minus',
+    type: 'pattern',
+    subType: 'minus',
     patterns: patterns,
+    loc: {
+      sourceLocationType: 'autoGenerate',
+    },
   };
 }
 
 function serviceBase(
-  name: IriTerm | VariableTerm,
+  name: TermIriInput | TermVariableInput,
   silent: boolean,
-  ...patterns: PatternWithSelectQuery[]
-): ServicePattern {
+  ...patterns: PatternInput[]
+): PatternServiceInput {
   return {
-    type: 'service',
+    type: 'pattern',
+    subType: 'service',
     name: name,
     silent: silent,
     patterns: patterns,
+    loc: {
+      sourceLocationType: 'autoGenerate',
+    },
   };
 }
 
 export function service(
-  name: IriTerm | VariableTerm,
-  ...patterns: PatternWithSelectQuery[]
-): ServicePattern {
+  name: TermIriInput | TermVariableInput,
+  ...patterns: PatternInput[]
+): PatternServiceInput {
   return serviceBase(name, false, ...patterns);
 }
 
 export function serviceSilent(
-  name: IriTerm | VariableTerm,
-  ...patterns: PatternWithSelectQuery[]
-): ServicePattern {
+  name: TermIriInput | TermVariableInput,
+  ...patterns: PatternInput[]
+): PatternServiceInput {
   return serviceBase(name, true, ...patterns);
 }
 
-export function filter(expression: Expression): FilterPattern {
+export function filter(expression: ExpressionInput): PatternFilterInput {
   return {
-    type: 'filter',
+    type: 'pattern',
+    subType: 'filter',
     expression: expression,
+    loc: {
+      sourceLocationType: 'autoGenerate',
+    },
   };
 }
 
-export function bind(expression: Expression, variable: VariableTerm): BindPattern {
+export function bind<T, K extends Presence>(
+  expression: ExpressionInput<T>,
+  variable: TermVariableInput<any, K>
+): PatternBindInput<T, K> {
   return {
-    type: 'bind',
+    type: 'pattern',
+    subType: 'bind',
     expression: expression,
     variable: variable,
+    loc: {
+      sourceLocationType: 'autoGenerate',
+    },
   };
 }
 
-export function values(values: ValuePatternColumns): ValuesPattern {
+export function values(values: ValuePatternColumnsInput): PatternValuesInput {
   return {
-    type: 'values',
+    type: 'pattern',
+    subType: 'values',
+    variables: Object.keys(values).map(v => ({
+      type: 'term',
+      subType: 'variable',
+      value: v,
+      loc: {
+        sourceLocationType: 'autoGenerate',
+      },
+    })),
     values: values,
+    loc: {
+      sourceLocationType: 'autoGenerate',
+    },
   };
 }

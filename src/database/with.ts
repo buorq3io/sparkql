@@ -1,140 +1,119 @@
-import {
-  Quads,
-  Update,
-  IriTerm,
-  Pattern,
-  FactoryFunctions,
-  SparqlClient,
-  UpdateOperation,
-  InsertDeleteOperation,
-} from '../generic.js';
 import { UpdateQueryBuilderBase } from './update.js';
 import { SparqlQueryBuilderBase } from './sparql-query.js';
+import {
+  FactoryFunctions,
+  PatternInput,
+  QuadsInput,
+  TermIriInput,
+  UpdateInput,
+  UpdateOperationModifyInput,
+} from '../helpers/types.js';
 
 export class WithQueryBuilderBase
-  extends SparqlQueryBuilderBase<Update, void>
+  extends SparqlQueryBuilderBase<UpdateInput, void>
   implements PromiseLike<void>
 {
-  private where_call = false;
-  private insert_call = false;
-  private delete_call = false;
-
-  private _operation_push = false;
-  private readonly _operation: Extract<InsertDeleteOperation, { updateType: 'insertdelete' }>;
+  private updateConfig: UpdateInput;
+  private updateContext: UpdateInput['updates'][number]['context'];
+  private updateBuilder: UpdateQueryBuilderBase;
+  private readonly operation: UpdateOperationModifyInput;
 
   constructor(
-    updates: UpdateOperation[],
-    prefixes: Update['prefixes'],
-    base: string | undefined,
+    updateContext: UpdateInput['updates'][number]['context'],
+    updateConfig: UpdateInput,
+    updateBuilder: UpdateQueryBuilderBase,
     factoryFunctions: FactoryFunctions,
     endpointUrl?: string,
-    iri?: IriTerm,
+    iri?: TermIriInput
   ) {
     super(
       {
         type: 'update',
-        updates: updates,
-        base: base,
-        prefixes: prefixes,
+        updates: [],
+        loc: {
+          sourceLocationType: 'autoGenerate',
+        },
       },
       factoryFunctions,
       endpointUrl
     );
-    this._operation = {
-      updateType: 'insertdelete',
-      where: [],
-      insert: [],
+    this.operation = {
+      type: 'updateOperation',
+      subType: 'modify',
+      loc: {
+        sourceLocationType: 'autoGenerate',
+      },
       delete: [],
+      insert: [],
+      from: {
+        type: 'datasetClauses',
+        loc: {
+          sourceLocationType: 'autoGenerate',
+        },
+        clauses: [],
+      },
       graph: iri,
-      using: {
-        default: [],
-        named: [],
+      where: {
+        type: 'pattern',
+        subType: 'group',
+        loc: {
+          sourceLocationType: 'autoGenerate',
+        },
+        patterns: [],
       },
     };
+    this.updateContext = updateContext;
+    this.updateConfig = updateConfig;
+    this.updateBuilder = updateBuilder;
   }
 
-  insert(...quads: Quads[]) {
-    if (quads.length === 0) {
-      return this;
-    }
-
-    this._operation.insert = [...this._operation.insert, ...quads];
-    this.insert_call = true;
+  insert(...quads: QuadsInput[]) {
+    this.operation.insert = [...this.operation.insert, ...quads];
     return this;
   }
 
-  delete(...quads: Quads[]) {
-    if (quads.length === 0) {
-      return this;
-    }
-
-    this._operation.delete = [...this._operation.delete, ...quads];
-    this.delete_call = true;
+  delete(...quads: QuadsInput[]) {
+    this.operation.delete = [...this.operation.delete, ...quads];
     return this;
   }
 
-  where(...patterns: Pattern[]) {
-    this._operation.where = [...this._operation.where, ...patterns];
-    this.where_call = true;
+  where(...patterns: PatternInput[]) {
+    this.operation.where.patterns = [...this.operation.where.patterns, ...patterns];
     return this;
   }
 
-  using(...iris: IriTerm[]) {
-    if (iris.length === 0) {
-      return this;
-    }
-
-    if (this._operation.using) {
-      this._operation.using.default = [...this._operation.using.default, ...iris];
-    } else {
-      this._operation.using = {
-        default: iris,
-        named: [],
-      };
-    }
+  using(iri: TermIriInput) {
+    this.operation.from.clauses = [
+      ...this.operation.from.clauses,
+      {
+        clauseType: 'default',
+        value: iri,
+      },
+    ];
     return this;
   }
 
-  usingNamed(...iris: IriTerm[]) {
-    if (iris.length === 0) {
-      return this;
-    }
-
-    if (this._operation.using) {
-      this._operation.using.named = [...this._operation.using.named, ...iris];
-    } else {
-      this._operation.using = {
-        default: [],
-        named: iris,
-      };
-    }
+  usingNamed(iri: TermIriInput) {
+    this.operation.from.clauses = [
+      ...this.operation.from.clauses,
+      {
+        clauseType: 'named',
+        value: iri,
+      },
+    ];
     return this;
   }
 
-  end() {
-    this.checkoutOperation();
-    return new UpdateQueryBuilderBase(
-      this.config.updates,
-      this.config.prefixes,
-      this.config.base,
-      this.factoryFunctions,
-      this.endpointUrl
-    );
+  $end() {
+    this.updateConfig.updates.push({
+      context: this.updateContext,
+      operation: this.operation,
+    });
+    return this.updateBuilder;
   }
 
-  protected makeQuery(client: SparqlClient): Promise<void> {
-    this.checkoutOperation();
-    return client.query.update(this.toSPARQL());
-  }
-
-  private checkoutOperation() {
-    if (!(this.where_call && this.insert_call && this.delete_call)) {
-      throw Error('.insert(), .delete() and .where() should be called on modify operation.');
-    }
-    if (this._operation_push) {
-      this.config.updates.pop();
-    }
-    this.config.updates.push(this._operation);
-    this._operation_push = true;
+  protected async makeQuery(): Promise<void> {
+    this.$end();
+    return await this.updateBuilder
   }
 }

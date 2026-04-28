@@ -1,58 +1,62 @@
-import * as SparqlJs from 'sparqljs';
-import { agg, distinct } from './utils.js';
-import { AggregateExpression, Expression } from '../generic.js';
+import {
+  ExpressionInput,
+  ExpressionAggregateDefaultInput,
+  ExpressionAggregateOnWildcardInput,
+} from '../helpers/types.js';
 import { transformArray, transformNumber } from '../structures/index.js';
+import { createAggregateExpression, createWildCardInput, distinct } from './utils.js';
 
-export function count(): AggregateExpression<number>;
-export function count(expression: Expression): AggregateExpression<number>;
-export function count(expression?: Expression) {
-  return agg(expression ?? new SparqlJs.Wildcard(), 'count', undefined, transformNumber);
+export function count(): ExpressionAggregateOnWildcardInput<number>;
+export function count(expression: ExpressionInput): ExpressionAggregateDefaultInput<number>;
+export function count(expression?: ExpressionInput) {
+  return createAggregateExpression(
+    'count',
+    [expression ? expression : createWildCardInput()],
+    undefined,
+    transformNumber
+  );
 }
 
 export function countDistinct(): AggregateExpression<number>;
-export function countDistinct(expression: Expression): AggregateExpression<number>;
-export function countDistinct(expression?: Expression) {
+export function countDistinct(expression: ExpressionInput): AggregateExpression<number>;
+export function countDistinct(expression?: ExpressionInput) {
   return distinct(expression ? count(expression) : count());
 }
 
-export function sum(expression: Expression): AggregateExpression<number> {
-  return agg(expression, 'sum', undefined, transformNumber);
+export function sum(expression: ExpressionInput) {
+  return createAggregateExpression('sum', [expression], undefined, transformNumber);
 }
 
-export function sumDistinct(expression: Expression): AggregateExpression<number> {
+export function sumDistinct(expression: ExpressionInput) {
   return distinct(sum(expression));
 }
 
-export function avg(expression: Expression): AggregateExpression<number> {
-  return agg(expression, 'avg', undefined, transformNumber);
+export function avg(expression: ExpressionInput) {
+  return createAggregateExpression('avg', [expression], undefined, transformNumber);
 }
 
-export function avgDistinct(expression: Expression): AggregateExpression<number> {
+export function avgDistinct(expression: ExpressionInput) {
   return distinct(avg(expression));
 }
 
-export function min(expression: Expression) {
-  return agg(expression, 'min');
+export function min(expression: ExpressionInput) {
+  return createAggregateExpression('min', [expression], undefined);
 }
 
-export function max(expression: Expression) {
-  return agg(expression, 'max');
+export function max(expression: ExpressionInput) {
+  return createAggregateExpression('max', [expression], undefined);
 }
 
-export function sample(expression: Expression) {
-  return agg(expression, 'sample');
+export function sample(expression: ExpressionInput) {
+  return createAggregateExpression('sample', [expression], undefined);
 }
 
-export function groupConcat(
-  expression: Expression,
-  separator: string = '\u001f'
-): AggregateExpression<string[]> {
-  return agg(expression, 'group_concat', separator, self => transformArray(self, separator));
+export function groupConcat(expression: ExpressionInput, separator: string = '\u001f') {
+  return createAggregateExpression('group_concat', [expression], separator, self =>
+    transformArray(self, separator)
+  );
 }
 
-export function groupConcatDistinct(
-  expression: Expression,
-  separator: string = '\u001f'
-): AggregateExpression<string[]> {
+export function groupConcatDistinct(expression: ExpressionInput, separator: string = '\u001f') {
   return distinct(groupConcat(expression, separator));
 }

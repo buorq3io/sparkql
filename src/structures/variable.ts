@@ -1,14 +1,14 @@
-import { FactoryFunctions, Strictness, VariableTerm } from '../generic.js';
+import { FactoryFunctions, Strictness, TermVariableInput } from "../helpers/types.js";
 
 export type VariableManagerConfig<T extends string> = Exclude<T, '__'>;
 
-export type VariableProxy = Record<string, VariableTerm | (() => VariableTerm)>;
+export type VariableProxy = Record<string, TermVariableInput | (() => TermVariableInput)>;
 
 export type VariableManager<T extends string, K extends Strictness> = {
-  [P in T]: VariableTerm;
+  [P in T]: TermVariableInput;
 } & {
-  __: () => VariableTerm;
-} & (K extends Strictness.loose ? { [key: Exclude<string, '__'>]: VariableTerm } : {});
+  __: () => TermVariableInput;
+} & (K extends Strictness.loose ? { [key: Exclude<string, '__'>]: TermVariableInput } : {});
 
 export function createVariableManager<T extends string, K extends Strictness>(
   keys: readonly VariableManagerConfig<T>[],
@@ -46,7 +46,7 @@ export function createVariableProxy(
 }
 
 export function createVariableGenerator(
-  generator: (value: string) => VariableTerm,
+  generator: (value: string) => TermVariableInput,
   prefix = '__v',
   seed = 0
 ) {

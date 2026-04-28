@@ -1,21 +1,17 @@
 import {
-  Variable,
-  VariableTerm,
-  Grouping,
-  Ordering,
   Presence,
-  Expression,
-  SelectQuery,
   SparqlClient,
-  Transform,
-  OptionalTransform,
   FactoryFunctions,
-  BaseQueryReturnType,
-} from '../generic.js';
+  QuerySelectInput,
+  TermVariableTransform,
+  TermVariableAndBinding,
+  DefaultQueryReturnType,
+  TermVariableOptionalTransform,
+} from '../helpers/types.js';
 import { QueryBuilderBase } from './query.js';
-import { group } from '../structures/index.js';
+import { createWildCardInput } from '../functions/utils.js';
 
-export type SelectedVariables = Record<string, Variable<any, Presence>>;
+export type SelectedVariables = Record<string, TermVariableAndBinding<any, Presence>>;
 
 type RequiredKeys<T> = {
   [K in keyof T]-?: {} extends Pick<T, K> ? never : K;
@@ -27,14 +23,18 @@ type OptionalKeys<T> = keyof {
 
 export type TypedSelectedVariables<T extends Record<string, any>> = {
   [K in RequiredKeys<T>]-?: undefined extends T[K]
-    ? Variable<Exclude<T[K], undefined>, Presence.optional> | Variable<T[K], Presence>
-    : Variable<T[K]>;
+    ?
+        | TermVariableAndBinding<Exclude<T[K], undefined>, Presence.optional>
+        | TermVariableAndBinding<T[K], Presence>
+    : TermVariableAndBinding<T[K]>;
 } & {
-  [K in OptionalKeys<T>]?: Variable<Exclude<T[K], undefined>, Presence> | Variable<T[K], Presence>;
+  [K in OptionalKeys<T>]?:
+    | TermVariableAndBinding<Exclude<T[K], undefined>, Presence>
+    | TermVariableAndBinding<T[K], Presence>;
 };
 
-export type ExtractDataType<V> = V extends Variable<infer T, any> ? T : never;
-export type ExtractPresenceType<V> = V extends Variable<any, infer P> ? P : never;
+export type ExtractDataType<V> = V extends TermVariableAndBinding<infer T, any> ? T : never;
+export type ExtractPresenceType<V> = V extends TermVariableAndBinding<any, infer P> ? P : never;
 
 export type InferredSelectResult<T extends SelectedVariables> = {
   [K in keyof T]: ExtractPresenceType<T[K]> extends Presence.optional
@@ -43,45 +43,61 @@ export type InferredSelectResult<T extends SelectedVariables> = {
 };
 
 export class SelectQueryBuilderBase<T extends Record<string, any>>
-  extends QueryBuilderBase<SelectQuery, T[]>
+  extends QueryBuilderBase<QuerySelectInput, T[]>
   implements PromiseLike<T[]>
 {
   private lookup: Record<string, string> = {};
-  private lookupTransform: Record<string, OptionalTransform | Transform | undefined> = {};
+  private lookupTransform: Record<
+    string,
+    TermVariableOptionalTransform | TermVariableTransform | undefined
+  > = {};
 
   constructor(
     variables: TypedSelectedVariables<T> | undefined,
-    prefixes: SelectQuery['prefixes'],
-    base: string | undefined,
+    context: QuerySelectInput['context'],
     factoryFunctions: FactoryFunctions,
-    distict: SelectQuery['distinct'] = undefined,
-    reduced: SelectQuery['reduced'] = undefined,
+    distict: QuerySelectInput['distinct'] = undefined,
+    reduced: QuerySelectInput['reduced'] = undefined,
     endpointUrl?: string
   ) {
     super(
       {
         type: 'query',
-        queryType: 'SELECT',
-        variables: variables ? <Variable[]>Object.values(variables) : [],
-        base: base,
-        prefixes: prefixes,
+        subType: 'select',
+        context: context,
+        datasets: {
+          type: 'datasetClauses',
+          clauses: [],
+          loc: {
+            sourceLocationType: 'autoGenerate',
+          },
+        },
+        solutionModifiers: {},
+        where: {
+          type: 'pattern',
+          subType: 'group',
+          patterns: [],
+          loc: {
+            sourceLocationType: 'autoGenerate',
+          },
+        },
+        variables: variables
+          ? <TermVariableAndBinding[]>Object.values(variables)
+          : [createWildCardInput()],
+        distinct: distict,
+        reduced: reduced,
+        loc: {
+          sourceLocationType: 'autoGenerate',
+        },
       },
       factoryFunctions,
       endpointUrl
     );
 
-    function isVariableTerm<T extends BaseQueryReturnType, K extends Presence>(
-      obj: any
-    ): obj is VariableTerm<T, K> {
-      return (
-        typeof obj === 'object' && obj !== null && 'termType' in obj && obj.termType === 'Variable'
-      );
-    }
-
-    function createMaybeTransform<T extends BaseQueryReturnType, K extends any[]>(
-      t: Transform<T, K>
-    ): OptionalTransform<T, K> {
-      return (self: BaseQueryReturnType | undefined, ...other: K) => {
+    function createMaybeTransform<T extends DefaultQueryReturnType, K extends any[]>(
+      t: TermVariableTransform<T, K>
+    ): TermVariableOptionalTransform<T, K> {
+      return (self: DefaultQueryReturnType | undefined, ...other: K) => {
         if (!self) {
           return;
         }
@@ -91,9 +107,8 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
 
     for (const key in variables) {
       if (Object.prototype.hasOwnProperty.call(variables, key)) {
-        const value = variables[key as keyof T] as Variable<any, Presence>;
-        // Case 1: The value is a Variable directly
-        if (isVariableTerm(value)) {
+        const value = variables[key as keyof T] as TermVariableAndBinding<any, Presence>;
+        if (value.type === "term") {
           this.lookup[value.value] = key;
           if (value.presence === Presence.optional) {
             this.lookupTransform[value.value] = value.transform
@@ -103,13 +118,7 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
             this.lookupTransform[value.value] = value.transform ? value.transform : undefined;
           }
         }
-        // Case 2: The value is an object that contains a 'variable' property
-        else if (
-          typeof value === 'object' &&
-          value !== null &&
-          'variable' in value &&
-          isVariableTerm(value.variable)
-        ) {
+        else if (value.type === "pattern") {
           this.lookup[value.variable.value] = key;
           if (value.variable.presence === Presence.optional) {
             this.lookupTransform[value.variable.value] = value.variable.transform
@@ -123,69 +132,10 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
         }
       }
     }
-
-    if (distict != undefined) {
-      this.config.distinct = distict;
-    }
-
-    if (reduced != undefined) {
-      this.config.reduced = reduced;
-    }
-  }
-
-  having(...expressions: Expression[]) {
-    if (expressions.length === 0) {
-      return this;
-    }
-
-    if (this.config.having) {
-      this.config.having = [...this.config.having, ...expressions];
-    } else {
-      this.config.having = expressions;
-    }
-    return this;
-  }
-
-  groupBy(...groupings: Grouping[]) {
-    if (groupings.length === 0) {
-      return this;
-    }
-
-    if (this.config.group) {
-      this.config.group = [...this.config.group, ...groupings];
-    } else {
-      this.config.group = groupings;
-    }
-
-    return this;
-  }
-
-  orderBy(...orderings: Ordering[]) {
-    if (orderings.length === 0) {
-      return this;
-    }
-
-    if (this.config.order) {
-      this.config.order = [...this.config.order, ...orderings];
-    } else {
-      this.config.order = orderings;
-    }
-
-    return this;
-  }
-
-  limit(limit: number) {
-    this.config.limit = limit;
-    return this;
-  }
-
-  offset(offset: number) {
-    this.config.offset = offset;
-    return this;
   }
 
   $asSubQuery() {
-    return group(this);
+    return this.config;
   }
 
   protected async makeQuery(client: SparqlClient): Promise<T[]> {

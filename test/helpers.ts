@@ -1,27 +1,36 @@
-import SparqlJs from 'sparqljs';
+import * as AST from '@traqula/rules-sparql-1-1';
 
-export function canonicalizeQuery(query: SparqlJs.SparqlQuery, blankNodePrefix: string): any {
+export function canonicalizeQuery(query: AST.SparqlQuery, blankNodePrefix: string): any {
   const newQuery = JSON.parse(JSON.stringify(query));
 
   const bnodeMap = new Map<string, string>();
   let bnodeCounter = 0;
 
-  function walk(node: any) {
-    if (!node || typeof node !== 'object') {
+  function walk(node: AST.Sparql11Nodes) {
+    if (typeof node !== 'object' || node === null) {
       return;
     }
 
-    if (node.termType === 'BlankNode' && node.value.startsWith(blankNodePrefix)) {
-      if (!bnodeMap.has(node.value)) {
-        bnodeMap.set(node.value, `g_${bnodeCounter++}`);
+    if (
+      'type' in node &&
+      node.type === 'term' &&
+      node.subType === 'blankNode' &&
+      node.label.startsWith(blankNodePrefix)
+    ) {
+      if (!bnodeMap.has(node.label)) {
+        bnodeMap.set(node.label, `g_${bnodeCounter++}`);
       }
-      node.value = bnodeMap.get(node.value);
+      node.label = bnodeMap.get(node.label)!;
     }
 
     // Recurse into child properties
     for (const key in node) {
       if (Object.prototype.hasOwnProperty.call(node, key)) {
-        walk(node[key]);
+        if (key === "loc") {
+          node[key] = undefined as any
+          continue
+        }
+        walk(node[key as keyof AST.Sparql11Nodes] as any);
       }
     }
   }
