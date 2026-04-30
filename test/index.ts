@@ -1,4 +1,3 @@
-import '../src/helpers/plugins.js';
 import * as AST from '@traqula/rules-sparql-1-1';
 import * as PARSE from '@traqula/parser-sparql-1-1';
 import { SparqlDatabase } from '../src/index.js';
