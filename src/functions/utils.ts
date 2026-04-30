@@ -104,7 +104,7 @@ export function createAggregateExpression<T extends QueryReturnType>(
     ...(separator ? { separator: separator } : {}),
     expression: expression,
     transform: transform,
-  };
+  } as ExpressionAggregateInput<T>;
 }
 
 export function distinct<

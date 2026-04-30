@@ -9,12 +9,10 @@ import { createAggregateExpression, createWildCardInput, distinct } from './util
 export function count(): ExpressionAggregateOnWildcardInput<number>;
 export function count(expression: ExpressionInput): ExpressionAggregateDefaultInput<number>;
 export function count(expression?: ExpressionInput) {
-  return createAggregateExpression(
-    'count',
-    [expression ? expression : createWildCardInput()],
-    undefined,
-    transformNumber
-  );
+  if (expression) {
+    return createAggregateExpression('count', [expression], undefined, transformNumber);
+  }
+  return createAggregateExpression('count', [createWildCardInput()], undefined, transformNumber);
 }
 
 export function countDistinct(): ExpressionAggregateOnWildcardInput<number>;
