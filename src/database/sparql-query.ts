@@ -149,6 +149,8 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
     return this.execute().then(onfulfilled, onrejected);
   }
 
+
+
   private buildQuery(query: QueryInput): AST.Query {
     switch (query.subType) {
       case 'select':

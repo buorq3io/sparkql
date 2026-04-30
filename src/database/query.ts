@@ -39,29 +39,6 @@ export abstract class QueryBuilderBase<
     return this.fromBase('named', [iri]);
   }
 
-  base(base: TermIriFullInput | string) {
-    this.config.context.push({
-      type: 'contextDef',
-      subType: 'base',
-      value:
-        typeof base === 'string'
-          ? {
-              type: 'term',
-              subType: 'namedNode',
-              value: base,
-              loc: {
-                sourceLocationType: 'autoGenerate',
-              },
-            }
-          : base,
-      loc: {
-        sourceLocationType: 'autoGenerate',
-      },
-    } satisfies ContextDefinitionBaseInput);
-
-    return this;
-  }
-
   values(columns: ValuePatternColumnsInput) {
     if (!this.config.values) {
       this.config.values = values(columns);
