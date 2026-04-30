@@ -1,5 +1,6 @@
-import SparqlJs from 'sparqljs';
-import RdfJs from 'rdf-data-factory';
+import '../src/helpers/plugins.js';
+import * as AST from '@traqula/rules-sparql-1-1';
+import * as PARSE from '@traqula/parser-sparql-1-1';
 import { SparqlDatabase } from '../src/index.js';
 
 const prefixes = {
@@ -41,13 +42,19 @@ export const db = SparqlDatabase.create({
 });
 export const [v, n, b] = db.create([], prefixes);
 
-const factory: RdfJs.DataFactory = new RdfJs.DataFactory();
-const blankNodeOld = factory.blankNode.bind(factory);
-factory.blankNode = (value?: string) => {
-  if (value && value.startsWith('e_')) {
-    value = value.substring(2);
+export const factory = new AST.AstFactory();
+const termBlankOriginal = factory.termBlank.bind(factory);
+factory.termBlank = (label: string | undefined, loc: unknown) => {
+  const result = termBlankOriginal(label, loc as any);
+  // todo: raise error if the testing queries include blank term with reserved prefixes
+  if (label && (label.startsWith('g_') || label.startsWith('e_'))) {
+    result.label = result.label.substring(2)
   }
-  return blankNodeOld(value);
+  return result
 };
 
-export const parser = new SparqlJs.Parser({ factory: factory });
+export const parser = new PARSE.Parser({
+  defaultContext: {
+    astFactory: factory,
+  },
+});

@@ -1,17 +1,16 @@
-import { FactoryFunctions, IriTerm, SparqlQuery, Strictness } from '../generic.js';
+import { FactoryFunctions, QueryInput, Strictness, TermIriInput } from '../helpers/types.js';
 
 export type IriManagerConfig = Record<
   Exclude<string, '__'>,
   { uri: string; fields: readonly string[] }
 >;
 
-export type IriProxy = Record<string, IriTerm>;
+export type IriProxy = Record<string, TermIriInput>;
 
 export type IriManager<T extends IriManagerConfig, K extends Strictness> = {
   [P in keyof T]: {
-    [F in T[P]['fields'][number]]: IriTerm;
-  } &
-    (K extends Strictness.loose ? { [key: string]: IriTerm } : {});
+    [F in T[P]['fields'][number]]: TermIriInput;
+  } & (K extends Strictness.loose ? { [key: string]: TermIriInput } : {});
 } & { __: IriProxy };
 
 export function createIriManager<T extends IriManagerConfig, K extends Strictness>(
@@ -20,20 +19,20 @@ export function createIriManager<T extends IriManagerConfig, K extends Strictnes
   factoryFunctions: FactoryFunctions
 ): IriManager<T, K> {
   const result: Record<string, IriProxy> = {};
-  for (const [prefix, { uri, fields }] of Object.entries(nodes)) {
+  for (const [prefix, { fields }] of Object.entries(nodes)) {
     result[prefix] = {};
     result[prefix] = createIriProxy(
-      uri,
+      prefix,
       factoryFunctions,
       mode === Strictness.strict ? fields : undefined
     );
   }
-  result.__ = createIriProxy('', factoryFunctions);
+  result.__ = createIriProxy(undefined, factoryFunctions);
   return result as IriManager<T, K>;
 }
 
 export function createIriProxy(
-  uri: string,
+  prefix: string | undefined,
   factoryFunctions: FactoryFunctions,
   fields?: readonly string[]
 ): IriProxy {
@@ -47,7 +46,7 @@ export function createIriProxy(
             return Reflect.get(target, prop, receiver);
           }
           if (!cache[prop]) {
-            cache[prop] = factoryFunctions.iri(uri + prop);
+            cache[prop] = factoryFunctions.iri(prop, prefix);
           }
           return cache[prop];
         }
@@ -59,10 +58,26 @@ export function createIriProxy(
 
 export function transformIntoPrefixObject<T extends IriManagerConfig>(
   nodes: T
-): SparqlQuery['prefixes'] {
-  const result = {} as SparqlQuery['prefixes'];
+): QueryInput['context'] {
+  const result = [] as QueryInput['context'];
+
   for (const [prefix, { uri }] of Object.entries(nodes)) {
-    result[prefix] = uri;
+    result.push({
+      type: 'contextDef',
+      subType: 'prefix',
+      key: prefix,
+      value: {
+        type: 'term',
+        value: uri,
+        subType: 'namedNode',
+        loc: {
+          sourceLocationType: 'autoGenerate',
+        },
+      },
+      loc: {
+        sourceLocationType: 'autoGenerate',
+      },
+    });
   }
   return result;
 }

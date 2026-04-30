@@ -3,8 +3,9 @@ import { readdirSync, readFileSync } from 'fs';
 import { beforeEach, describe, expect, test } from 'vitest';
 
 import { canonicalizeQuery } from './helpers.js';
-import { blankNodePrefix, db, parser } from './index.js';
+import { blankNodePrefix, db, parser, factory } from './index.js';
 import { SparqlQueryBuilderBase } from '../src/database/sparql-query.js';
+import { SparqlQueryInput } from '../src/helpers/types.js';
 
 const TEST_PATH = 'test/query/';
 const SPARQL_PATH = 'test/sparql/';
@@ -35,7 +36,7 @@ describe('SPARQL Queries', async () => {
   const preparedTests = await prepareParallel(query_paths);
 
   beforeEach(() => {
-    parser._resetBlanks();
+    factory.resetBlankNodeCounter();
     db.resetBlankCounter();
   });
 
@@ -45,11 +46,24 @@ describe('SPARQL Queries', async () => {
       const test_file_module = testData.testContent;
       const buildedParsed = parser.parse(test_file_module.default().toSPARQL());
 
-      originalParsed.prefixes = {};
-      buildedParsed.prefixes = {};
+      const original = canonicalizeQuery(originalParsed, blankNodePrefix) as SparqlQueryInput;
+      const builded = canonicalizeQuery(buildedParsed, blankNodePrefix) as SparqlQueryInput;
 
-      const original = canonicalizeQuery(originalParsed, blankNodePrefix);
-      const builded = canonicalizeQuery(buildedParsed, blankNodePrefix);
+      if (builded.type === "query" && original.type === "query") {
+        original.context.forEach(c => {
+          expect(builded.context).toContainEqual(c)
+        })
+        builded.context = []
+        original.context = []
+      } else if (builded.type === "update" && original.type === "update") {
+        builded.updates.forEach((u, i) => {
+          original.updates[i].context.forEach(c => {
+            expect(u.context).toContainEqual(c)
+          })
+          u.context = []
+          original.updates[i].context = []
+        })
+      }
 
       expect(diff(original, builded)).toStrictEqual([]);
     });

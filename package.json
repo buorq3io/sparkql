@@ -62,21 +62,19 @@
   },
   "devDependencies": {
     "@types/node": "^18.0.0",
+    "@traqula/parser-sparql-1-1": "^1.0.7",
     "@types/sparql-http-client": "^3.0.5",
-    "@types/sparqljs": "^3.1.12",
     "@vitest/coverage-v8": "^3.2.4",
-    "conventional-changelog-conventionalcommits": "^5.0.0",
     "dotenv": "^16.5.0",
     "json-diff-ts": "^4.3.0",
-    "lint-staged": "^13.2.1",
     "prettier": "^2.2.1",
-    "semantic-release": "^21.0.1",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   },
   "dependencies": {
+    "@traqula/generator-sparql-1-1": "^1.0.7",
+    "@traqula/rules-sparql-1-1": "^1.0.7",
     "rdf-data-factory": "^2.0.2",
-    "sparql-http-client": "^3.0.1",
-    "sparqljs": "^3.7.3"
+    "sparql-http-client": "^3.0.1"
   }
 }

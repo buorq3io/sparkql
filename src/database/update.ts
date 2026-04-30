@@ -1,200 +1,278 @@
-import {
-  Quads,
-  Update,
-  IriTerm,
-  SparqlClient,
-  GraphReference,
-  GraphOrDefault,
-  FactoryFunctions,
-  LoadOperation,
-  UpdateOperation,
-  CreateOperation,
-  ClearDropOperation,
-  CopyMoveAddOperation,
-} from '../generic.js';
 import { WithQueryBuilderBase } from './with.js';
 import { SparqlQueryBuilderBase } from './sparql-query.js';
+import {
+  FactoryFunctions,
+  GraphRefDefaultInput,
+  GraphRefInput,
+  GraphRefSpecificInput,
+  QuadsInput,
+  SparqlClient,
+  TermIriInput,
+  UpdateInput,
+  UpdateOperationAddInput,
+  UpdateOperationClearInput,
+  UpdateOperationCopyInput,
+  UpdateOperationCreateInput,
+  UpdateOperationDeleteDataInput,
+  UpdateOperationDeleteWhereInput,
+  UpdateOperationDropInput,
+  UpdateOperationInsertDataInput,
+  UpdateOperationLoadInput,
+  UpdateOperationMoveInput,
+} from '../helpers/types.js';
 
-export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<Update, void> {
+export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<UpdateInput, void> {
+  private context;
+
   constructor(
-    updates: UpdateOperation[],
-    prefixes: Update['prefixes'],
-    base: string | undefined,
+    context: UpdateInput['updates'][number]['context'],
     factoryFunctions: FactoryFunctions,
     endpointUrl?: string
   ) {
     super(
       {
         type: 'update',
-        updates: updates,
-        base: base,
-        prefixes: prefixes,
+        updates: [],
+        loc: {
+          sourceLocationType: 'autoGenerate',
+        },
       },
       factoryFunctions,
       endpointUrl
     );
+    this.context = context;
   }
 
-  insert(...quads: Quads[]) {
+  insert(...quads: QuadsInput[]) {
     this.config.updates = [
       ...this.config.updates,
       {
-        updateType: 'insert',
-        insert: quads,
+        context: this.context,
+        operation: {
+          type: 'updateOperation',
+          subType: 'insertdata',
+          data: quads,
+          loc: {
+            sourceLocationType: 'autoGenerate',
+          },
+        } satisfies UpdateOperationInsertDataInput,
       },
     ];
+
     return this;
   }
 
-  delete(...quads: Quads[]) {
+  delete(...quads: QuadsInput[]) {
     this.config.updates = [
       ...this.config.updates,
       {
-        updateType: 'delete',
-        delete: quads,
+        context: this.context,
+        operation: {
+          type: 'updateOperation',
+          subType: 'deletedata',
+          data: quads,
+          loc: {
+            sourceLocationType: 'autoGenerate',
+          },
+        } satisfies UpdateOperationDeleteDataInput,
       },
     ];
+
     return this;
   }
 
-  deleteWhere(...quads: Quads[]) {
+  deleteWhere(...quads: QuadsInput[]) {
     this.config.updates = [
       ...this.config.updates,
       {
-        updateType: 'deletewhere',
-        delete: quads,
+        context: this.context,
+        operation: {
+          type: 'updateOperation',
+          subType: 'deletewhere',
+          data: quads,
+          loc: {
+            sourceLocationType: 'autoGenerate',
+          },
+        } satisfies UpdateOperationDeleteWhereInput,
       },
     ];
+
     return this;
   }
 
-  with(iri?: IriTerm) {
+  with(iri?: TermIriInput) {
     return new WithQueryBuilderBase(
-      this.config.updates,
-      this.config.prefixes,
-      this.config.base,
+      this.context,
+      this.config,
+      this,
       this.factoryFunctions,
       this.endpointUrl,
       iri
     );
   }
 
-  private createCopyMoveAddOperation(
+  private createTransferOperation(
     type: 'copy' | 'move' | 'add',
-    source: GraphOrDefault,
-    destination: GraphOrDefault,
-    silent: boolean = false
+    source: GraphRefDefaultInput | GraphRefSpecificInput,
+    destination: GraphRefDefaultInput | GraphRefSpecificInput,
+    silent?: boolean
   ) {
     this.config.updates = [
       ...this.config.updates,
       {
-        type: type,
-        silent: silent,
-        source: source,
-        destination: destination,
-      } as CopyMoveAddOperation,
+        context: this.context,
+        operation: {
+          type: 'updateOperation',
+          subType: type,
+          source: source,
+          destination: destination,
+          silent: silent ?? false,
+          loc: {
+            sourceLocationType: "autoGenerate"
+          }
+        } satisfies UpdateOperationCopyInput | UpdateOperationMoveInput | UpdateOperationAddInput,
+      },
     ];
     return this;
   }
 
-  copy(source: GraphOrDefault, destination: GraphOrDefault) {
-    return this.createCopyMoveAddOperation('copy', source, destination);
+  copy(
+    source: GraphRefDefaultInput | GraphRefSpecificInput,
+    destination: GraphRefDefaultInput | GraphRefSpecificInput
+  ) {
+    return this.createTransferOperation('copy', source, destination);
   }
 
-  copySilent(source: GraphOrDefault, destination: GraphOrDefault) {
-    return this.createCopyMoveAddOperation('copy', source, destination, true);
+  copySilent(
+    source: GraphRefDefaultInput | GraphRefSpecificInput,
+    destination: GraphRefDefaultInput | GraphRefSpecificInput
+  ) {
+    return this.createTransferOperation('copy', source, destination, true);
   }
 
-  move(source: GraphOrDefault, destination: GraphOrDefault) {
-    return this.createCopyMoveAddOperation('move', source, destination);
+  move(
+    source: GraphRefDefaultInput | GraphRefSpecificInput,
+    destination: GraphRefDefaultInput | GraphRefSpecificInput
+  ) {
+    return this.createTransferOperation('move', source, destination);
   }
 
-  moveSilent(source: GraphOrDefault, destination: GraphOrDefault) {
-    return this.createCopyMoveAddOperation('move', source, destination, true);
+  moveSilent(
+    source: GraphRefDefaultInput | GraphRefSpecificInput,
+    destination: GraphRefDefaultInput | GraphRefSpecificInput
+  ) {
+    return this.createTransferOperation('move', source, destination, true);
   }
 
-  add(source: GraphOrDefault, destination: GraphOrDefault) {
-    return this.createCopyMoveAddOperation('add', source, destination);
+  add(
+    source: GraphRefDefaultInput | GraphRefSpecificInput,
+    destination: GraphRefDefaultInput | GraphRefSpecificInput
+  ) {
+    return this.createTransferOperation('add', source, destination);
   }
 
-  addSilent(source: GraphOrDefault, destination: GraphOrDefault) {
-    return this.createCopyMoveAddOperation('add', source, destination, true);
+  addSilent(
+    source: GraphRefDefaultInput | GraphRefSpecificInput,
+    destination: GraphRefDefaultInput | GraphRefSpecificInput
+  ) {
+    return this.createTransferOperation('add', source, destination, true);
   }
 
   private createLoadOperation(
-    source: IriTerm,
-    destination: IriTerm | false,
-    silent: boolean = false
+    source: TermIriInput,
+    destination?: GraphRefSpecificInput,
+    silent?: boolean
   ) {
     this.config.updates = [
       ...this.config.updates,
       {
-        type: 'load',
-        silent: silent,
-        source: source,
-        destination: destination,
-      } as LoadOperation,
+        context: this.context,
+        operation: {
+          type: 'updateOperation',
+          subType: "load",
+          source: source,
+          destination: destination,
+          silent: silent ?? false,
+          loc: {
+            sourceLocationType: "autoGenerate"
+          }
+        } satisfies UpdateOperationLoadInput,
+      },
     ];
     return this;
   }
 
-  load(source: IriTerm, destination: IriTerm | false) {
+  load(source: TermIriInput, destination?: GraphRefSpecificInput) {
     return this.createLoadOperation(source, destination);
   }
 
-  loadSilent(source: IriTerm, destination: IriTerm | false) {
+  loadSilent(source: TermIriInput, destination?: GraphRefSpecificInput) {
     return this.createLoadOperation(source, destination, true);
   }
 
-  private createCreateOperation(graph: GraphOrDefault, silent: boolean = false) {
+  private createCreateOperation(graph: GraphRefSpecificInput, silent?: boolean) {
     this.config.updates = [
       ...this.config.updates,
       {
-        type: 'create',
-        silent: silent,
-        graph: graph,
-      } as CreateOperation,
+        context: this.context,
+        operation: {
+          type: 'updateOperation',
+          subType: "create",
+          destination: graph,
+          silent: silent ?? false,
+          loc: {
+            sourceLocationType: "autoGenerate"
+          }
+        } satisfies UpdateOperationCreateInput,
+      },
     ];
     return this;
   }
 
-  create(graph: GraphOrDefault) {
+  create(graph: GraphRefSpecificInput) {
     return this.createCreateOperation(graph);
   }
 
-  createSilent(graph: GraphOrDefault) {
+  createSilent(graph: GraphRefSpecificInput) {
     return this.createCreateOperation(graph, true);
   }
 
   private createClearDropOperation(
     type: 'clear' | 'drop',
-    graph: GraphReference,
-    silent: boolean = false
+    graph: GraphRefInput,
+    silent?: boolean
   ) {
     this.config.updates = [
       ...this.config.updates,
       {
-        type: type,
-        silent: silent,
-        graph: graph,
-      } as ClearDropOperation,
+        context: this.context,
+        operation: {
+          type: 'updateOperation',
+          subType: type,
+          destination: graph,
+          silent: silent ?? false,
+          loc: {
+            sourceLocationType: "autoGenerate"
+          }
+        } satisfies UpdateOperationClearInput | UpdateOperationDropInput,
+      },
     ];
     return this;
   }
 
-  clear(graph: GraphOrDefault) {
+  clear(graph: GraphRefInput) {
     return this.createClearDropOperation('clear', graph);
   }
 
-  clearSilent(graph: GraphOrDefault) {
+  clearSilent(graph: GraphRefInput) {
     return this.createClearDropOperation('clear', graph, true);
   }
 
-  drop(graph: GraphOrDefault) {
+  drop(graph: GraphRefInput) {
     return this.createClearDropOperation('drop', graph);
   }
 
-  dropSilent(graph: GraphOrDefault) {
+  dropSilent(graph: GraphRefInput) {
     return this.createClearDropOperation('drop', graph, true);
   }
 

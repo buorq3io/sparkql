@@ -1,3 +1,5 @@
+import * as AST from '@traqula/rules-sparql-1-1';
+
 import {
   createBlankManager,
   createIriManager,
@@ -6,8 +8,6 @@ import {
   transformIntoPrefixObject,
   VariableManagerConfig,
 } from '../structures/index.js';
-import * as SparqlJs from 'sparqljs';
-import * as RdfJs from 'rdf-data-factory';
 import { AskQueryBuilderBase } from './ask.js';
 import { UpdateQueryBuilderBase } from './update.js';
 import {
@@ -16,14 +16,21 @@ import {
   SelectQueryBuilderBase,
   TypedSelectedVariables,
 } from './select.js';
-import { DescribeQueryBuilderBase, DescribeVariables } from './describe.js';
-import { ConstructQueryBuilderBase, ConstructTemplates } from './construct.js';
-import { ExcludePrefix, FactoryFunctions, IriTerm, Strictness, Variable } from '../generic.js';
+import { DescribeQueryBuilderBase } from './describe.js';
+import { ConstructQueryBuilderBase } from './construct.js';
+import {
+  BasicGraphPatternInput,
+  FactoryFunctions,
+  Strictness,
+  TermIriInput,
+  TermVariableInput,
+} from '../helpers/types.js';
+import { termIri } from '../helpers/utilities.js';
 
 interface PrivateSparqlDatabaseOptions<T extends IriManagerConfig, K extends string = 'g_'>
   extends SparqlDatabaseOptions<T, K> {
   base?: string;
-  factory?: RdfJs.DataFactory;
+  factory?: AST.AstFactory;
 }
 
 export interface SparqlDatabaseOptions<T extends IriManagerConfig, K extends string = 'g_'> {
@@ -32,37 +39,32 @@ export interface SparqlDatabaseOptions<T extends IriManagerConfig, K extends str
   endpointUrl?: string;
 }
 
-export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'> {
+export class SparqlDatabase<T extends IriManagerConfig, R extends string = 'g_'> {
   private readonly nodes;
-  private readonly queryBase?: string;
   private readonly endpointUrl?: string;
   private readonly queryPrefixes;
-  private readonly blankNodePrefix: K;
-  protected readonly factory: RdfJs.DataFactory;
-  protected readonly factoryFunctions: FactoryFunctions<K>;
+  private readonly blankNodePrefix: R;
+  protected readonly factory: AST.AstFactory;
+  protected readonly factoryFunctions: FactoryFunctions;
 
-  private constructor(options?: PrivateSparqlDatabaseOptions<T, K>) {
+  private constructor(options?: PrivateSparqlDatabaseOptions<T, R>) {
     this.nodes = options?.prefixes;
-    this.queryBase = options?.base;
     this.endpointUrl = options?.endpointUrl;
-    this.blankNodePrefix = options?.blankNodePrefix ?? ('g_' as K);
+    this.blankNodePrefix = options?.blankNodePrefix ?? ('g_' as R);
     this.queryPrefixes = transformIntoPrefixObject(options?.prefixes ?? {});
-    this.factory =
-      options?.factory ?? new RdfJs.DataFactory({ blankNodePrefix: this.blankNodePrefix });
-
+    this.factory = options?.factory ?? new AST.AstFactory();
     this.factoryFunctions = {
-      variable: this.variable,
-      iri: this.iri,
-      blank: this.blank,
-      literal: this.literal,
+      variable: value => this.variable(value),
+      iri: (value, prefix) => prefix === undefined ? this.iri(value) : this.iri(value, prefix),
+      blank: value => this.blank(value),
+      literal: (value, lang) => this.literal(value, lang),
     };
   }
 
   static create<T extends IriManagerConfig, K extends string = 'g_'>(
     options?: SparqlDatabaseOptions<T, K>
   ): SparqlDatabase<T, K> {
-    const blankNodePrefix = options?.blankNodePrefix ?? 'g_';
-    const factory = new RdfJs.DataFactory({ blankNodePrefix });
+    const factory = new AST.AstFactory();
     return new SparqlDatabase<T, K>({
       ...options,
       factory: factory,
@@ -70,7 +72,7 @@ export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'>
   }
 
   public base(value: string) {
-    return new SparqlDatabase<T, K>({
+    return new SparqlDatabase<T, R>({
       blankNodePrefix: this.blankNodePrefix,
       prefixes: this.nodes,
       factory: this.factory,
@@ -92,7 +94,6 @@ export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'>
     return new SelectQueryBuilderBase(
       variables,
       this.queryPrefixes,
-      this.queryBase,
       this.factoryFunctions,
       undefined,
       undefined,
@@ -100,7 +101,7 @@ export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'>
     );
   }
 
-  selectDistinct<U extends Record<string, Variable<any, any>>>(
+  selectDistinct<U extends SelectedVariables>(
     variables?: U
   ): SelectQueryBuilderBase<InferredSelectResult<U>>;
 
@@ -114,7 +115,6 @@ export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'>
     return new SelectQueryBuilderBase(
       variables,
       this.queryPrefixes,
-      this.queryBase,
       this.factoryFunctions,
       true,
       undefined,
@@ -122,7 +122,7 @@ export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'>
     );
   }
 
-  selectReduced<U extends Record<string, Variable<any, any>>>(
+  selectReduced<U extends SelectedVariables>(
     variables?: U
   ): SelectQueryBuilderBase<InferredSelectResult<U>>;
 
@@ -136,7 +136,6 @@ export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'>
     return new SelectQueryBuilderBase(
       variables,
       this.queryPrefixes,
-      this.queryBase,
       this.factoryFunctions,
       undefined,
       true,
@@ -145,64 +144,54 @@ export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'>
   }
 
   ask() {
-    return new AskQueryBuilderBase(
-      this.queryPrefixes,
-      this.queryBase,
-      this.factoryFunctions,
-      this.endpointUrl
-    );
+    return new AskQueryBuilderBase(this.queryPrefixes, this.factoryFunctions, this.endpointUrl);
   }
 
-  describe(...variables: DescribeVariables): DescribeQueryBuilderBase {
+  describe(...variables: (TermIriInput | TermVariableInput)[]): DescribeQueryBuilderBase {
     return new DescribeQueryBuilderBase(
       variables,
       this.queryPrefixes,
-      this.queryBase,
       this.factoryFunctions,
       this.endpointUrl
     );
   }
 
-  construct(...templates: ConstructTemplates): ConstructQueryBuilderBase {
+  construct(...templates: BasicGraphPatternInput): ConstructQueryBuilderBase {
     return new ConstructQueryBuilderBase(
       templates,
       this.queryPrefixes,
-      this.queryBase,
       this.factoryFunctions,
       this.endpointUrl
     );
   }
 
   update() {
-    return new UpdateQueryBuilderBase(
-      [],
-      this.queryPrefixes,
-      this.queryBase,
-      this.factoryFunctions,
-      this.endpointUrl
-    );
+    return new UpdateQueryBuilderBase(this.queryPrefixes, this.factoryFunctions, this.endpointUrl);
   }
 
-  variable = (value: string): SparqlJs.VariableTerm => {
-    return Object.freeze(this.factory.variable(value));
-  };
+  variable(value: string): AST.TermVariable {
+    return this.factory.termVariable(value, { sourceLocationType: 'autoGenerate' });
+  }
 
-  iri = <T extends string>(value: T): SparqlJs.IriTerm => {
-    return Object.freeze(this.factory.namedNode(value));
-  };
+  iri(value: string): AST.TermIriFull;
+  iri(value: string, prefix: string): AST.TermIriPrefixed;
+  iri(value: string, prefix?: string): AST.TermIri {
+    return prefix === undefined
+      ? this.factory.termNamed({ sourceLocationType: 'autoGenerate' }, value)
+      : this.factory.termNamed({ sourceLocationType: 'autoGenerate' }, value, prefix);
+  }
 
-  blank = <T extends string>(value?: ExcludePrefix<T, K>): SparqlJs.BlankTerm => {
-    if (value && value.startsWith(this.blankNodePrefix)) {
-      throw Error(
-        `For blank terms, the prefix "${this.blankNodePrefix}" is reserved for internal use.`
-      );
-    }
-    return Object.freeze(this.factory.blankNode(value));
-  };
+  blank(value?: string): AST.TermBlank {
+    return this.factory.termBlank(value, { sourceLocationType: 'autoGenerate' });
+  }
 
-  literal = (value: string, lang?: string | IriTerm): SparqlJs.LiteralTerm => {
-    return Object.freeze(this.factory.literal(value, lang));
-  };
+  literal(value: string, lang?: string | TermIriInput): AST.TermLiteral {
+    return this.factory.termLiteral(
+      { sourceLocationType: 'autoGenerate' },
+      value,
+      typeof lang === 'string' || !lang ? lang : termIri.parseOrThrow(lang, this.factoryFunctions)
+    );
+  }
 
   resetBlankCounter() {
     this.factory.resetBlankNodeCounter();
@@ -213,7 +202,7 @@ export class SparqlDatabase<T extends IriManagerConfig, K extends string = 'g_'>
     nodeConfig: K,
     mode?: P
   ) {
-    const blanks = createBlankManager(this.factoryFunctions);
+    const blanks = createBlankManager<R>(this.factoryFunctions);
     const nodes = createIriManager(nodeConfig, mode ?? Strictness.loose, this.factoryFunctions);
     const variables = createVariableManager(
       variableKeys,

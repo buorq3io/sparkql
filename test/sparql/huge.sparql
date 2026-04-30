@@ -36,7 +36,7 @@ WHERE {
 
   # [BASIC & COMPLEX GRAPH PATTERNS]
   # Using 'a' as a shortcut for rdf:type and semicolons for multiple properties.
-  ?subject a ?knownType ;
+  ?subject rdf:type ?knownType ;
            foaf:firstName ?firstName ;
            foaf:lastName ?lastName ;
            # [PROPERTY PATH] Zero or more foaf:knows, then one ex:relatedTo.
@@ -44,7 +44,7 @@ WHERE {
 
   # [BLANK NODES] Using square brackets for a blank node with properties.
   ?subject ex:hasAddress [
-    a schema:PostalAddress ;
+    rdf:type schema:PostalAddress ;
     schema:streetAddress "123 SPARQL St."
   ] .
 

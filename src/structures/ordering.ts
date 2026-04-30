@@ -1,9 +1,21 @@
-import { Ordering, Expression } from '../generic.js';
+import { OrderingInput, ExpressionInput } from '../helpers/types.js';
 
-export function asc(expression: Expression): Required<Ordering> {
-  return { expression: expression, descending: false };
+export function asc(expression: ExpressionInput): OrderingInput {
+  return {
+    descending: false,
+    expression: expression,
+    loc: {
+      sourceLocationType:'autoGenerate'
+    }
+  }
 }
 
-export function desc(expression: Expression): Required<Ordering> {
-  return { expression: expression, descending: true };
+export function desc(expression: ExpressionInput): OrderingInput {
+  return {
+    descending: true,
+    expression: expression,
+    loc: {
+      sourceLocationType:'autoGenerate'
+    }
+  }
 }

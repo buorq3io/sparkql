@@ -1,21 +1,21 @@
-import { FactoryFunctions, BlankTerm, ExcludePrefix } from '../generic.js';
+import { FactoryFunctions, TermBlankInput } from "../helpers/types.js";
 
-export type BlankProxy = Record<string, BlankTerm | (() => BlankTerm)>;
+export type BlankProxy = Record<string, TermBlankInput | (() => TermBlankInput)>;
 
 export type BlankManager<K extends string> = {
-  __: () => BlankTerm;
+  __: () => TermBlankInput;
 } & { [P in `${K}${number}`]: undefined } & {
-    [key: string]: BlankTerm;
+    [key: string]: TermBlankInput;
   };
 
 export function createBlankManager<K extends string>(
-  factoryFunctions: FactoryFunctions<K>
+  factoryFunctions: FactoryFunctions
 ): BlankManager<K> {
   return createBlankProxy(factoryFunctions) as BlankManager<K>;
 }
 
-export function createBlankProxy<K extends string>(
-  factoryFunctions: FactoryFunctions<K>
+export function createBlankProxy(
+  factoryFunctions: FactoryFunctions
 ): BlankProxy {
   const cache: BlankProxy = { __: () => factoryFunctions.blank() };
   return new Proxy(
@@ -24,7 +24,7 @@ export function createBlankProxy<K extends string>(
       get(target, prop, receiver) {
         if (typeof prop === 'string') {
           if (!cache[prop]) {
-            cache[prop] = factoryFunctions.blank(prop as ExcludePrefix<typeof prop, K>);
+            cache[prop] = factoryFunctions.blank(prop);
           }
           return cache[prop];
         }

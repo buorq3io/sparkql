@@ -1,186 +1,164 @@
 import {
-  BaseIriTerm,
-  BaseBlankTerm,
-  BaseLiteralTerm,
-  BaseQueryReturnType,
-  Expression,
+  DefaultQueryReturnType,
+  ExpressionInput,
+  ObjectInput,
+  ObjectColletion,
+  PatternBindInput,
+  PredicateInput,
+  PredicatePairCollection,
   Presence,
-  QualitativeAnonymousBlankTerm,
-  Transform,
-  Triple,
-  TripleObject,
-  TriplePredicate,
-  TriplesObject,
-  TriplesObjectPairs,
-  TriplesPredicatePairs,
-  TriplesSubject,
-  TripleSubject,
-  Variable,
-  VariableExpression,
-  VariableTerm,
-} from '../generic.js';
+  QueryReturnType,
+  SubjectInput,
+  TermBlankOutput,
+  TermIriOutput,
+  TermLiteralOutput,
+  TermVariableAndBinding,
+  TermVariableInput,
+  TermVariableTransform,
+  TripleCollectionBlankNodePropertiesInput,
+  TripleCollectionListInput,
+  TripleNestingInput,
+  PatternBgpInput,
+} from '../helpers/types.js';
+import { isObjectLike, tripleCollectionInput } from '../helpers/utilities.js';
+import { bgp, bind } from './pattern.js';
 
-export function triple(
-  subject: TripleSubject,
-  predicate: TriplePredicate,
-  object: TripleObject,
-): Triple {
+const autoLoc = { sourceLocationType: 'autoGenerate' as const };
+
+export function tripleNesting(
+  subject: SubjectInput,
+  predicate: PredicateInput,
+  object: ObjectInput
+): TripleNestingInput {
   return {
     type: 'triple',
+    loc: autoLoc,
     subject: subject,
     predicate: predicate,
     object: object,
   };
 }
 
-export function objects(...obj: TriplesObject[]): TriplesObjectPairs {
+export function objects(...obj: ObjectInput[]): ObjectColletion {
   return {
-    type: 'triplesobjectpairs',
+    type: 'syntacticShortcut',
+    subType: 'objectCollection',
     values: obj,
   };
 }
 
-export function predicates(...obj: [TriplePredicate, TriplesObject][]): TriplesPredicatePairs {
+export function predicates(
+  ...obj: [PredicateInput, ObjectInput | ObjectColletion][]
+): PredicatePairCollection {
   return {
-    type: 'triplespredicatepairs',
+    type: 'syntacticShortcut',
+    subType: 'predicatePairCollection',
     values: obj,
   };
 }
 
-export function triples(subject: QualitativeAnonymousBlankTerm): Triple[];
+export function triples(subject: TripleCollectionListInput): PatternBgpInput;
 
-export function triples(subject: TriplesSubject, predicate: TriplesPredicatePairs): Triple[];
-
-export function triples(
-  subject: TriplesSubject,
-  predicate: TriplePredicate,
-  object: TriplesObject,
-): Triple[];
+export function triples(subject: TripleCollectionBlankNodePropertiesInput): PatternBgpInput;
 
 export function triples(
-  subject: TriplesSubject,
-  predicate?: TriplePredicate | TriplesPredicatePairs,
-  object?: TriplesObject,
-) {
-  function processTerm(term: TriplesSubject): [TripleSubject, Triple[]];
-  function processTerm(term: TriplesObject): [TripleObject, Triple[]];
+  subject: SubjectInput,
+  predicates: PredicatePairCollection
+): PatternBgpInput;
 
-  function processTerm(term: TriplesObject): [TripleObject, Triple[]] {
-    if (isQualitativeAnonymousBlankTerm(term)) {
-      // Recursively call the main function to expand this blank node's properties
-      const extraTriples = triples(term);
-      return [extraTriples[0].subject, extraTriples];
-    }
-    return [term as any, []];
+export function triples(
+  subject: SubjectInput,
+  predicate: PredicateInput,
+  objects: ObjectColletion
+): PatternBgpInput;
+
+export function triples(
+  subject: SubjectInput,
+  predicate: PredicateInput,
+  objects: ObjectInput
+): PatternBgpInput;
+
+export function triples(
+  subject: SubjectInput,
+  predicate?: PredicatePairCollection | PredicateInput,
+  object?: ObjectColletion | ObjectInput
+): PatternBgpInput {
+  if (tripleCollectionInput.accepts(subject) && predicate === undefined && object === undefined) {
+    return bgp(subject);
   }
 
-  // Overload 1: triples2(QualitativeAnonymousBlankTerm)
-  if (arguments.length === 1 && isQualitativeAnonymousBlankTerm(subject)) {
-    const bnode = Symbol();
-    const predicateOrPairs = subject[0];
-    if (isTriplesPredicatePairs(predicateOrPairs)) {
-      return triples(bnode, predicateOrPairs);
-    } else {
-      const obj = subject[1] as any;
-      return triples(bnode, predicateOrPairs, obj);
-    }
+  if (
+    isObjectLike(predicate) &&
+    predicate.subType === 'predicatePairCollection' &&
+    object === undefined
+  ) {
+    const items = predicate.values.flatMap(v => {
+      if (isObjectLike(v[1]) && v[1].subType === 'objectCollection') {
+        return v[1].values.map(o => {
+          return tripleNesting(subject, v[0], o);
+        });
+      }
+      return tripleNesting(subject, v[0], v[1]);
+    });
+    return bgp(...items)
   }
 
-  const [processedSubject, subjectTriples] = processTerm(subject);
 
-  // Overload 2: triples2(subject, TriplesPredicatePairs)
-  if (arguments.length === 2 && isTriplesPredicatePairs(predicate!)) {
-    const predicateObjectTriples = predicate.values.flatMap(([p, o]) =>
-      // Recurse for each predicate-object pair
-      triples(processedSubject, p, o),
-    );
-    return [...predicateObjectTriples, ...subjectTriples];
+  if (isObjectLike(object) && object.subType === 'objectCollection') {
+    const items = object.values.map(o => {
+      return tripleNesting(subject, predicate as any, o); // fix
+    });
+    return bgp(...items)
   }
 
-  // Overload 3: triples2(subject, predicate, object)
-  if (arguments.length === 3 && predicate && object !== undefined) {
-    const objects = isTriplesObjectPairs(object) ? object.values : [object];
-    const resultTriples: Triple[] = [];
-
-    for (const obj of objects) {
-      const [processedObject, objectTriples] = processTerm(obj);
-      resultTriples.push(triple(processedSubject, predicate as TriplePredicate, processedObject));
-      resultTriples.push(...objectTriples);
-    }
-    return [...resultTriples, ...subjectTriples];
-  }
-
-  // Should not be reached if called correctly
-  throw new Error('Invalid arguments for `triples()` function');
+  return bgp(tripleNesting(subject, predicate as any, object as any)) // fix
 }
 
-function isQualitativeAnonymousBlankTerm(
-  term: TriplesObject,
-): term is QualitativeAnonymousBlankTerm {
-  return Array.isArray(term) && term.length !== 0;
-}
-
-function isTriplesPredicatePairs(
-  object: TriplesPredicatePairs | TriplePredicate,
-): object is TriplesPredicatePairs {
-  return (
-    typeof object === 'object' &&
-    'type' in object &&
-    object.type === 'triplespredicatepairs' &&
-    'values' in object &&
-    Array.isArray(object.values)
-  );
-}
-
-function isTriplesObjectPairs(object: TriplesObject): object is TriplesObjectPairs {
-  return (
-    typeof object === 'object' &&
-    'type' in object &&
-    object.type === 'triplesobjectpairs' &&
-    'values' in object &&
-    Array.isArray(object.values)
-  );
-}
-
-export function transformIri(self: BaseQueryReturnType): BaseIriTerm {
+export function transformIri(self: DefaultQueryReturnType): TermIriOutput {
   if (self.termType === 'NamedNode') return self;
-  return {termType: 'NamedNode', value: self.value, equals: self.equals};
+  return { termType: 'NamedNode', value: self.value, equals: self.equals };
 }
 
-export function transformLiteral(self: BaseQueryReturnType): BaseLiteralTerm {
+export function transformLiteral(self: DefaultQueryReturnType): TermLiteralOutput {
   if (self.termType === 'Literal') return self;
 
   return {
     ...self,
+    direction: '',
     language: '',
     termType: 'Literal',
+    equals: self.equals,
     datatype: {
       termType: 'NamedNode',
       value: 'http://www.w3.org/2001/XMLSchema#string',
-      equals: self.equals},
+      equals: self.equals,
+    },
   };
 }
 
-export function transformBlank(self: BaseQueryReturnType): BaseBlankTerm {
+export function transformBlank(self: DefaultQueryReturnType): TermBlankOutput {
   if (self.termType === 'BlankNode') return self;
-  return { termType: 'BlankNode', value: self.value, equals: self.equals};
+  return { termType: 'BlankNode', value: self.value, equals: self.equals };
 }
 
-export const transformString = (self => self.value) satisfies Transform;
+export const transformString = (self => self.value) satisfies TermVariableTransform;
 
 export const transformLangstring = (self =>
-  'language' in self ? `'${self.value}'@${self.language}` : self.value) satisfies Transform;
+  'language' in self
+    ? `'${self.value}'@${self.language}`
+    : self.value) satisfies TermVariableTransform;
 
-export const transformBigint = (self => BigInt(self.value)) satisfies Transform;
+export const transformBigint = (self => BigInt(self.value)) satisfies TermVariableTransform;
 
-export const transformNumber = (self => parseFloat(self.value)) satisfies Transform;
+export const transformNumber = (self => parseFloat(self.value)) satisfies TermVariableTransform;
 
-export const transformBoolean = (self => self.value.toLowerCase() === 'true') satisfies Transform;
+export const transformBoolean = (self =>
+  self.value.toLowerCase() === 'true') satisfies TermVariableTransform;
 
 export const transformArray = ((self, separator: string = '\u001f') =>
-  self.value.split(separator)) satisfies Transform;
+  self.value.split(separator)) satisfies TermVariableTransform;
 
-export const transformDate = (self => new Date(self.value)) satisfies Transform;
+export const transformDate = (self => new Date(self.value)) satisfies TermVariableTransform;
 
 export const castIri = createCast(transformIri);
 export const castLiteral = createCast(transformLiteral);
@@ -192,29 +170,25 @@ export const castNumber = createCast(transformNumber);
 export const castBigint = createCast(transformBigint);
 export const castArray = createCast(transformArray);
 export const castDate = createCast(transformDate);
-export const castUndefinedString = createCast((self) => self.value as string | undefined);
 
-export function as<R1>(
-  expression: Expression<R1>,
-  variableTerm: VariableTerm<any, Presence>
-): VariableExpression<R1> {
-  const newTerm = { ...variableTerm } as VariableTerm<R1>;
-  if (typeof expression === 'object' && 'type' in expression) {
+export function as<R1 extends QueryReturnType>(
+  expression: ExpressionInput<R1>,
+  variableTerm: TermVariableInput<any, Presence>
+): PatternBindInput<R1> {
+  const newTerm = { ...variableTerm } as TermVariableInput<R1>;
+  if (typeof expression === 'object' && 'transform' in expression) {
     newTerm.transform = expression.transform;
   }
-  return {
-    variable: newTerm,
-    expression: expression,
-  };
+  return bind(expression, newTerm);
 }
 
-export function applyTransform<R1, R2, P extends Presence>(
-  variable: Variable<R1, P>,
-  transform: Transform<R2>
-): Variable<R2, P> {
-  const newTerm = { ...variable } as Variable<R2, P>;
-  if ('expression' in newTerm) {
-    if (typeof newTerm.expression === 'object' && 'type' in newTerm.expression) {
+export function applyTransform<R1, R2 extends QueryReturnType, P extends Presence>(
+  variable: TermVariableAndBinding<R1, P>,
+  transform: TermVariableTransform<R2>
+): TermVariableAndBinding<R2, P> {
+  const newTerm = { ...variable } as TermVariableAndBinding<R2, P>;
+  if (newTerm.type === 'pattern') {
+    if (typeof newTerm.expression === 'object' && 'transform' in newTerm.expression) {
       newTerm.expression.transform = transform;
       newTerm.variable.transform = transform;
     }
@@ -224,23 +198,29 @@ export function applyTransform<R1, R2, P extends Presence>(
   return newTerm;
 }
 
-export function createCast<R1, O extends any[] = []>(transform: Transform<R1, O>) {
-  return <R2, P extends Presence>(variable: Variable<R2, P>, ...other: O) =>
+export function createCast<R1 extends QueryReturnType, O extends any[] = []>(
+  transform: TermVariableTransform<R1, O>
+) {
+  return <R2, P extends Presence>(variable: TermVariableAndBinding<R2, P>, ...other: O) =>
     applyTransform(variable, self => transform(self, ...other));
 }
 
-export function always<T>(variable: Variable<T, Presence>): Variable<T> {
-  if ('expression' in variable) {
+export function always<T>(
+  variable: TermVariableAndBinding<T, Presence>
+): TermVariableAndBinding<T> {
+  if (variable.type === 'pattern') {
     variable.variable.presence = Presence.required;
   } else {
     variable.presence = Presence.required;
   }
-  return variable as Variable<T>;
+  return variable as TermVariableAndBinding<T>;
 }
 
-export function maybe<T>(variable: Variable<T, Presence>): Variable<T, Presence.optional> {
-  const resultVariable: Variable<T, Presence.optional> = variable as any;
-  if ('expression' in resultVariable) {
+export function maybe<T>(
+  variable: TermVariableAndBinding<T, Presence>
+): TermVariableAndBinding<T, Presence.optional> {
+  const resultVariable: TermVariableAndBinding<T, Presence.optional> = variable as any;
+  if (resultVariable.type === 'pattern') {
     resultVariable.variable.presence = Presence.optional;
   } else {
     resultVariable.presence = Presence.optional;

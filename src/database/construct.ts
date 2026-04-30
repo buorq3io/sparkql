@@ -1,36 +1,64 @@
 import { QueryBuilderBase } from './query.js';
-import { Triple, QuadTerm, SparqlClient, ConstructQuery, FactoryFunctions } from '../generic.js';
-
-export type ConstructTemplates = Triple[];
+import {
+  BasicGraphPatternInput,
+  FactoryFunctions,
+  QuadsInput,
+  QueryConstructInput,
+  SparqlClient,
+} from '../helpers/types.js';
 
 export class ConstructQueryBuilderBase
-  extends QueryBuilderBase<ConstructQuery, QuadTerm[]>
-  implements PromiseLike<QuadTerm[]>
+  extends QueryBuilderBase<QueryConstructInput, QuadsInput[]>
+  implements PromiseLike<QuadsInput[]>
 {
   constructor(
-    variables: ConstructTemplates,
-    prefixes: ConstructQuery['prefixes'],
-    base: string | undefined,
+    variables: BasicGraphPatternInput,
+    context: QueryConstructInput['context'],
     factoryFunctions: FactoryFunctions,
     endpointUrl?: string
   ) {
     super(
       {
         type: 'query',
-        queryType: 'CONSTRUCT',
-        template: variables.length !== 0 ? variables : undefined,
-        base: base,
-        prefixes: prefixes,
+        subType: 'construct',
+        context: context,
+        datasets: {
+          type: 'datasetClauses',
+          clauses: [],
+          loc: {
+            sourceLocationType: 'autoGenerate',
+          },
+        },
+        solutionModifiers: {},
+        template: {
+          type: 'pattern',
+          subType: 'bgp',
+          triples: variables,
+          loc: {
+            sourceLocationType: 'autoGenerate',
+          },
+        },
+        where: {
+          type: 'pattern',
+          subType: 'group',
+          patterns: [],
+          loc: {
+            sourceLocationType: 'autoGenerate',
+          },
+        },
+        loc: {
+          sourceLocationType: 'autoGenerate',
+        },
       },
       factoryFunctions,
       endpointUrl
     );
   }
 
-  protected async makeQuery(client: SparqlClient): Promise<QuadTerm[]> {
+  protected async makeQuery(client: SparqlClient): Promise<QuadsInput[]> {
     const stream = client.query.construct(this.toSPARQL());
 
-    const items: QuadTerm[] = [];
+    const items: QuadsInput[] = [];
     for await (const binding of stream) {
       items.push(binding);
     }
