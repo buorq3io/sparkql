@@ -2,13 +2,10 @@
 
 A TypeScript query builder for SPARQL with type-safe operations and intuitive API.
 
-**This library is currently in alpha and should not be used in production.** The API is subject to change and may
-contain bugs or incomplete features.
-
 ## Installation
 
 ```bash
-npm install sparkql@alpha
+pnpm add sparkql
 ```
 
 ## Features
