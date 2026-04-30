@@ -57,9 +57,16 @@ termLiteralRegistry.register('number', {
       loc: {
         sourceLocationType: 'autoGenerate',
       },
-      langOrIri: Number.isInteger(value)
-        ? 'http://www.w3.org/2001/XMLSchema#integer'
-        : 'http://www.w3.org/2001/XMLSchema#decimal',
+      langOrIri: {
+        type: 'term',
+        subType: 'namedNode',
+        loc: {
+          sourceLocationType: 'autoGenerate',
+        },
+        value: Number.isInteger(value)
+          ? 'http://www.w3.org/2001/XMLSchema#integer'
+          : 'http://www.w3.org/2001/XMLSchema#decimal',
+      },
     } as const),
 });
 
@@ -73,7 +80,14 @@ termLiteralRegistry.register('bigint', {
       loc: {
         sourceLocationType: 'autoGenerate',
       },
-      langOrIri: 'http://www.w3.org/2001/XMLSchema#integer',
+      langOrIri: {
+        type: 'term',
+        subType: 'namedNode',
+        loc: {
+          sourceLocationType: 'autoGenerate',
+        },
+        value: 'http://www.w3.org/2001/XMLSchema#integer',
+      },
     } as const),
 });
 
@@ -87,7 +101,14 @@ termLiteralRegistry.register('date', {
       loc: {
         sourceLocationType: 'autoGenerate',
       },
-      langOrIri: 'http://www.w3.org/2001/XMLSchema#datetime',
+      langOrIri: {
+        type: 'term',
+        subType: 'namedNode',
+        loc: {
+          sourceLocationType: 'autoGenerate',
+        },
+        value: 'http://www.w3.org/2001/XMLSchema#datetime',
+      },
     } as const),
 });
 
@@ -101,7 +122,14 @@ termLiteralRegistry.register('boolean', {
       loc: {
         sourceLocationType: 'autoGenerate',
       },
-      langOrIri: 'http://www.w3.org/2001/XMLSchema#boolean',
+      langOrIri: {
+        type: 'term',
+        subType: 'namedNode',
+        loc: {
+          sourceLocationType: 'autoGenerate',
+        },
+        value: 'http://www.w3.org/2001/XMLSchema#boolean',
+      },
     } as const),
 });
 
@@ -124,7 +152,7 @@ termBlankRegistry.register('tuple', {
     ({
       type: 'term',
       subType: 'blankNode',
-      label: value.toString(),
+      label: `g_${Date.now()}`,
       loc: {
         sourceLocationType: 'autoGenerate',
       },

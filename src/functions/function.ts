@@ -1,4 +1,13 @@
-import { ExpressionInput, ExpressionOperationInput, ExpressionPatternOperationInput, PatternInput, TermVariableInput } from '../helpers/types.js';
+import {
+  ExpressionInput,
+  ExpressionOperationInput,
+  ExpressionPatternOperationInput,
+  PatternInput,
+  TermBlankOutput,
+  TermIriOutput,
+  TermLiteralOutput,
+  TermVariableInput,
+} from '../helpers/types.js';
 
 import {
   transformIri,
@@ -18,11 +27,11 @@ export function bound(...args: [TermVariableInput]): ExpressionOperationInput<bo
   return createOperationExpression('bound', args, transformBoolean);
 }
 
-export function ternary(...args: [ExpressionInput, ExpressionInput, ExpressionInput]): ExpressionOperationInput {
+export function ternary(...args: [ExpressionInput, ExpressionInput, ExpressionInput]) {
   return createOperationExpression('if', args);
 }
 
-export function coalesce(...args: [ExpressionInput, ...ExpressionInput[]]): ExpressionOperationInput {
+export function coalesce(...args: [ExpressionInput, ...ExpressionInput[]]) {
   return createOperationExpression('coalesce', args);
 }
 
@@ -34,15 +43,21 @@ export function notExists(...args: [PatternInput]): ExpressionPatternOperationIn
   return createPatternOperationExpression('notexists', group(...args), transformBoolean);
 }
 
-export function sameTerm(...args: [ExpressionInput, ExpressionInput]): ExpressionOperationInput<boolean> {
+export function sameTerm(
+  ...args: [ExpressionInput, ExpressionInput]
+): ExpressionOperationInput<boolean> {
   return createOperationExpression('sameterm', args, transformBoolean);
 }
 
-export function inArray(...args: [ExpressionInput, ExpressionInput[]]): ExpressionOperationInput<boolean> {
+export function inArray(
+  ...args: [ExpressionInput, ExpressionInput[]]
+): ExpressionOperationInput<boolean> {
   return createOperationExpression('in', [args[0], ...args[1]], transformBoolean);
 }
 
-export function notinArray(...args: [ExpressionInput, ExpressionInput[]]): ExpressionOperationInput<boolean> {
+export function notinArray(
+  ...args: [ExpressionInput, ExpressionInput[]]
+): ExpressionOperationInput<boolean> {
   return createOperationExpression('notin', [args[0], ...args[1]], transformBoolean);
 }
 
@@ -76,31 +91,35 @@ export function lang(...args: [ExpressionInput]): ExpressionOperationInput<strin
   return createOperationExpression('lang', args, transformString);
 }
 
-export function datatype(...args: [ExpressionInput]): ExpressionOperationInput<IriTerm> {
+export function datatype(...args: [ExpressionInput]): ExpressionOperationInput<TermIriOutput> {
   return createOperationExpression('datatype', args, transformIri);
 }
 
-export function iri(...args: [ExpressionInput]): ExpressionOperationInput<IriTerm> {
+export function iri(...args: [ExpressionInput]): ExpressionOperationInput<TermIriOutput> {
   return createOperationExpression('iri', args, transformIri);
 }
 
-export function uri(...args: [ExpressionInput]): ExpressionOperationInput<IriTerm> {
+export function uri(...args: [ExpressionInput]): ExpressionOperationInput<TermIriOutput> {
   return createOperationExpression('uri', args, transformIri);
 }
 
-export function bnode(...args: [ExpressionInput] | []): ExpressionOperationInput<BlankTerm> {
+export function bnode(...args: [ExpressionInput] | []): ExpressionOperationInput<TermBlankOutput> {
   return createOperationExpression('bnode', args, transformBlank);
 }
 
-export function strdt(...args: [ExpressionInput, ExpressionInput]): ExpressionOperationInput<LiteralTerm> {
+export function strdt(
+  ...args: [ExpressionInput, ExpressionInput]
+): ExpressionOperationInput<TermLiteralOutput> {
   return createOperationExpression('strdt', args, transformLiteral);
 }
 
-export function strlang(...args: [ExpressionInput, ExpressionInput]): ExpressionOperationInput<LiteralTerm> {
+export function strlang(
+  ...args: [ExpressionInput, ExpressionInput]
+): ExpressionOperationInput<TermLiteralOutput> {
   return createOperationExpression('strlang', args, transformLiteral);
 }
 
-export function uuid(): ExpressionOperationInput<IriTerm> {
+export function uuid(): ExpressionOperationInput<TermIriOutput> {
   return createOperationExpression('uuid', [], transformIri);
 }
 
@@ -116,35 +135,45 @@ export function strlen(...args: [ExpressionInput]): ExpressionOperationInput<num
 
 export function substr(
   ...args: [ExpressionInput, ExpressionInput, ...([ExpressionInput] | [])]
-): ExpressionOperationInput<LiteralTerm> {
+): ExpressionOperationInput<TermLiteralOutput> {
   return createOperationExpression('substr', args, transformLiteral);
 }
 
-export function ucase(...args: [ExpressionInput]): ExpressionOperationInput<LiteralTerm> {
+export function ucase(...args: [ExpressionInput]): ExpressionOperationInput<TermLiteralOutput> {
   return createOperationExpression('ucase', args, transformLiteral);
 }
 
-export function lcase(...args: [ExpressionInput]): ExpressionOperationInput<LiteralTerm> {
+export function lcase(...args: [ExpressionInput]): ExpressionOperationInput<TermLiteralOutput> {
   return createOperationExpression('lcase', args, transformLiteral);
 }
 
-export function strstarts(...args: [ExpressionInput, ExpressionInput]): ExpressionOperationInput<boolean> {
+export function strstarts(
+  ...args: [ExpressionInput, ExpressionInput]
+): ExpressionOperationInput<boolean> {
   return createOperationExpression('strstarts', args, transformBoolean);
 }
 
-export function strends(...args: [ExpressionInput, ExpressionInput]): ExpressionOperationInput<boolean> {
+export function strends(
+  ...args: [ExpressionInput, ExpressionInput]
+): ExpressionOperationInput<boolean> {
   return createOperationExpression('strends', args, transformBoolean);
 }
 
-export function contains(...args: [ExpressionInput, ExpressionInput]): ExpressionOperationInput<boolean> {
+export function contains(
+  ...args: [ExpressionInput, ExpressionInput]
+): ExpressionOperationInput<boolean> {
   return createOperationExpression('contains', args, transformBoolean);
 }
 
-export function strbefore(...args: [ExpressionInput, ExpressionInput]): ExpressionOperationInput<LiteralTerm> {
+export function strbefore(
+  ...args: [ExpressionInput, ExpressionInput]
+): ExpressionOperationInput<TermLiteralOutput> {
   return createOperationExpression('strbefore', args, transformLiteral);
 }
 
-export function strafter(...args: [ExpressionInput, ExpressionInput]): ExpressionOperationInput<LiteralTerm> {
+export function strafter(
+  ...args: [ExpressionInput, ExpressionInput]
+): ExpressionOperationInput<TermLiteralOutput> {
   return createOperationExpression('strafter', args, transformLiteral);
 }
 
@@ -152,11 +181,13 @@ export function encodeForURI(...args: [ExpressionInput]): ExpressionOperationInp
   return createOperationExpression('encode_for_uri', args, transformString);
 }
 
-export function concat(...args: ExpressionInput[]): ExpressionOperationInput<LiteralTerm> {
+export function concat(...args: ExpressionInput[]): ExpressionOperationInput<TermLiteralOutput> {
   return createOperationExpression('concat', args, transformLiteral);
 }
 
-export function langMatches(...args: [ExpressionInput, ExpressionInput]): ExpressionOperationInput<boolean> {
+export function langMatches(
+  ...args: [ExpressionInput, ExpressionInput]
+): ExpressionOperationInput<boolean> {
   return createOperationExpression('langmatches', args, transformBoolean);
 }
 
@@ -168,7 +199,7 @@ export function regex(
 
 export function replace(
   ...args: [ExpressionInput, ExpressionInput, ExpressionInput, ...([ExpressionInput] | [])]
-): ExpressionOperationInput<LiteralTerm> {
+) {
   return createOperationExpression('replace', args, transformLiteral);
 }
 
@@ -224,11 +255,11 @@ export function seconds(...args: [ExpressionInput]): ExpressionOperationInput<nu
   return createOperationExpression('seconds', args, transformNumber);
 }
 
-export function timezone(...args: [ExpressionInput]): ExpressionOperationInput<LiteralTerm> {
+export function timezone(...args: [ExpressionInput]): ExpressionOperationInput<TermLiteralOutput> {
   return createOperationExpression('timezone', args, transformLiteral);
 }
 
-export function tz(...args: [ExpressionInput]): ExpressionOperationInput<LiteralTerm> {
+export function tz(...args: [ExpressionInput]): ExpressionOperationInput<TermLiteralOutput> {
   return createOperationExpression('tz', args, transformLiteral);
 }
 

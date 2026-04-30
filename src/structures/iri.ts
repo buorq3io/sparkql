@@ -19,20 +19,20 @@ export function createIriManager<T extends IriManagerConfig, K extends Strictnes
   factoryFunctions: FactoryFunctions
 ): IriManager<T, K> {
   const result: Record<string, IriProxy> = {};
-  for (const [prefix, { uri, fields }] of Object.entries(nodes)) {
+  for (const [prefix, { fields }] of Object.entries(nodes)) {
     result[prefix] = {};
     result[prefix] = createIriProxy(
-      uri,
+      prefix,
       factoryFunctions,
       mode === Strictness.strict ? fields : undefined
     );
   }
-  result.__ = createIriProxy('', factoryFunctions);
+  result.__ = createIriProxy(undefined, factoryFunctions);
   return result as IriManager<T, K>;
 }
 
 export function createIriProxy(
-  uri: string,
+  prefix: string | undefined,
   factoryFunctions: FactoryFunctions,
   fields?: readonly string[]
 ): IriProxy {
@@ -46,7 +46,7 @@ export function createIriProxy(
             return Reflect.get(target, prop, receiver);
           }
           if (!cache[prop]) {
-            cache[prop] = factoryFunctions.iri(uri + prop);
+            cache[prop] = factoryFunctions.iri(prop, prefix);
           }
           return cache[prop];
         }

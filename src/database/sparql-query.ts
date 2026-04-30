@@ -36,7 +36,8 @@ import type {
   SparqlQueryInput,
   TermInput,
   TermIriInput,
-  TripleCollectionInput,
+  TripleCollectionBlankNodePropertiesInputBase,
+  TripleCollectionListInputBase,
   TripleNestingInput,
   UpdateInput,
   UpdateOperationAddInput,
@@ -63,6 +64,8 @@ import {
   termValues,
   termVariable,
   term,
+  tripleCollectionListInputBase,
+  tripleCollectionBlankNodePropertiesInputBase,
 } from '../helpers/utilities.js';
 
 type ASTConfig<T extends SparqlQueryInput> = T extends UpdateInput
@@ -558,8 +561,15 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
   }
 
   private sanitizeGraphNode(node: GraphNodeInput): AST.GraphNode {
-    if (isObjectLike(node) && node.type === 'tripleCollection') {
-      return this.sanitizeTripleCollection(node);
+    if (tripleCollectionListInputBase.accepts(node)) {
+      return this.sanitizeTripleCollectionListBase(
+        tripleCollectionListInputBase.parseOrThrow(node)
+      );
+    }
+    if (tripleCollectionBlankNodePropertiesInputBase.accepts(node)) {
+      return this.sanitizeTripleCollectionBlankNodePropertiesBase(
+        tripleCollectionBlankNodePropertiesInputBase.parseOrThrow(node)
+      );
     }
 
     return this.sanitizeTerm(node);
@@ -569,7 +579,7 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
     if (term.accepts(term_)) {
       return term.parseOrThrow(term_);
     }
-    throw Error("Unsupported term value provided")
+    throw Error('Unsupported term value provided');
   }
 
   protected sanitizeTripleNesting(triple: TripleNestingInput): AST.TripleNesting {
@@ -581,21 +591,47 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
     };
   }
 
-  protected sanitizeTripleCollection(collection: TripleCollectionInput): AST.TripleCollection {
+  protected sanitizeTripleCollectionListBase(
+    collection: TripleCollectionListInputBase
+  ): AST.TripleCollectionList {
     return {
-      ...collection,
+      type: 'tripleCollection',
+      subType: 'list',
+      loc: {
+        sourceLocationType: 'autoGenerate',
+      },
       identifier: termBlank.parseOrThrow(collection.identifier),
-      triples: collection.triples.map(triple => this.sanitizeTripleNesting(triple)),
+      triples: collection.triples.map(t => this.sanitizeTripleNesting(t)),
+    };
+  }
+
+  protected sanitizeTripleCollectionBlankNodePropertiesBase(
+    collection: TripleCollectionBlankNodePropertiesInputBase
+  ): AST.TripleCollectionBlankNodeProperties {
+    return {
+      type: 'tripleCollection',
+      subType: 'blankNodeProperties',
+      loc: {
+        sourceLocationType: 'autoGenerate',
+      },
+      identifier: termBlank.parseOrThrow(collection.identifier),
+      triples: collection.triples.map(t => this.sanitizeTripleNesting(t)),
     };
   }
 
   protected sanitizeBasicGraph(bgraphs: BasicGraphPatternInput): AST.BasicGraphPattern {
-    return bgraphs.map(entry => {
-      if (entry.type === 'triple') {
-        return this.sanitizeTripleNesting(entry);
+    return bgraphs.flatMap(entry => {
+      if (tripleCollectionListInputBase.accepts(entry)) {
+        return this.sanitizeTripleCollectionListBase(
+          tripleCollectionListInputBase.parseOrThrow(entry)
+        );
       }
-
-      return this.sanitizeTripleCollection(entry);
+      if (tripleCollectionBlankNodePropertiesInputBase.accepts(entry)) {
+        return this.sanitizeTripleCollectionBlankNodePropertiesBase(
+          tripleCollectionBlankNodePropertiesInputBase.parseOrThrow(entry)
+        );
+      }
+      return this.sanitizeTripleNesting(entry);
     });
   }
 

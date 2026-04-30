@@ -55,7 +55,7 @@ export class SparqlDatabase<T extends IriManagerConfig, R extends string = 'g_'>
     this.factory = options?.factory ?? new AST.AstFactory();
     this.factoryFunctions = {
       variable: value => this.variable(value),
-      iri: value => this.iri(value),
+      iri: (value, prefix) => this.iri(value, prefix),
       blank: value => this.blank(value),
       literal: (value, lang) => this.literal(value, lang),
     };
@@ -173,8 +173,10 @@ export class SparqlDatabase<T extends IriManagerConfig, R extends string = 'g_'>
     return this.factory.termVariable(value, { sourceLocationType: 'autoGenerate' });
   }
 
-  iri(value: string): AST.TermIriFull {
-    return this.factory.termNamed({ sourceLocationType: 'autoGenerate' }, value);
+  iri(value: string): AST.TermIriFull;
+  iri(value: string, prefix: string): AST.TermIriPrefixed;
+  iri(value: string, prefix?: string): AST.TermIri {
+    return this.factory.termNamed({ sourceLocationType: 'autoGenerate' }, value, prefix);
   }
 
   blank(value?: string): AST.TermBlank {

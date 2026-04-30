@@ -29,6 +29,18 @@ export type TermVariableAndBinding<
 export type TermInput = TermIriInput | TermLiteralInput | TermBlankInput | TermVariableInput;
 export type GraphNodeInput = TermInput | TripleCollectionInput;
 
+export type ObjectColletion = {
+  type: 'syntacticShortcut';
+  subType: 'objectCollection';
+  values: ObjectInput[];
+};
+
+export type PredicatePairCollection = {
+  type: 'syntacticShortcut';
+  subType: 'predicatePairCollection';
+  values: [PredicateInput, ObjectColletion | ObjectInput][];
+};
+
 export type SubjectInput = GraphNodeInput;
 export type PredicateInput = TermIriInput | TermVariableInput | PathInput;
 export type ObjectInput = GraphNodeInput;
@@ -48,7 +60,9 @@ export type TripleNestingInput<
   }
 >;
 
-export type TripleCollectionListInput = Override<
+export type TripleCollectionListInputSyntax = [GraphNodeInput[]];
+
+export type TripleCollectionListInputBase = Override<
   AST.TripleCollectionList,
   {
     triples: TripleNestingInput[];
@@ -56,13 +70,25 @@ export type TripleCollectionListInput = Override<
   }
 >;
 
-export type TripleCollectionBlankNodePropertiesInput = Override<
+export type TripleCollectionListInput =
+  | TripleCollectionListInputBase
+  | TripleCollectionListInputSyntax;
+
+export type TripleCollectionBlankNodePropertiesInputSyntax =
+  | [PredicatePairCollection]
+  | [PredicateInput, ObjectColletion | ObjectInput];
+
+export type TripleCollectionBlankNodePropertiesInputBase = Override<
   AST.TripleCollectionBlankNodeProperties,
   {
     triples: TripleNestingInput[];
     identifier: TermBlankInput;
   }
 >;
+
+export type TripleCollectionBlankNodePropertiesInput =
+  | TripleCollectionBlankNodePropertiesInputBase
+  | TripleCollectionBlankNodePropertiesInputSyntax;
 
 export type TripleCollectionInput =
   | TripleCollectionListInput
@@ -303,10 +329,9 @@ export type ExpressionInput<_T extends any = any> =
   | ExpressionFunctionCallInput<_T>
   | ExpressionAggregateInput<_T>;
 
-
-export type TermIriOutput = RdfJs.NamedNode
-export type TermBlankOutput = RdfJs.BlankNode
-export type TermLiteralOutput = RdfJs.Literal
+export type TermIriOutput = RdfJs.NamedNode;
+export type TermBlankOutput = RdfJs.BlankNode;
+export type TermLiteralOutput = RdfJs.Literal;
 
 export type DefaultQueryReturnType = TermIriOutput | TermBlankOutput | TermLiteralOutput;
 export type QueryReturnType = DefaultQueryReturnType | any;
@@ -560,7 +585,7 @@ export type { StreamClient as SparqlClient } from 'sparql-http-client';
 
 export type FactoryFunctions = {
   variable: (value: string) => AST.TermVariable;
-  iri: (value: string) => AST.TermIri;
+  iri: (value: string, prefix?: string) => AST.TermIri;
   blank: (value?: string) => AST.TermBlank;
   literal: (value: string, lang?: string | TermIriInput) => AST.TermLiteral;
 };

@@ -4,7 +4,7 @@ type Parser<T> = (value: unknown) => T | null;
 type Guarded<G> = G extends Guard<infer T> ? T : never;
 type Parsed<P> = P extends Parser<infer T> ? T : never;
 
-type Formatter<T, R> = {
+export type Formatter<T, R> = {
   test(value: unknown): value is T;
   format(value: T): R;
 };

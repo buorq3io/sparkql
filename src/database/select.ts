@@ -8,6 +8,7 @@ import {
   DefaultQueryReturnType,
   TermVariableOptionalTransform,
 } from '../helpers/types.js';
+import { group } from '../index.mjs';
 import { QueryBuilderBase } from './query.js';
 import { createWildCardInput } from '../functions/utils.js';
 
@@ -135,7 +136,7 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
   }
 
   $asSubQuery() {
-    return this.config;
+    return group(this.config);
   }
 
   protected async makeQuery(client: SparqlClient): Promise<T[]> {

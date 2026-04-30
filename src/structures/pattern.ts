@@ -1,6 +1,5 @@
-import { Presence } from '../generic.js';
 import {
-    BasicGraphPatternInput,
+  BasicGraphPatternInput,
   ExpressionInput,
   GraphQuadsInput,
   PatternBgpInput,
@@ -18,6 +17,7 @@ import {
   TermVariableInput,
   TripleNestingInput,
   ValuePatternColumnsInput,
+  Presence
 } from '../helpers/types.js';
 
 export function bgp(...triples: BasicGraphPatternInput): PatternBgpInput {

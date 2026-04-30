@@ -2,8 +2,10 @@ import {
   DefaultQueryReturnType,
   ExpressionInput,
   ObjectInput,
+  ObjectColletion,
   PatternBindInput,
   PredicateInput,
+  PredicatePairCollection,
   Presence,
   QueryReturnType,
   SubjectInput,
@@ -13,129 +15,104 @@ import {
   TermVariableAndBinding,
   TermVariableInput,
   TermVariableTransform,
+  TripleCollectionBlankNodePropertiesInput,
+  TripleCollectionListInput,
+  TripleNestingInput,
+  PatternBgpInput,
 } from '../helpers/types.js';
+import { isObjectLike, tripleCollectionInput } from '../helpers/utilities.js';
 import { bgp, bind } from './pattern.js';
 
-export function triple(subject: SubjectInput, predicate: PredicateInput, object: ObjectInput) {
-  return bgp({
+const autoLoc = { sourceLocationType: 'autoGenerate' as const };
+
+export function tripleNesting(
+  subject: SubjectInput,
+  predicate: PredicateInput,
+  object: ObjectInput
+): TripleNestingInput {
+  return {
     type: 'triple',
-    loc: {
-      sourceLocationType: 'autoGenerate',
-    },
+    loc: autoLoc,
     subject: subject,
     predicate: predicate,
     object: object,
-  });
+  };
 }
 
-// export function objects(...obj: TriplesObject[]): TriplesObjectPairs {
-//   return {
-//     type: 'triplesobjectpairs',
-//     values: obj,
-//   };
-// }
+export function objects(...obj: ObjectInput[]): ObjectColletion {
+  return {
+    type: 'syntacticShortcut',
+    subType: 'objectCollection',
+    values: obj,
+  };
+}
 
-// export function predicates(...obj: [TriplePredicate, TriplesObject][]): TriplesPredicatePairs {
-//   return {
-//     type: 'triplespredicatepairs',
-//     values: obj,
-//   };
-// }
+export function predicates(
+  ...obj: [PredicateInput, ObjectInput | ObjectColletion][]
+): PredicatePairCollection {
+  return {
+    type: 'syntacticShortcut',
+    subType: 'predicatePairCollection',
+    values: obj,
+  };
+}
 
-// export function triples(subject: QualitativeAnonymousBlankTerm): Triple[];
+export function triples(subject: TripleCollectionListInput): PatternBgpInput;
 
-// export function triples(subject: TriplesSubject, predicate: TriplesPredicatePairs): Triple[];
+export function triples(subject: TripleCollectionBlankNodePropertiesInput): PatternBgpInput;
 
-// export function triples(
-//   subject: TriplesSubject,
-//   predicate: TriplePredicate,
-//   object: TriplesObject,
-// ): Triple[];
+export function triples(
+  subject: SubjectInput,
+  predicates: PredicatePairCollection
+): PatternBgpInput;
 
-// export function triples(
-//   subject: TriplesSubject,
-//   predicate?: TriplePredicate | TriplesPredicatePairs,
-//   object?: TriplesObject,
-// ) {
-//   function processTerm(term: TriplesSubject): [TripleSubject, Triple[]];
-//   function processTerm(term: TriplesObject): [TripleObject, Triple[]];
+export function triples(
+  subject: SubjectInput,
+  predicate: PredicateInput,
+  objects: ObjectColletion
+): PatternBgpInput;
 
-//   function processTerm(term: TriplesObject): [TripleObject, Triple[]] {
-//     if (isQualitativeAnonymousBlankTerm(term)) {
-//       // Recursively call the main function to expand this blank node's properties
-//       const extraTriples = triples(term);
-//       return [extraTriples[0].subject, extraTriples];
-//     }
-//     return [term as any, []];
-//   }
+export function triples(
+  subject: SubjectInput,
+  predicate: PredicateInput,
+  objects: ObjectInput
+): PatternBgpInput;
 
-//   // Overload 1: triples2(QualitativeAnonymousBlankTerm)
-//   if (arguments.length === 1 && isQualitativeAnonymousBlankTerm(subject)) {
-//     const bnode = Symbol();
-//     const predicateOrPairs = subject[0];
-//     if (isTriplesPredicatePairs(predicateOrPairs)) {
-//       return triples(bnode, predicateOrPairs);
-//     } else {
-//       const obj = subject[1] as any;
-//       return triples(bnode, predicateOrPairs, obj);
-//     }
-//   }
+export function triples(
+  subject: SubjectInput,
+  predicate?: PredicatePairCollection | PredicateInput,
+  object?: ObjectColletion | ObjectInput
+): PatternBgpInput {
+  if (tripleCollectionInput.accepts(subject) && predicate === undefined && object === undefined) {
+    return bgp(subject);
+  }
 
-//   const [processedSubject, subjectTriples] = processTerm(subject);
+  if (
+    isObjectLike(predicate) &&
+    predicate.subType === 'predicatePairCollection' &&
+    object === undefined
+  ) {
+    const items = predicate.values.flatMap(v => {
+      if (isObjectLike(v[1]) && v[1].subType === 'objectCollection') {
+        return v[1].values.map(o => {
+          return tripleNesting(subject, v[0], o);
+        });
+      }
+      return tripleNesting(subject, v[0], v[1]);
+    });
+    return bgp(...items)
+  }
 
-//   // Overload 2: triples2(subject, TriplesPredicatePairs)
-//   if (arguments.length === 2 && isTriplesPredicatePairs(predicate!)) {
-//     const predicateObjectTriples = predicate.values.flatMap(([p, o]) =>
-//       // Recurse for each predicate-object pair
-//       triples(processedSubject, p, o),
-//     );
-//     return [...predicateObjectTriples, ...subjectTriples];
-//   }
 
-//   // Overload 3: triples2(subject, predicate, object)
-//   if (arguments.length === 3 && predicate && object !== undefined) {
-//     const objects = isTriplesObjectPairs(object) ? object.values : [object];
-//     const resultTriples: Triple[] = [];
+  if (isObjectLike(object) && object.subType === 'objectCollection') {
+    const items = object.values.map(o => {
+      return tripleNesting(subject, predicate as any, o); // fix
+    });
+    return bgp(...items)
+  }
 
-//     for (const obj of objects) {
-//       const [processedObject, objectTriples] = processTerm(obj);
-//       resultTriples.push(triple(processedSubject, predicate as TriplePredicate, processedObject));
-//       resultTriples.push(...objectTriples);
-//     }
-//     return [...resultTriples, ...subjectTriples];
-//   }
-
-//   // Should not be reached if called correctly
-//   throw new Error('Invalid arguments for `triples()` function');
-// }
-
-// function isQualitativeAnonymousBlankTerm(
-//   term: TriplesObject,
-// ): term is QualitativeAnonymousBlankTerm {
-//   return Array.isArray(term) && term.length !== 0;
-// }
-
-// function isTriplesPredicatePairs(
-//   object: TriplesPredicatePairs | TriplePredicate,
-// ): object is TriplesPredicatePairs {
-//   return (
-//     typeof object === 'object' &&
-//     'type' in object &&
-//     object.type === 'triplespredicatepairs' &&
-//     'values' in object &&
-//     Array.isArray(object.values)
-//   );
-// }
-
-// function isTriplesObjectPairs(object: TriplesObject): object is TriplesObjectPairs {
-//   return (
-//     typeof object === 'object' &&
-//     'type' in object &&
-//     object.type === 'triplesobjectpairs' &&
-//     'values' in object &&
-//     Array.isArray(object.values)
-//   );
-// }
+  return bgp(tripleNesting(subject, predicate as any, object as any)) // fix
+}
 
 export function transformIri(self: DefaultQueryReturnType): TermIriOutput {
   if (self.termType === 'NamedNode') return self;

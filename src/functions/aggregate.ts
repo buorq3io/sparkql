@@ -17,8 +17,8 @@ export function count(expression?: ExpressionInput) {
   );
 }
 
-export function countDistinct(): AggregateExpression<number>;
-export function countDistinct(expression: ExpressionInput): AggregateExpression<number>;
+export function countDistinct(): ExpressionAggregateOnWildcardInput<number>;
+export function countDistinct(expression: ExpressionInput): ExpressionAggregateDefaultInput<number>;
 export function countDistinct(expression?: ExpressionInput) {
   return distinct(expression ? count(expression) : count());
 }
