@@ -44,7 +44,7 @@ import {
   groupConcat,
   serviceSilent,
   group,
-} from '../../src/index.mjs';
+} from '../../src/index.js';
 import { db, v, n } from '../index.js';
 
 export default () =>

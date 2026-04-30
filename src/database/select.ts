@@ -8,8 +8,8 @@ import {
   DefaultQueryReturnType,
   TermVariableOptionalTransform,
 } from '../helpers/types.js';
-import { group } from '../index.mjs';
 import { QueryBuilderBase } from './query.js';
+import { group } from '../structures/pattern.js';
 import { createWildCardInput } from '../functions/utils.js';
 
 export type SelectedVariables = Record<string, TermVariableAndBinding<any, Presence>>;

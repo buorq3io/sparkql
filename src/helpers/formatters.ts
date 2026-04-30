@@ -1,5 +1,5 @@
 import * as AST from '@traqula/rules-sparql-1-1';
-import { tripleNesting } from '../index.mjs';
+import { tripleNesting } from '../structures/expression.js';
 import { Formatter } from './generators.js';
 import {
     FactoryFunctions,
