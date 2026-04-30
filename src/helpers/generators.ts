@@ -1,12 +1,14 @@
+import type { FactoryFunctions } from './types.js';
+
 type Guard<T> = (value: unknown) => value is T;
-type Parser<T> = (value: unknown) => T | null;
+type Parser<T> = (value: unknown, factoryFunctions: FactoryFunctions) => T | null;
 
 type Guarded<G> = G extends Guard<infer T> ? T : never;
 type Parsed<P> = P extends Parser<infer T> ? T : never;
 
 export type Formatter<T, R> = {
   test(value: unknown): value is T;
-  format(value: T): R;
+  format(value: T, factoryFunctions: FactoryFunctions): R;
 };
 
 type FormatterInput<F> = F extends Formatter<infer I, any> ? I : never;
@@ -18,7 +20,7 @@ type DefinedType<Output, Input = Output> = {
   assert: (value: unknown) => asserts value is Output;
   parse: Parser<Output>;
   canParse: (value: unknown) => boolean;
-  parseOrThrow: (value: unknown) => Output;
+  parseOrThrow: (value: unknown, factoryFunctions: FactoryFunctions) => Output;
 };
 
 type OutputOf<D> = D extends DefinedType<infer O, any> ? O : never;
@@ -58,14 +60,14 @@ export function defineType<
     }
   };
 
-  const parse: Parser<T> = (value: unknown) => {
+  const parse: Parser<T> = (value: unknown, factoryFunctions: FactoryFunctions) => {
     if (is(value)) {
       return value;
     }
 
     for (const formatter of from) {
       if (formatter.test(value)) {
-        return formatter.format(value);
+        return formatter.format(value, factoryFunctions);
       }
     }
 
@@ -76,8 +78,8 @@ export function defineType<
     return accepts(value);
   };
 
-  const parseOrThrow = (value: unknown): T => {
-    const result = parse(value);
+  const parseOrThrow = (value: unknown, factoryFunctions: FactoryFunctions): T => {
+    const result = parse(value, factoryFunctions);
 
     if (result !== null) {
       return result;
@@ -120,9 +122,9 @@ export function defineUnionType<Ds extends readonly DefinedType<any, any>[]>(opt
     }
   };
 
-  const parse: Parser<Output> = (value: unknown) => {
+  const parse: Parser<Output> = (value: unknown, factoryFunctions: FactoryFunctions) => {
     for (const member of members) {
-      const result = member.parse(value);
+      const result = member.parse(value, factoryFunctions);
       if (result !== null) {
         return result as Output;
       }
@@ -135,8 +137,8 @@ export function defineUnionType<Ds extends readonly DefinedType<any, any>[]>(opt
     return accepts(value);
   };
 
-  const parseOrThrow = (value: unknown): Output => {
-    const result = parse(value);
+  const parseOrThrow = (value: unknown, factoryFunctions: FactoryFunctions): Output => {
+    const result = parse(value, factoryFunctions);
 
     if (result !== null) {
       return result;
@@ -158,9 +160,9 @@ export function defineUnionType<Ds extends readonly DefinedType<any, any>[]>(opt
 export function oneOf<Ps extends readonly Parser<any>[]>(
   ...parsers: Ps
 ): Parser<Parsed<Ps[number]>> {
-  return (value: unknown) => {
+  return (value: unknown, factoryFunctions: FactoryFunctions) => {
     for (const parser of parsers) {
-      const result = parser(value);
+      const result = parser(value, factoryFunctions);
       if (result !== null) {
         return result as Parsed<Ps[number]>;
       }
@@ -192,9 +194,9 @@ export function assertWith<T>(
 export function expect<T>(
   parser: Parser<T>,
   message: string,
-): (value: unknown) => T {
-  return (value: unknown): T => {
-    const result = parser(value);
+): (value: unknown, factoryFunctions: FactoryFunctions) => T {
+  return (value: unknown, factoryFunctions: FactoryFunctions): T => {
+    const result = parser(value, factoryFunctions);
     if (result !== null) {
       return result;
     }
@@ -206,8 +208,6 @@ export function expect<T>(
 type Values<M> = M[keyof M];
 
 export function createFormatRegistry<M extends object, O>() {
-  type Input = Values<M>;
-
   const formatters: Formatter<any, O>[] = [];
 
   const register = <K extends keyof M>(
@@ -219,6 +219,6 @@ export function createFormatRegistry<M extends object, O>() {
 
   return {
     register,
-    formatters: formatters as readonly Formatter<Input, O>[],
+    formatters: formatters as readonly Formatter<Values<M>, O>[],
   };
 }

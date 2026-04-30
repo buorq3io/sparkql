@@ -44,7 +44,6 @@ import {
   groupConcat,
   serviceSilent,
   group,
-  objects,
 } from '../../src/index.mjs';
 import { db, v, n } from '../index.js';
 

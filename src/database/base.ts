@@ -187,7 +187,7 @@ export class SparqlDatabase<T extends IriManagerConfig, R extends string = 'g_'>
     return this.factory.termLiteral(
       { sourceLocationType: 'autoGenerate' },
       value,
-      typeof lang === 'string' ? lang : termIri.parseOrThrow(lang)
+      typeof lang === 'string' || !lang ? lang : termIri.parseOrThrow(lang, this.factoryFunctions)
     );
   }
 

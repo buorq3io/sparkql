@@ -1,8 +1,9 @@
+import * as AST from '@traqula/rules-sparql-1-1';
 import { tripleNesting } from '../index.mjs';
 import { Formatter } from './generators.js';
 import {
+    FactoryFunctions,
   GraphNodeInput,
-  TermBlankInput,
   TripleCollectionBlankNodePropertiesInputBase,
   TripleCollectionBlankNodePropertiesInputSyntax,
   TripleCollectionListInputBase,
@@ -32,35 +33,22 @@ export function isTripleCollectionListInputSyntax(
 }
 
 export function formatTripleCollectionListInputSyntax(
-  value: TripleCollectionListInputSyntax
+  value: TripleCollectionListInputSyntax,
+  factory: FactoryFunctions
 ): TripleCollectionListInputBase {
   const nodes = value[0];
   const tripleNestings: TripleNestingInput[] = [];
 
-  const id = {
-    type: "term",
-    subType: "blankNode",
-    label: `g_${Date.now()}`,
-    loc: {
-      sourceLocationType: "autoGenerate"
-    }
-  } satisfies TermBlankInput; // fix
-  let prev = id; // fix
+  const id = factory.blank();
+  let prev: AST.TermBlank | AST.TermIriFull = id;
   for (let [index, node] of nodes.entries()) {
     tripleNestings.push(
-      tripleNesting(prev, new URL('http://www.w3.org/1999/02/22-rdf-syntax-ns#first'), node) // fix
+      tripleNesting(prev, factory.iri('http://www.w3.org/1999/02/22-rdf-syntax-ns#first'), node)
     );
     const next =
       index === nodes.length - 1
-        ? new URL('http://www.w3.org/1999/02/22-rdf-syntax-ns#nil')
-        : ({
-          type: "term",
-          subType: "blankNode",
-          label: `g_${Date.now()}`,
-          loc: {
-            sourceLocationType: "autoGenerate"
-          }
-        } satisfies TermBlankInput); // fix
+        ? factory.iri('http://www.w3.org/1999/02/22-rdf-syntax-ns#nil')
+        : factory.blank();
     tripleNestings.push(
       tripleNesting(prev, new URL('http://www.w3.org/1999/02/22-rdf-syntax-ns#rest'), next)
     );
@@ -94,16 +82,10 @@ export function isTripleCollectionBlankNodePropertiesInputSyntax(
 }
 
 export function formatTripleCollectionBlankNodePropertiesInputSyntax(
-  value: TripleCollectionBlankNodePropertiesInputSyntax
+  value: TripleCollectionBlankNodePropertiesInputSyntax,
+  factory: FactoryFunctions
 ): TripleCollectionBlankNodePropertiesInputBase {
-  const source = {
-    type: "term",
-    subType: "blankNode",
-    label: `g_${Date.now()}`,
-    loc: {
-      sourceLocationType: "autoGenerate"
-    }
-  } satisfies TermBlankInput;
+  const source = factory.blank();
 
   if (isObjectLike(value[0]) && value[0].subType == 'predicatePairCollection') {
     const items = value[0].values.flatMap(v => {

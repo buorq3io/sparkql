@@ -263,7 +263,7 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
   private sanitizeContextDefinition(context: ContextDefinitionInput): AST.ContextDefinition {
     return {
       ...context,
-      value: termIri.parseOrThrow(context.value),
+      value: termIri.parseOrThrow(context.value, this.factoryFunctions),
     };
   }
 
@@ -272,7 +272,7 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
       ...datasets,
       clauses: datasets.clauses.map(clause => ({
         ...clause,
-        value: termIri.parseOrThrow(clause.value),
+        value: termIri.parseOrThrow(clause.value, this.factoryFunctions),
       })),
     };
   }
@@ -318,7 +318,7 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
     if (isObjectLike(grouping) && 'variable' in grouping) {
       return {
         ...grouping,
-        variable: termVariable.parseOrThrow(grouping.variable),
+        variable: termVariable.parseOrThrow(grouping.variable, this.factoryFunctions),
         value: this.sanitizeExpression(grouping.value),
       };
     }
@@ -335,7 +335,7 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
 
     return variables.map(variable => {
       if (variable.type === 'term') {
-        return termVariable.parseOrThrow(variable);
+        return termVariable.parseOrThrow(variable, this.factoryFunctions);
       }
 
       return this.sanitizePatternBind(variable);
@@ -349,7 +349,7 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
       return variables;
     }
 
-    return variables.map(variable => termGraph.parseOrThrow(variable));
+    return variables.map(variable => termGraph.parseOrThrow(variable, this.factoryFunctions));
   }
 
   private sanitizeGraphRef(ref: GraphRefSpecificInput): AST.GraphRefSpecific;
@@ -359,7 +359,7 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
     if (ref.subType === 'specific') {
       return {
         ...ref,
-        graph: termIri.parseOrThrow(ref.graph),
+        graph: termIri.parseOrThrow(ref.graph, this.factoryFunctions),
       };
     }
     return ref;
@@ -427,7 +427,7 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
   private sanitizeLoadOperation(operation: UpdateOperationLoadInput): AST.UpdateOperationLoad {
     return {
       ...operation,
-      source: termIri.parseOrThrow(operation.source),
+      source: termIri.parseOrThrow(operation.source, this.factoryFunctions),
       ...(operation.destination
         ? { destination: this.sanitizeGraphRef(operation.destination) }
         : { destination: undefined }),
@@ -439,7 +439,7 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
   ): AST.UpdateOperationModify {
     return {
       ...operation,
-      graph: operation.graph ? termIri.parseOrThrow(operation.graph) : undefined,
+      graph: operation.graph ? termIri.parseOrThrow(operation.graph, this.factoryFunctions) : undefined,
       insert: operation.insert.map(quads => this.sanitizeQuads(quads)),
       delete: operation.delete.map(quads => this.sanitizeQuads(quads)),
       from: this.sanitizeDatasetClauses(operation.from),
@@ -458,7 +458,7 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
         case 'functionCall':
           return {
             ...expression,
-            function: termIri.parseOrThrow(expression.function),
+            function: termIri.parseOrThrow(expression.function, this.factoryFunctions),
             args: expression.args.map(arg => this.sanitizeExpression(arg)),
           };
         case 'patternOperation':
@@ -484,7 +484,7 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
     }
 
     if (termExpression.accepts(expression)) {
-      return termExpression.parseOrThrow(expression);
+      return termExpression.parseOrThrow(expression, this.factoryFunctions);
     }
 
     throw new Error('Unsupported expression provided.');
@@ -506,7 +506,7 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
       for (const property of properties) {
         row[property] =
           columns[property][index] !== undefined
-            ? termValues.parseOrThrow(columns[property][index])
+            ? termValues.parseOrThrow(columns[property][index], this.factoryFunctions)
             : undefined;
       }
 
@@ -522,7 +522,7 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
   protected sanitizePropertyPath(path: PathInput): AST.Path;
   protected sanitizePropertyPath(path: PathInput): AST.Path {
     if (termIri.accepts(path)) {
-      return termIri.parseOrThrow(path);
+      return termIri.parseOrThrow(path, this.factoryFunctions);
     }
 
     switch (path.subType) {
@@ -554,7 +554,7 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
     predicate: TripleNestingInput['predicate']
   ): AST.TripleNesting['predicate'] {
     if (termGraph.accepts(predicate)) {
-      return termGraph.parseOrThrow(predicate);
+      return termGraph.parseOrThrow(predicate, this.factoryFunctions);
     }
 
     return this.sanitizePropertyPath(predicate);
@@ -563,12 +563,12 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
   private sanitizeGraphNode(node: GraphNodeInput): AST.GraphNode {
     if (tripleCollectionListInputBase.accepts(node)) {
       return this.sanitizeTripleCollectionListBase(
-        tripleCollectionListInputBase.parseOrThrow(node)
+        tripleCollectionListInputBase.parseOrThrow(node, this.factoryFunctions)
       );
     }
     if (tripleCollectionBlankNodePropertiesInputBase.accepts(node)) {
       return this.sanitizeTripleCollectionBlankNodePropertiesBase(
-        tripleCollectionBlankNodePropertiesInputBase.parseOrThrow(node)
+        tripleCollectionBlankNodePropertiesInputBase.parseOrThrow(node, this.factoryFunctions)
       );
     }
 
@@ -577,7 +577,7 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
 
   private sanitizeTerm(term_: TermInput): AST.Term {
     if (term.accepts(term_)) {
-      return term.parseOrThrow(term_);
+      return term.parseOrThrow(term_, this.factoryFunctions);
     }
     throw Error('Unsupported term value provided');
   }
@@ -600,7 +600,7 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
       loc: {
         sourceLocationType: 'autoGenerate',
       },
-      identifier: termBlank.parseOrThrow(collection.identifier),
+      identifier: termBlank.parseOrThrow(collection.identifier, this.factoryFunctions),
       triples: collection.triples.map(t => this.sanitizeTripleNesting(t)),
     };
   }
@@ -614,7 +614,7 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
       loc: {
         sourceLocationType: 'autoGenerate',
       },
-      identifier: termBlank.parseOrThrow(collection.identifier),
+      identifier: termBlank.parseOrThrow(collection.identifier, this.factoryFunctions),
       triples: collection.triples.map(t => this.sanitizeTripleNesting(t)),
     };
   }
@@ -623,12 +623,12 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
     return bgraphs.flatMap(entry => {
       if (tripleCollectionListInputBase.accepts(entry)) {
         return this.sanitizeTripleCollectionListBase(
-          tripleCollectionListInputBase.parseOrThrow(entry)
+          tripleCollectionListInputBase.parseOrThrow(entry, this.factoryFunctions)
         );
       }
       if (tripleCollectionBlankNodePropertiesInputBase.accepts(entry)) {
         return this.sanitizeTripleCollectionBlankNodePropertiesBase(
-          tripleCollectionBlankNodePropertiesInputBase.parseOrThrow(entry)
+          tripleCollectionBlankNodePropertiesInputBase.parseOrThrow(entry, this.factoryFunctions)
         );
       }
       return this.sanitizeTripleNesting(entry);
@@ -660,7 +660,7 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
   ): AST.PatternGraph | AST.PatternService {
     return {
       ...pattern,
-      name: termGraph.parseOrThrow(pattern.name),
+      name: termGraph.parseOrThrow(pattern.name, this.factoryFunctions),
       patterns: this.sanitizePatternList(pattern.patterns),
     };
   }
@@ -683,14 +683,14 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
     return {
       ...pattern,
       expression: this.sanitizeExpression(pattern.expression),
-      variable: termVariable.parseOrThrow(pattern.variable),
+      variable: termVariable.parseOrThrow(pattern.variable, this.factoryFunctions),
     };
   }
 
   private sanitizePatternValues(pattern: PatternValuesInput): AST.PatternValues {
     return {
       ...pattern,
-      variables: pattern.variables.map(variable => termVariable.parseOrThrow(variable)),
+      variables: pattern.variables.map(variable => termVariable.parseOrThrow(variable, this.factoryFunctions)),
       values: this.sanitizeValuePatternColumns(pattern.values),
     };
   }
@@ -749,7 +749,7 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
 
     return {
       ...quads,
-      graph: termGraph.parseOrThrow(quads.graph),
+      graph: termGraph.parseOrThrow(quads.graph, this.factoryFunctions),
       triples: this.sanitizeBgpPattern(quads.triples),
     };
   }

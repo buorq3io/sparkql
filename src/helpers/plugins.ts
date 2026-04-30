@@ -21,140 +21,51 @@ declare module './types.js' {
 
 termLiteralRegistry.register('string', {
   test: (value): value is string => typeof value === 'string',
-  format: value =>
-    ({
-      type: 'term',
-      subType: 'literal',
-      value: value,
-      loc: {
-        sourceLocationType: 'autoGenerate',
-      },
-      langOrIri: undefined,
-    } as const),
+  format: (value, factory) => factory.literal(value),
 });
 
 termLiteralRegistry.register('regex', {
   test: (value): value is RegExp => value instanceof RegExp,
-  format: value =>
-    ({
-      type: 'term',
-      subType: 'literal',
-      value: value.source,
-      loc: {
-        sourceLocationType: 'autoGenerate',
-      },
-      langOrIri: undefined,
-    } as const),
+  format: (value, factory) => factory.literal(value.source),
 });
 
 termLiteralRegistry.register('number', {
   test: (value): value is number => typeof value === 'number',
-  format: value =>
-    ({
-      type: 'term',
-      subType: 'literal',
-      value: String(value),
-      loc: {
-        sourceLocationType: 'autoGenerate',
-      },
-      langOrIri: {
-        type: 'term',
-        subType: 'namedNode',
-        loc: {
-          sourceLocationType: 'autoGenerate',
-        },
-        value: Number.isInteger(value)
+  format: (value, factory) =>
+    factory.literal(
+      String(value),
+      factory.iri(
+        Number.isInteger(value)
           ? 'http://www.w3.org/2001/XMLSchema#integer'
-          : 'http://www.w3.org/2001/XMLSchema#decimal',
-      },
-    } as const),
+          : 'http://www.w3.org/2001/XMLSchema#decimal'
+      )
+    ),
 });
 
 termLiteralRegistry.register('bigint', {
   test: (value): value is bigint => typeof value === 'bigint',
-  format: value =>
-    ({
-      type: 'term',
-      subType: 'literal',
-      value: String(value),
-      loc: {
-        sourceLocationType: 'autoGenerate',
-      },
-      langOrIri: {
-        type: 'term',
-        subType: 'namedNode',
-        loc: {
-          sourceLocationType: 'autoGenerate',
-        },
-        value: 'http://www.w3.org/2001/XMLSchema#integer',
-      },
-    } as const),
+  format: (value, factory) =>
+    factory.literal(String(value), factory.iri('http://www.w3.org/2001/XMLSchema#integer')),
 });
 
 termLiteralRegistry.register('date', {
   test: (value): value is Date => value instanceof Date,
-  format: value =>
-    ({
-      type: 'term',
-      subType: 'literal',
-      value: value.toISOString(),
-      loc: {
-        sourceLocationType: 'autoGenerate',
-      },
-      langOrIri: {
-        type: 'term',
-        subType: 'namedNode',
-        loc: {
-          sourceLocationType: 'autoGenerate',
-        },
-        value: 'http://www.w3.org/2001/XMLSchema#datetime',
-      },
-    } as const),
+  format: (value, factory) =>
+    factory.literal(value.toISOString(), factory.iri('http://www.w3.org/2001/XMLSchema#datetime')),
 });
 
 termLiteralRegistry.register('boolean', {
   test: (value): value is boolean => typeof value === 'boolean',
-  format: value =>
-    ({
-      type: 'term',
-      subType: 'literal',
-      value: String(value),
-      loc: {
-        sourceLocationType: 'autoGenerate',
-      },
-      langOrIri: {
-        type: 'term',
-        subType: 'namedNode',
-        loc: {
-          sourceLocationType: 'autoGenerate',
-        },
-        value: 'http://www.w3.org/2001/XMLSchema#boolean',
-      },
-    } as const),
+  format: (value, factory) =>
+    factory.literal(String(value), factory.iri('http://www.w3.org/2001/XMLSchema#boolean')),
 });
 
 termIriRegistry.register('url', {
   test: (value): value is URL => value instanceof URL,
-  format: value =>
-    ({
-      type: 'term',
-      subType: 'namedNode',
-      value: value.toString(),
-      loc: {
-        sourceLocationType: 'autoGenerate',
-      },
-    } as const),
+  format: (value, factory) => factory.iri(String(value)),
 });
 
 termBlankRegistry.register('tuple', {
   test: (value): value is [] => Array.isArray(value) && value.length === 0,
-  format: value =>
-    ({
-      type: 'term',
-      subType: 'blankNode',
-      label: `g_${Date.now()}`,
-      loc: {
-        sourceLocationType: 'autoGenerate',
-      },
-    } as const),
+  format: (_, factory) => factory.blank(),
 });
