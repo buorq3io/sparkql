@@ -31,6 +31,7 @@ import {
   TermVariableInput,
 } from '../helpers/types.js';
 import { termIri } from '../helpers/utilities.js';
+import { RootQueryBuilderBaseWithout } from './query.js';
 
 interface PrivateSparqlDatabaseOptions<T extends IriManagerConfig>
   extends SparqlDatabaseOptions<T> {
@@ -113,15 +114,15 @@ export class SparqlDatabase<T extends IriManagerConfig, R extends string = 'g_'>
 
   select<U extends SelectedVariables>(
     variables?: U
-  ): SelectQueryBuilderBase<InferredSelectResult<U>>;
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<InferredSelectResult<U>>>;
 
   select<U extends Record<string, any>>(
     variables?: TypedSelectedVariables<U>
-  ): SelectQueryBuilderBase<U>;
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U>>;
 
   select<U extends Record<string, any>>(
     variables?: TypedSelectedVariables<U>
-  ): SelectQueryBuilderBase<U> {
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U>> {
     return new SelectQueryBuilderBase(
       variables,
       this.initialContext,
@@ -134,15 +135,15 @@ export class SparqlDatabase<T extends IriManagerConfig, R extends string = 'g_'>
 
   selectDistinct<U extends SelectedVariables>(
     variables?: U
-  ): SelectQueryBuilderBase<InferredSelectResult<U>>;
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<InferredSelectResult<U>>>;
 
   selectDistinct<U extends Record<string, any>>(
     variables?: TypedSelectedVariables<U>
-  ): SelectQueryBuilderBase<U>;
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U>>;
 
   selectDistinct<U extends Record<string, any>>(
     variables?: TypedSelectedVariables<U>
-  ): SelectQueryBuilderBase<U> {
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U>> {
     return new SelectQueryBuilderBase(
       variables,
       this.initialContext,
@@ -155,15 +156,15 @@ export class SparqlDatabase<T extends IriManagerConfig, R extends string = 'g_'>
 
   selectReduced<U extends SelectedVariables>(
     variables?: U
-  ): SelectQueryBuilderBase<InferredSelectResult<U>>;
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<InferredSelectResult<U>>>;
 
   selectReduced<U extends Record<string, any>>(
     variables?: TypedSelectedVariables<U>
-  ): SelectQueryBuilderBase<U>;
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U>>;
 
   selectReduced<U extends Record<string, any>>(
     variables?: TypedSelectedVariables<U>
-  ): SelectQueryBuilderBase<U> {
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U>> {
     return new SelectQueryBuilderBase(
       variables,
       this.initialContext,
@@ -174,11 +175,11 @@ export class SparqlDatabase<T extends IriManagerConfig, R extends string = 'g_'>
     );
   }
 
-  ask() {
+  ask(): RootQueryBuilderBaseWithout<AskQueryBuilderBase> {
     return new AskQueryBuilderBase(this.initialContext, this.factoryFunctions, this.endpointUrl);
   }
 
-  describe(...variables: (TermIriInput | TermVariableInput)[]): DescribeQueryBuilderBase {
+  describe(...variables: (TermIriInput | TermVariableInput)[]): RootQueryBuilderBaseWithout<DescribeQueryBuilderBase> {
     return new DescribeQueryBuilderBase(
       variables,
       this.initialContext,
@@ -187,7 +188,7 @@ export class SparqlDatabase<T extends IriManagerConfig, R extends string = 'g_'>
     );
   }
 
-  construct(...templates: BasicGraphPatternInput): ConstructQueryBuilderBase {
+  construct(...templates: BasicGraphPatternInput): RootQueryBuilderBaseWithout<ConstructQueryBuilderBase> {
     return new ConstructQueryBuilderBase(
       templates,
       this.initialContext,
@@ -318,11 +319,11 @@ export class SparqlDatabase<T extends IriManagerConfig, R extends string = 'g_'>
     this.factory.resetBlankNodeCounter();
   }
 
-  createManagers<T extends string, K extends IriManagerConfig, P extends Strictness = Strictness.loose>(
-    variableKeys: readonly VariableManagerConfig<T>[],
-    nodeConfig: K,
-    mode?: P
-  ) {
+  createManagers<
+    T extends string,
+    K extends IriManagerConfig,
+    P extends Strictness = Strictness.loose
+  >(variableKeys: readonly VariableManagerConfig<T>[], nodeConfig: K, mode?: P) {
     const blanks = createBlankManager<R>(this.factoryFunctions);
     const nodes = createIriManager(nodeConfig, mode ?? Strictness.loose, this.factoryFunctions);
     const variables = createVariableManager(
