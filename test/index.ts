@@ -35,11 +35,10 @@ const prefixes = {
 
 export const blankNodePrefix = 'g_';
 export const db = SparqlDatabase.create({
-  prefixes: prefixes,
-  blankNodePrefix: blankNodePrefix,
+  managerConfig: prefixes,
   endpointUrl: process.env.DATABASE_URL,
 });
-export const [v, n, b] = db.create([], prefixes);
+export const [v, n, b] = db.createManagers([], prefixes);
 
 export const factory = new AST.AstFactory();
 const termBlankOriginal = factory.termBlank.bind(factory);
