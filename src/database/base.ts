@@ -30,11 +30,10 @@ import {
 import { termIri } from '../helpers/utilities.js';
 import { RootQueryBuilderBaseWithout } from './query.js';
 
-interface PrivateSparqlDatabaseOptions<T extends IriManagerConfig>
-  extends SparqlDatabaseOptions<T> {
-  context?: QueryInput['context'];
+interface PrivateSparqlDatabaseOptions {
+  context: QueryInput['context'];
   factory?: AST.AstFactory;
-  managerConfig?: never;
+  endpointUrl?: string;
 }
 
 export interface SparqlDatabaseOptions<T extends IriManagerConfig> {
@@ -48,9 +47,9 @@ export class SparqlDatabase<T extends IriManagerConfig, R extends string = 'g_'>
   private readonly factory: AST.AstFactory;
   protected readonly factoryFunctions: FactoryFunctions;
 
-  private constructor(options?: PrivateSparqlDatabaseOptions<T>) {
+  private constructor(options?: PrivateSparqlDatabaseOptions) {
     this.endpointUrl = options?.endpointUrl;
-    this.initialContext = transformIntoPrefixObject(options?.managerConfig ?? {});
+    this.initialContext = options?.context ?? [];
     this.factory = options?.factory ?? new AST.AstFactory();
     this.factoryFunctions = {
       variable: value => this.variable(value),
