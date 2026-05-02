@@ -1,18 +1,19 @@
 import { QueryBuilderBase } from './query.js';
 import {
-  BasicGraphPatternInput,
   FactoryFunctions,
+  PatternBgpInput,
   QuadsInput,
   QueryConstructInput,
   SparqlClient,
 } from '../helpers/types.js';
+import { bgp } from '../structures/index.js';
 
 export class ConstructQueryBuilderBase
   extends QueryBuilderBase<QueryConstructInput, QuadsInput[]>
   implements PromiseLike<QuadsInput[]>
 {
   constructor(
-    variables: BasicGraphPatternInput,
+    template: PatternBgpInput[],
     context: QueryConstructInput['context'],
     factoryFunctions: FactoryFunctions,
     endpointUrl?: string
@@ -30,14 +31,7 @@ export class ConstructQueryBuilderBase
           },
         },
         solutionModifiers: {},
-        template: {
-          type: 'pattern',
-          subType: 'bgp',
-          triples: variables,
-          loc: {
-            sourceLocationType: 'autoGenerate',
-          },
-        },
+        template: bgp(...template.flatMap(t => t.triples)),
         where: {
           type: 'pattern',
           subType: 'group',

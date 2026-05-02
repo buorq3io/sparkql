@@ -21,6 +21,7 @@ import { ConstructQueryBuilderBase } from './construct.js';
 import {
   BasicGraphPatternInput,
   FactoryFunctions,
+  PatternBgpInput,
   QuadsInput,
   QueryInput,
   Strictness,
@@ -184,7 +185,7 @@ export class SparqlDatabase<T extends IriManagerConfig, R extends string = 'g_'>
     );
   }
 
-  construct(...templates: BasicGraphPatternInput): RootQueryBuilderBaseWithout<ConstructQueryBuilderBase> {
+  construct(...templates: PatternBgpInput[]): RootQueryBuilderBaseWithout<ConstructQueryBuilderBase> {
     return new ConstructQueryBuilderBase(
       templates,
       this.initialContext,

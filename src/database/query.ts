@@ -9,11 +9,12 @@ import {
   TermIriInput,
   ValuePatternColumnsInput,
 } from '../helpers/types.js';
+import { isObjectLike } from '../helpers/utilities.js';
 
 export type QueryBuilderBaseWithout<
   T extends QueryBuilderBase<any, any, any>,
   TDynamic extends boolean,
-  TExcluded extends keyof T & string,
+  TExcluded extends keyof T & string
 > = TDynamic extends true ? T : Omit<T, TExcluded>;
 
 export type RootQueryBuilderBaseWithout<T extends QueryBuilderBase<any, any, any>> =
@@ -27,8 +28,7 @@ export abstract class QueryBuilderBase<
   TConfig extends QueryInput,
   KReturn,
   TDynamic extends boolean = false
-  > extends SparqlQueryBuilderBase<TConfig, KReturn> {
-
+> extends SparqlQueryBuilderBase<TConfig, KReturn> {
   private fromBase(
     fromType: 'default' | 'named',
     iris: TermIriInput[]
@@ -107,7 +107,7 @@ export abstract class QueryBuilderBase<
   }
 
   orderBy(
-    ...orderings: OrderingInput[]
+    ...orderings: (OrderingInput | ExpressionInput)[]
   ): QueryBuilderBaseWithout<
     this,
     TDynamic,
@@ -117,7 +117,14 @@ export abstract class QueryBuilderBase<
       this.config.solutionModifiers.order = {
         type: 'solutionModifier',
         subType: 'order',
-        orderDefs: orderings,
+        orderDefs: orderings.map(o => {
+          if (isObjectLike(o) && 'descending' in o) return o;
+          return {
+            descending: false,
+            loc: { sourceLocationType: 'autoGenerate' },
+            expression: o,
+          } as const;
+        }),
         loc: {
           sourceLocationType: 'autoGenerate',
         },
@@ -197,6 +204,6 @@ export abstract class QueryBuilderBase<
   }
 
   $dynamic(): QueryBuilderBaseWithout<this, true, any> {
-    return this
+    return this;
   }
 }
