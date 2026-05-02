@@ -9,7 +9,14 @@ import {
   UpdateOperationModifyInput,
 } from '../helpers/types.js';
 
-export class WithQueryBuilderBase
+export type WithBuilderBaseWithout<
+  T extends WithQueryBuilderBase<any>,
+  TDynamic extends boolean,
+  TExcluded extends keyof T & string,
+> = TDynamic extends true ? T : Omit<T, TExcluded>;
+
+
+export class WithQueryBuilderBase<TDynamic extends boolean = false>
   extends SparqlQueryBuilderBase<UpdateInput, void>
   implements PromiseLike<void>
 {
@@ -67,22 +74,29 @@ export class WithQueryBuilderBase
     this.updateBuilder = updateBuilder;
   }
 
-  insert(...quads: QuadsInput[]) {
-    this.operation.insert = [...this.operation.insert, ...quads];
-    return this;
-  }
-
-  delete(...quads: QuadsInput[]) {
+  delete(...quads: QuadsInput[]): WithBuilderBaseWithout<
+    this,
+    TDynamic,
+    'delete'
+  > {
     this.operation.delete = [...this.operation.delete, ...quads];
     return this;
   }
 
-  where(...patterns: PatternInput[]) {
-    this.operation.where.patterns = [...this.operation.where.patterns, ...patterns];
+  insert(...quads: QuadsInput[]): WithBuilderBaseWithout<
+    this,
+    TDynamic,
+    'insert' | 'delete'
+  > {
+    this.operation.insert = [...this.operation.insert, ...quads];
     return this;
   }
 
-  using(iri: TermIriInput) {
+  using(iri: TermIriInput): WithBuilderBaseWithout<
+    this,
+    TDynamic,
+    'insert' | 'delete'
+  > {
     this.operation.from.clauses = [
       ...this.operation.from.clauses,
       {
@@ -93,7 +107,11 @@ export class WithQueryBuilderBase
     return this;
   }
 
-  usingNamed(iri: TermIriInput) {
+  usingNamed(iri: TermIriInput): WithBuilderBaseWithout<
+    this,
+    TDynamic,
+    'insert' | 'delete'
+  > {
     this.operation.from.clauses = [
       ...this.operation.from.clauses,
       {
@@ -102,6 +120,19 @@ export class WithQueryBuilderBase
       },
     ];
     return this;
+  }
+
+  where(...patterns: PatternInput[]): WithBuilderBaseWithout<
+    this,
+    TDynamic,
+    'where' | 'insert' | 'delete'
+  > {
+    this.operation.where.patterns = [...this.operation.where.patterns, ...patterns];
+    return this;
+  }
+
+  $dynamic(): WithBuilderBaseWithout<this, true, any> {
+    return this
   }
 
   $end() {

@@ -21,9 +21,6 @@ import { ConstructQueryBuilderBase } from './construct.js';
 import {
   BasicGraphPatternInput,
   FactoryFunctions,
-  GraphRefDefaultInput,
-  GraphRefInput,
-  GraphRefSpecificInput,
   QuadsInput,
   QueryInput,
   Strictness,
@@ -197,6 +194,18 @@ export class SparqlDatabase<T extends IriManagerConfig, R extends string = 'g_'>
     );
   }
 
+  insertData(...quads: QuadsInput[]) {
+    return this.update().insertData(...quads);
+  }
+
+  deleteData(...quads: QuadsInput[]) {
+    return this.update().deleteData(...quads);
+  }
+
+  deleteWhere(...quads: QuadsInput[]) {
+    return this.update().deleteWhere(...quads);
+  }
+
   insert(...quads: QuadsInput[]) {
     return this.update().insert(...quads);
   }
@@ -205,86 +214,144 @@ export class SparqlDatabase<T extends IriManagerConfig, R extends string = 'g_'>
     return this.update().delete(...quads);
   }
 
-  deleteWhere(...quads: QuadsInput[]) {
-    return this.update().deleteWhere(...quads);
+  with(graph: TermIriInput) {
+    return this.update().with(graph);
   }
 
-  with(iri?: TermIriInput) {
-    return this.update().with(iri);
+  copy(source: TermIriInput) {
+    return this.update().copy(source);
   }
 
-  copy(
-    source: GraphRefDefaultInput | GraphRefSpecificInput,
-    destination: GraphRefDefaultInput | GraphRefSpecificInput
-  ) {
-    return this.update().copy(source, destination);
+  copyDefault() {
+    return this.update().copyDefault();
   }
 
-  copySilent(
-    source: GraphRefDefaultInput | GraphRefSpecificInput,
-    destination: GraphRefDefaultInput | GraphRefSpecificInput
-  ) {
-    return this.update().copySilent(source, destination);
+  copySilent(source: TermIriInput) {
+    return this.update().copySilent(source);
   }
 
-  move(
-    source: GraphRefDefaultInput | GraphRefSpecificInput,
-    destination: GraphRefDefaultInput | GraphRefSpecificInput
-  ) {
-    return this.update().move(source, destination);
+  copySilentDefault() {
+    return this.update().copySilentDefault();
   }
 
-  moveSilent(
-    source: GraphRefDefaultInput | GraphRefSpecificInput,
-    destination: GraphRefDefaultInput | GraphRefSpecificInput
-  ) {
-    return this.update().moveSilent(source, destination);
+  move(source: TermIriInput) {
+    return this.update().move(source);
   }
 
-  add(
-    source: GraphRefDefaultInput | GraphRefSpecificInput,
-    destination: GraphRefDefaultInput | GraphRefSpecificInput
-  ) {
-    return this.update().add(source, destination);
+  moveDefault() {
+    return this.update().moveDefault();
   }
 
-  addSilent(
-    source: GraphRefDefaultInput | GraphRefSpecificInput,
-    destination: GraphRefDefaultInput | GraphRefSpecificInput
-  ) {
-    return this.update().addSilent(source, destination);
+  moveSilent(source: TermIriInput) {
+    return this.update().moveSilent(source);
   }
 
-  load(source: TermIriInput, destination?: GraphRefSpecificInput) {
-    return this.update().load(source, destination);
+  moveSilentDefault() {
+    return this.update().moveSilentDefault();
   }
 
-  loadSilent(source: TermIriInput, destination?: GraphRefSpecificInput) {
-    return this.update().loadSilent(source, destination);
+  add(source: TermIriInput) {
+    return this.update().add(source);
   }
 
-  create(graph: GraphRefSpecificInput) {
+  addDefault() {
+    return this.update().addDefault();
+  }
+
+  addSilent(source: TermIriInput) {
+    return this.update().addSilent(source);
+  }
+
+  addSilentDefault() {
+    return this.update().addSilentDefault();
+  }
+
+  load(source: TermIriInput) {
+    return this.update().load(source);
+  }
+
+  loadInto(source: TermIriInput, destination: TermIriInput) {
+    return this.update().loadInto(source, destination);
+  }
+
+  loadSilent(source: TermIriInput) {
+    return this.update().loadSilent(source);
+  }
+
+  loadSilentInto(source: TermIriInput, destination: TermIriInput) {
+    return this.update().loadSilentInto(source, destination);
+  }
+
+  create(graph: TermIriInput) {
     return this.update().create(graph);
   }
 
-  createSilent(graph: GraphRefSpecificInput) {
+  createSilent(graph: TermIriInput) {
     return this.update().createSilent(graph);
   }
 
-  clear(graph: GraphRefInput) {
+  clear(graph: TermIriInput) {
     return this.update().clear(graph);
   }
 
-  clearSilent(graph: GraphRefInput) {
-    return this.update().dropSilent(graph);
+  clearAll() {
+    return this.update().clearAll();
   }
 
-  drop(graph: GraphRefInput) {
+  clearDefault() {
+    return this.update().clearDefault();
+  }
+
+  clearNamed() {
+    return this.update().clearNamed();
+  }
+
+  clearSilent(graph: TermIriInput) {
+    return this.update().clearSilent(graph);
+  }
+
+  clearSilentAll() {
+    return this.update().clearSilentAll();
+  }
+
+  clearSilentDefault() {
+    return this.update().clearSilentDefault();
+  }
+
+  clearSilentNamed() {
+    return this.update().clearSilentNamed();
+  }
+
+  drop(graph: TermIriInput) {
     return this.update().drop(graph);
   }
 
-  dropSilent(graph: GraphRefInput) {
+  dropAll() {
+    return this.update().dropAll();
+  }
+
+  dropDefault() {
+    return this.update().dropDefault();
+  }
+
+  dropNamed() {
+    return this.update().dropNamed();
+  }
+
+  dropSilent(graph: TermIriInput) {
     return this.update().dropSilent(graph);
+  }
+
+  dropSilentAll() {
+    return this.update().dropSilentAll();
+  }
+
+  dropSilentDefault() {
+    return this.update().dropSilentDefault();
+  }
+
+  dropSilentNamed() {
+    return this.update().dropSilentNamed();
   }
 
   protected update() {

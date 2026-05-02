@@ -1,7 +1,6 @@
 import {
   BasicGraphPatternInput,
   ExpressionInput,
-  GraphQuadsInput,
   PatternBgpInput,
   PatternBindInput,
   PatternFilterInput,
@@ -15,7 +14,6 @@ import {
   PatternValuesInput,
   TermIriInput,
   TermVariableInput,
-  TripleNestingInput,
   ValuePatternColumnsInput,
   Presence
 } from '../helpers/types.js';
@@ -73,20 +71,6 @@ export function graph(
     subType: 'graph',
     name: name,
     patterns: patterns,
-    loc: {
-      sourceLocationType: 'autoGenerate',
-    },
-  };
-}
-
-export function quadgraph(
-  name: TermIriInput | TermVariableInput,
-  ...triples: TripleNestingInput[]
-): GraphQuadsInput {
-  return {
-    type: 'graph',
-    graph: name,
-    triples: bgp(...triples),
     loc: {
       sourceLocationType: 'autoGenerate',
     },
