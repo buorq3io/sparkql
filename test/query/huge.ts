@@ -49,6 +49,7 @@ import { db, v, n } from '../index.js';
 
 export default () =>
   db
+    .base('http://example.org/default-resource/')
     .selectDistinct({
       subject: v.subject,
       knownType: v.knownType,
@@ -60,7 +61,6 @@ export default () =>
       ageInDecades: v.ageInDecades,
       dbpediaLink: v.dbpediaLink,
     })
-    .base('http://example.org/default-resource/')
     .from(db.iri('http://example.org/mainGraph'))
     .fromNamed(db.iri('http://example.org/namedGraph1'))
     .fromNamed(db.iri('http://example.org/namedGraph2'))

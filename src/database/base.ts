@@ -21,79 +21,107 @@ import { ConstructQueryBuilderBase } from './construct.js';
 import {
   BasicGraphPatternInput,
   FactoryFunctions,
+  QuadsInput,
+  QueryInput,
   Strictness,
   TermIriInput,
   TermVariableInput,
 } from '../helpers/types.js';
 import { termIri } from '../helpers/utilities.js';
+import { RootQueryBuilderBaseWithout } from './query.js';
 
-interface PrivateSparqlDatabaseOptions<T extends IriManagerConfig, K extends string = 'g_'>
-  extends SparqlDatabaseOptions<T, K> {
-  base?: string;
+interface PrivateSparqlDatabaseOptions {
+  context: QueryInput['context'];
   factory?: AST.AstFactory;
+  endpointUrl?: string;
 }
 
-export interface SparqlDatabaseOptions<T extends IriManagerConfig, K extends string = 'g_'> {
-  prefixes?: T;
-  blankNodePrefix?: K;
+export interface SparqlDatabaseOptions<T extends IriManagerConfig> {
+  managerConfig?: T;
   endpointUrl?: string;
 }
 
 export class SparqlDatabase<T extends IriManagerConfig, R extends string = 'g_'> {
-  private readonly nodes;
   private readonly endpointUrl?: string;
-  private readonly queryPrefixes;
-  private readonly blankNodePrefix: R;
-  protected readonly factory: AST.AstFactory;
+  private readonly initialContext;
+  private readonly factory: AST.AstFactory;
   protected readonly factoryFunctions: FactoryFunctions;
 
-  private constructor(options?: PrivateSparqlDatabaseOptions<T, R>) {
-    this.nodes = options?.prefixes;
+  private constructor(options?: PrivateSparqlDatabaseOptions) {
     this.endpointUrl = options?.endpointUrl;
-    this.blankNodePrefix = options?.blankNodePrefix ?? ('g_' as R);
-    this.queryPrefixes = transformIntoPrefixObject(options?.prefixes ?? {});
+    this.initialContext = options?.context ?? [];
     this.factory = options?.factory ?? new AST.AstFactory();
     this.factoryFunctions = {
       variable: value => this.variable(value),
-      iri: (value, prefix) => prefix === undefined ? this.iri(value) : this.iri(value, prefix),
+      iri: (value, prefix) => (prefix === undefined ? this.iri(value) : this.iri(value, prefix)),
       blank: value => this.blank(value),
       literal: (value, lang) => this.literal(value, lang),
     };
   }
 
   static create<T extends IriManagerConfig, K extends string = 'g_'>(
-    options?: SparqlDatabaseOptions<T, K>
+    options?: SparqlDatabaseOptions<T>
   ): SparqlDatabase<T, K> {
-    const factory = new AST.AstFactory();
     return new SparqlDatabase<T, K>({
-      ...options,
-      factory: factory,
+      endpointUrl: options?.endpointUrl,
+      context: transformIntoPrefixObject(options?.managerConfig ?? {}),
     });
   }
 
-  public base(value: string) {
+  base(value: string) {
     return new SparqlDatabase<T, R>({
-      blankNodePrefix: this.blankNodePrefix,
-      prefixes: this.nodes,
+      endpointUrl: this.endpointUrl,
       factory: this.factory,
-      base: value,
+      context: [
+        ...this.initialContext,
+        {
+          type: 'contextDef',
+          subType: 'base',
+          loc: {
+            sourceLocationType: 'autoGenerate',
+          },
+          value: this.iri(value),
+        },
+      ],
+    });
+  }
+
+  prefix(values: { [x in string]: string }) {
+    return new SparqlDatabase<T, R>({
+      endpointUrl: this.endpointUrl,
+      factory: this.factory,
+      context: [
+        ...this.initialContext,
+        ...Object.entries(values).map(
+          ([k, v]) =>
+            ({
+              type: 'contextDef',
+              subType: 'prefix',
+              loc: {
+                sourceLocationType: 'autoGenerate',
+              },
+              key: k,
+              value: this.iri(v),
+            } as const)
+        ),
+      ],
     });
   }
 
   select<U extends SelectedVariables>(
     variables?: U
-  ): SelectQueryBuilderBase<InferredSelectResult<U>>;
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<InferredSelectResult<U>>>;
 
   select<U extends Record<string, any>>(
     variables?: TypedSelectedVariables<U>
-  ): SelectQueryBuilderBase<U>;
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U>>;
 
   select<U extends Record<string, any>>(
     variables?: TypedSelectedVariables<U>
-  ): SelectQueryBuilderBase<U> {
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U>> {
     return new SelectQueryBuilderBase(
       variables,
-      this.queryPrefixes,
+      this.initialContext,
       this.factoryFunctions,
       undefined,
       undefined,
@@ -103,18 +131,18 @@ export class SparqlDatabase<T extends IriManagerConfig, R extends string = 'g_'>
 
   selectDistinct<U extends SelectedVariables>(
     variables?: U
-  ): SelectQueryBuilderBase<InferredSelectResult<U>>;
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<InferredSelectResult<U>>>;
 
   selectDistinct<U extends Record<string, any>>(
     variables?: TypedSelectedVariables<U>
-  ): SelectQueryBuilderBase<U>;
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U>>;
 
   selectDistinct<U extends Record<string, any>>(
     variables?: TypedSelectedVariables<U>
-  ): SelectQueryBuilderBase<U> {
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U>> {
     return new SelectQueryBuilderBase(
       variables,
-      this.queryPrefixes,
+      this.initialContext,
       this.factoryFunctions,
       true,
       undefined,
@@ -124,18 +152,18 @@ export class SparqlDatabase<T extends IriManagerConfig, R extends string = 'g_'>
 
   selectReduced<U extends SelectedVariables>(
     variables?: U
-  ): SelectQueryBuilderBase<InferredSelectResult<U>>;
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<InferredSelectResult<U>>>;
 
   selectReduced<U extends Record<string, any>>(
     variables?: TypedSelectedVariables<U>
-  ): SelectQueryBuilderBase<U>;
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U>>;
 
   selectReduced<U extends Record<string, any>>(
     variables?: TypedSelectedVariables<U>
-  ): SelectQueryBuilderBase<U> {
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U>> {
     return new SelectQueryBuilderBase(
       variables,
-      this.queryPrefixes,
+      this.initialContext,
       this.factoryFunctions,
       undefined,
       true,
@@ -143,30 +171,190 @@ export class SparqlDatabase<T extends IriManagerConfig, R extends string = 'g_'>
     );
   }
 
-  ask() {
-    return new AskQueryBuilderBase(this.queryPrefixes, this.factoryFunctions, this.endpointUrl);
+  ask(): RootQueryBuilderBaseWithout<AskQueryBuilderBase> {
+    return new AskQueryBuilderBase(this.initialContext, this.factoryFunctions, this.endpointUrl);
   }
 
-  describe(...variables: (TermIriInput | TermVariableInput)[]): DescribeQueryBuilderBase {
+  describe(...variables: (TermIriInput | TermVariableInput)[]): RootQueryBuilderBaseWithout<DescribeQueryBuilderBase> {
     return new DescribeQueryBuilderBase(
       variables,
-      this.queryPrefixes,
+      this.initialContext,
       this.factoryFunctions,
       this.endpointUrl
     );
   }
 
-  construct(...templates: BasicGraphPatternInput): ConstructQueryBuilderBase {
+  construct(...templates: BasicGraphPatternInput): RootQueryBuilderBaseWithout<ConstructQueryBuilderBase> {
     return new ConstructQueryBuilderBase(
       templates,
-      this.queryPrefixes,
+      this.initialContext,
       this.factoryFunctions,
       this.endpointUrl
     );
   }
 
-  update() {
-    return new UpdateQueryBuilderBase(this.queryPrefixes, this.factoryFunctions, this.endpointUrl);
+  insertData(...quads: QuadsInput[]) {
+    return this.update().insertData(...quads);
+  }
+
+  deleteData(...quads: QuadsInput[]) {
+    return this.update().deleteData(...quads);
+  }
+
+  deleteWhere(...quads: QuadsInput[]) {
+    return this.update().deleteWhere(...quads);
+  }
+
+  insert(...quads: QuadsInput[]) {
+    return this.update().insert(...quads);
+  }
+
+  delete(...quads: QuadsInput[]) {
+    return this.update().delete(...quads);
+  }
+
+  with(graph: TermIriInput) {
+    return this.update().with(graph);
+  }
+
+  copy(source: TermIriInput) {
+    return this.update().copy(source);
+  }
+
+  copyDefault() {
+    return this.update().copyDefault();
+  }
+
+  copySilent(source: TermIriInput) {
+    return this.update().copySilent(source);
+  }
+
+  copySilentDefault() {
+    return this.update().copySilentDefault();
+  }
+
+  move(source: TermIriInput) {
+    return this.update().move(source);
+  }
+
+  moveDefault() {
+    return this.update().moveDefault();
+  }
+
+  moveSilent(source: TermIriInput) {
+    return this.update().moveSilent(source);
+  }
+
+  moveSilentDefault() {
+    return this.update().moveSilentDefault();
+  }
+
+  add(source: TermIriInput) {
+    return this.update().add(source);
+  }
+
+  addDefault() {
+    return this.update().addDefault();
+  }
+
+  addSilent(source: TermIriInput) {
+    return this.update().addSilent(source);
+  }
+
+  addSilentDefault() {
+    return this.update().addSilentDefault();
+  }
+
+  load(source: TermIriInput) {
+    return this.update().load(source);
+  }
+
+  loadInto(source: TermIriInput, destination: TermIriInput) {
+    return this.update().loadInto(source, destination);
+  }
+
+  loadSilent(source: TermIriInput) {
+    return this.update().loadSilent(source);
+  }
+
+  loadSilentInto(source: TermIriInput, destination: TermIriInput) {
+    return this.update().loadSilentInto(source, destination);
+  }
+
+  create(graph: TermIriInput) {
+    return this.update().create(graph);
+  }
+
+  createSilent(graph: TermIriInput) {
+    return this.update().createSilent(graph);
+  }
+
+  clear(graph: TermIriInput) {
+    return this.update().clear(graph);
+  }
+
+  clearAll() {
+    return this.update().clearAll();
+  }
+
+  clearDefault() {
+    return this.update().clearDefault();
+  }
+
+  clearNamed() {
+    return this.update().clearNamed();
+  }
+
+  clearSilent(graph: TermIriInput) {
+    return this.update().clearSilent(graph);
+  }
+
+  clearSilentAll() {
+    return this.update().clearSilentAll();
+  }
+
+  clearSilentDefault() {
+    return this.update().clearSilentDefault();
+  }
+
+  clearSilentNamed() {
+    return this.update().clearSilentNamed();
+  }
+
+  drop(graph: TermIriInput) {
+    return this.update().drop(graph);
+  }
+
+  dropAll() {
+    return this.update().dropAll();
+  }
+
+  dropDefault() {
+    return this.update().dropDefault();
+  }
+
+  dropNamed() {
+    return this.update().dropNamed();
+  }
+
+  dropSilent(graph: TermIriInput) {
+    return this.update().dropSilent(graph);
+  }
+
+  dropSilentAll() {
+    return this.update().dropSilentAll();
+  }
+
+  dropSilentDefault() {
+    return this.update().dropSilentDefault();
+  }
+
+  dropSilentNamed() {
+    return this.update().dropSilentNamed();
+  }
+
+  protected update() {
+    return new UpdateQueryBuilderBase(this.initialContext, this.factoryFunctions, this.endpointUrl);
   }
 
   variable(value: string): AST.TermVariable {
@@ -197,11 +385,11 @@ export class SparqlDatabase<T extends IriManagerConfig, R extends string = 'g_'>
     this.factory.resetBlankNodeCounter();
   }
 
-  create<T extends string, K extends IriManagerConfig, P extends Strictness = Strictness.loose>(
-    variableKeys: readonly VariableManagerConfig<T>[],
-    nodeConfig: K,
-    mode?: P
-  ) {
+  createManagers<
+    T extends string,
+    K extends IriManagerConfig,
+    P extends Strictness = Strictness.loose
+  >(variableKeys: readonly VariableManagerConfig<T>[], nodeConfig: K, mode?: P) {
     const blanks = createBlankManager<R>(this.factoryFunctions);
     const nodes = createIriManager(nodeConfig, mode ?? Strictness.loose, this.factoryFunctions);
     const variables = createVariableManager(

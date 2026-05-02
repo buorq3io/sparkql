@@ -5,7 +5,7 @@ on:
       - published
 
 permissions:
-  id-token: write  # Required for OIDC
+  id-token: write
   contents: read
 
 jobs:
@@ -35,5 +35,5 @@ jobs:
       - name: Build the package
         run: pnpm run build
 
-      - name: Install dependencies
-        run: pnpm publish --no-git-checks
+      - name: Publish the package
+        run: npm publish --provenance

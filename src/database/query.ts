@@ -1,22 +1,42 @@
 import { values, group } from '../structures/pattern.js';
 import { SparqlQueryBuilderBase } from './sparql-query.js';
 import {
-  ContextDefinitionBaseInput,
   ExpressionInput,
   OrderingInput,
   PatternInput,
   QueryInput,
   SolutionModifierGroupBindInput,
-  TermIriFullInput,
   TermIriInput,
   ValuePatternColumnsInput,
 } from '../helpers/types.js';
 
+export type QueryBuilderBaseWithout<
+  T extends QueryBuilderBase<any, any, any>,
+  TDynamic extends boolean,
+  TExcluded extends keyof T & string,
+> = TDynamic extends true ? T : Omit<T, TExcluded>;
+
+export type RootQueryBuilderBaseWithout<T extends QueryBuilderBase<any, any, any>> =
+  QueryBuilderBaseWithout<
+    T,
+    false,
+    'values' | 'limit' | 'offset' | 'orderBy' | 'having' | 'groupBy'
+  >;
+
 export abstract class QueryBuilderBase<
   TConfig extends QueryInput,
-  KReturn
-> extends SparqlQueryBuilderBase<TConfig, KReturn> {
-  private fromBase(fromType: 'default' | 'named', iris: TermIriInput[]) {
+  KReturn,
+  TDynamic extends boolean = false
+  > extends SparqlQueryBuilderBase<TConfig, KReturn> {
+
+  private fromBase(
+    fromType: 'default' | 'named',
+    iris: TermIriInput[]
+  ): QueryBuilderBaseWithout<
+    this,
+    TDynamic,
+    'groupBy' | 'having' | 'orderBy' | 'limit' | 'offset' | 'values'
+  > {
     this.config.datasets.clauses = [
       ...this.config.datasets.clauses,
       ...iris.map(
@@ -39,38 +59,9 @@ export abstract class QueryBuilderBase<
     return this.fromBase('named', [iri]);
   }
 
-  base(base: TermIriFullInput | string) {
-    this.config.context.push({
-      type: 'contextDef',
-      subType: 'base',
-      value:
-        typeof base === 'string'
-          ? {
-              type: 'term',
-              subType: 'namedNode',
-              value: base,
-              loc: {
-                sourceLocationType: 'autoGenerate',
-              },
-            }
-          : base,
-      loc: {
-        sourceLocationType: 'autoGenerate',
-      },
-    } satisfies ContextDefinitionBaseInput);
-
-    return this;
-  }
-
-  values(columns: ValuePatternColumnsInput) {
-    if (!this.config.values) {
-      this.config.values = values(columns);
-    }
-
-    return this;
-  }
-
-  where(...patterns: PatternInput[]) {
+  where(
+    ...patterns: PatternInput[]
+  ): QueryBuilderBaseWithout<this, TDynamic, 'where' | 'from' | 'fromNamed'> {
     if (!this.config.where) {
       this.config.where = group(...patterns);
     } else {
@@ -79,21 +70,9 @@ export abstract class QueryBuilderBase<
     return this;
   }
 
-  having(...expressions: ExpressionInput[]) {
-    if (!this.config.solutionModifiers.having) {
-      this.config.solutionModifiers.having = {
-        type: 'solutionModifier',
-        subType: 'having',
-        having: expressions,
-        loc: {
-          sourceLocationType: 'autoGenerate',
-        },
-      };
-    }
-    return this;
-  }
-
-  groupBy(...expressions: (ExpressionInput | SolutionModifierGroupBindInput)[]) {
+  groupBy(
+    ...expressions: (ExpressionInput | SolutionModifierGroupBindInput)[]
+  ): QueryBuilderBaseWithout<this, TDynamic, 'groupBy' | 'where' | 'from' | 'fromNamed'> {
     if (!this.config.solutionModifiers.group) {
       this.config.solutionModifiers.group = {
         type: 'solutionModifier',
@@ -107,7 +86,33 @@ export abstract class QueryBuilderBase<
     return this;
   }
 
-  orderBy(...orderings: OrderingInput[]) {
+  having(
+    ...expressions: ExpressionInput[]
+  ): QueryBuilderBaseWithout<
+    this,
+    TDynamic,
+    'having' | 'groupBy' | 'where' | 'from' | 'fromNamed'
+  > {
+    if (!this.config.solutionModifiers.having) {
+      this.config.solutionModifiers.having = {
+        type: 'solutionModifier',
+        subType: 'having',
+        having: expressions,
+        loc: {
+          sourceLocationType: 'autoGenerate',
+        },
+      };
+    }
+    return this;
+  }
+
+  orderBy(
+    ...orderings: OrderingInput[]
+  ): QueryBuilderBaseWithout<
+    this,
+    TDynamic,
+    'orderBy' | 'having' | 'groupBy' | 'where' | 'from' | 'fromNamed'
+  > {
     if (!this.config.solutionModifiers.order) {
       this.config.solutionModifiers.order = {
         type: 'solutionModifier',
@@ -121,7 +126,13 @@ export abstract class QueryBuilderBase<
     return this;
   }
 
-  limit(limit: number) {
+  limit(
+    limit: number
+  ): QueryBuilderBaseWithout<
+    this,
+    TDynamic,
+    'limit' | 'orderBy' | 'having' | 'groupBy' | 'where' | 'from' | 'fromNamed'
+  > {
     if (
       !this.config.solutionModifiers.limitOffset ||
       !this.config.solutionModifiers.limitOffset?.limit
@@ -139,7 +150,13 @@ export abstract class QueryBuilderBase<
     return this;
   }
 
-  offset(offset: number) {
+  offset(
+    offset: number
+  ): QueryBuilderBaseWithout<
+    this,
+    TDynamic,
+    'offset' | 'limit' | 'orderBy' | 'having' | 'groupBy' | 'where' | 'from' | 'fromNamed'
+  > {
     if (
       !this.config.solutionModifiers.limitOffset ||
       !this.config.solutionModifiers.limitOffset?.offset
@@ -155,5 +172,31 @@ export abstract class QueryBuilderBase<
       };
     }
     return this;
+  }
+
+  values(
+    columns: ValuePatternColumnsInput
+  ): QueryBuilderBaseWithout<
+    this,
+    TDynamic,
+    | 'values'
+    | 'limit'
+    | 'offset'
+    | 'orderBy'
+    | 'having'
+    | 'groupBy'
+    | 'where'
+    | 'from'
+    | 'fromNamed'
+  > {
+    if (!this.config.values) {
+      this.config.values = values(columns);
+    }
+
+    return this;
+  }
+
+  $dynamic(): QueryBuilderBaseWithout<this, true, any> {
+    return this
   }
 }

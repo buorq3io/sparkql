@@ -19,6 +19,8 @@ import {
   TripleCollectionListInput,
   TripleNestingInput,
   PatternBgpInput,
+  GraphQuadsInput,
+  TermIriInput,
 } from '../helpers/types.js';
 import { isObjectLike, tripleCollectionInput } from '../helpers/utilities.js';
 import { bgp, bind } from './pattern.js';
@@ -100,18 +102,31 @@ export function triples(
       }
       return tripleNesting(subject, v[0], v[1]);
     });
-    return bgp(...items)
+    return bgp(...items);
   }
-
 
   if (isObjectLike(object) && object.subType === 'objectCollection') {
     const items = object.values.map(o => {
       return tripleNesting(subject, predicate as any, o); // fix
     });
-    return bgp(...items)
+    return bgp(...items);
   }
 
-  return bgp(tripleNesting(subject, predicate as any, object as any)) // fix
+  return bgp(tripleNesting(subject, predicate as any, object as any)); // fix
+}
+
+export function quads(
+  graph: TermIriInput | TermVariableInput,
+  ...patterns: PatternBgpInput[]
+): GraphQuadsInput {
+  return {
+    type: 'graph',
+    graph: graph,
+    loc: {
+      sourceLocationType: 'autoGenerate',
+    },
+    triples: bgp(...patterns.flatMap(p => p.triples)),
+  };
 }
 
 export function transformIri(self: DefaultQueryReturnType): TermIriOutput {
