@@ -1,0 +1,15 @@
+SELECT ?atm ?geometry ?bank ?bankLabel WHERE {
+  hint:Query hint:optimizer "None".
+  SERVICE <http://linkedgeodata.org/sparql> {
+    { ?atm a lgdo:Bank; lgdo:atm true. }
+    UNION { ?atm a lgdo:Atm. }
+    ?atm geom:geometry [geo:asWKT ?geometry];
+         lgdo:operator ?operator.
+    FILTER(bif:st_intersects(?geometry, bif:st_point(11.5746898, 48.1479876), 5))
+  }
+  BIND(STRLANG(?operator, "de") as ?bankLabel)
+  ?bank rdfs:label ?bankLabel.
+  { ?bank wdt:P527 wd:Q806724. }
+  UNION { ?bank wdt:P1454 wd:Q5349747. }
+  MINUS { wd:Q806724 wdt:P3113 ?bank. }
+}

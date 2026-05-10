@@ -1,0 +1,33 @@
+SELECT ?composerLabel ?tonalityLabel ?count
+WHERE
+{
+  {
+    SELECT ?composer (MAX(?count) AS ?count_)
+    WHERE
+    {
+      {
+        SELECT ?composer ?tonality (COUNT(?composition) AS ?count)
+        WHERE
+        {
+          ?composition wdt:P86 ?composer;
+                       wdt:P826 ?tonality.
+        }
+        GROUP BY ?composer ?tonality
+        HAVING(?count > 1)
+      }
+    }
+    GROUP BY ?composer
+  }
+  {
+    SELECT ?composer ?tonality (COUNT(?composition) AS ?count)
+    WHERE
+    {
+      ?composition wdt:P86 ?composer;
+                   wdt:P826 ?tonality.
+    }
+    GROUP BY ?composer ?tonality
+    HAVING(?count > 1)
+  }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+}
+ORDER BY DESC(?count)

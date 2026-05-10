@@ -60,6 +60,10 @@
       }
     }
   },
+  "imports": {
+    "#src/*": "./src/*",
+    "#test/*": "./test/*"
+  },
   "devDependencies": {
     "@types/node": "^18.0.0",
     "@traqula/parser-sparql-1-1": "^1.0.7",

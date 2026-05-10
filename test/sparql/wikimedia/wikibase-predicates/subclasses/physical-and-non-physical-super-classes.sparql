@@ -1,0 +1,8 @@
+SELECT DISTINCT ?item ?itemLabel WHERE {
+  {
+    SELECT ?item WHERE { ?item (wdt:P279/wdt:P279/(wdt:P279?)/(wdt:P279?)/(wdt:P279?)) wd:Q7048977, wd:Q112276019. }
+    LIMIT 300
+  }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en,es,fr,de,mul". }
+}
+ORDER BY (?itemLabel)
