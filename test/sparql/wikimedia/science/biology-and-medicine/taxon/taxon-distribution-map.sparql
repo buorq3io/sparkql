@@ -1,0 +1,11 @@
+SELECT * WHERE {
+  VALUES ?parent {
+    wd:Q10908
+  }
+  ?taxon (wdt:P171*) ?parent;
+    wdt:P8485 ?map.
+  BIND(STRAFTER(STR(?taxon), "Q") AS ?idStr)
+  BIND(xsd:integer(?idStr) AS ?taxonId)
+  BIND(SHA1(CONCAT(STR(?taxonId))) AS ?hash)
+  BIND(CONCAT(SUBSTR(?hash, 1 , 2 ), SUBSTR(?hash, 3 , 2 ), SUBSTR(?hash, 5 , 2 )) AS ?rgb)
+}

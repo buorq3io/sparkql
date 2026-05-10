@@ -51,7 +51,7 @@ termLiteralRegistry.register('bigint', {
 termLiteralRegistry.register('date', {
   test: (value): value is Date => value instanceof Date,
   format: (value, factory) =>
-    factory.literal(value.toISOString(), factory.iri('http://www.w3.org/2001/XMLSchema#datetime')),
+    factory.literal(value.toISOString(), factory.iri('http://www.w3.org/2001/XMLSchema#dateTime')),
 });
 
 termLiteralRegistry.register('boolean', {

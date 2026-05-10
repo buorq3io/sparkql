@@ -1,0 +1,8 @@
+SELECT DISTINCT ?item ?itemLabel ?website
+WHERE {
+?item wdt:P31/wdt:P279* wd:Q212805
+OPTIONAL { ?item wdt:P856 ?website }
+MINUS { ?item wdt:P576 [] }
+SERVICE wikibase:label { bd:serviceParam wikibase:language "en, es, ca, fr, de, pl, uk, ru, he" }
+}
+ORDER BY ?itemLabel

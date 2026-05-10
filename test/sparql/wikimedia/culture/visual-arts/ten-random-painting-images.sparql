@@ -1,0 +1,7 @@
+SELECT ?item ?itemLabel ?image (MD5(CONCAT(str(?item),str(RAND()))) as ?random) WHERE {
+  ?item wdt:P31 wd:Q3305213.
+  ?item wdt:P18 ?image.
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en"}
+} ORDER BY ?random
+LIMIT 10
+OFFSET 0

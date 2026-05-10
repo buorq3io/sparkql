@@ -1,0 +1,31 @@
+SELECT ?br ?brLabel ?wcourse ?wcourseLabel
+       (SAMPLE(?coord) AS ?loc) (SAMPLE(?img) AS ?pic)
+       (CONCAT(SAMPLE(?sKey),": ",STR(YEAR(SAMPLE(?s)))) AS ?start)
+       (CONCAT(SAMPLE(?eKey),": ",STR(YEAR(SAMPLE(?e)))) AS ?end)
+       ?a (IF(BOUND(?a),CONCAT(?brLabel," in Wikipedia"),1/0) AS ?aLabel)
+WHERE {
+  { VALUES ?lk { wd:Q6301 wd:Q6308 wd:Q20233 }. ?lk wdt:P150 ?mun. } UNION {
+    VALUES ?mun { wd:Q2079 wd:Q113503289 }. }
+  ?br wdt:P31/wdt:P279* wd:Q12280; wdt:P177 ?wcourse; wdt:P131 ?mun.
+  ?wcourse wdt:P31/wdt:P279* wd:Q355304.
+  OPTIONAL { ?br wdt:P625 ?coord. }.
+  OPTIONAL { ?br wdt:P18 ?img. }.
+  OPTIONAL { ?br wdt:P571 ?s. }.
+  OPTIONAL { ?br wdt:P576 ?e. }.
+  OPTIONAL { ?a schema:about ?br. FILTER(
+    IF(EXISTS {?a schema:inLanguage "[AUTO_LANGUAGE]".},
+       SUBSTR(STR(?a), 1, 11) = SUBSTR("https://[AUTO_LANGUAGE].", 1, 11),
+       IF(EXISTS {?a schema:inLanguage "en".},
+          SUBSTR(STR(?a), 1, 10) = "https://en",
+          SUBSTR(STR(?a), 1, 10) = "https://de"
+       )
+    )
+  ).}
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],mul,en,de".
+    ?br rdfs:label ?brLabel.
+    ?wcourse rdfs:label ?wcourseLabel.
+    wd:P571 rdfs:label ?sKey.
+    wd:P576 rdfs:label ?eKey.
+  }
+}
+GROUP BY ?br ?brLabel ?wcourse ?wcourseLabel ?a
