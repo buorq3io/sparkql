@@ -135,12 +135,13 @@ export abstract class QueryBuilderBase<
   > {
     if (
       !this.config.solutionModifiers.limitOffset ||
-      !this.config.solutionModifiers.limitOffset?.limit
+      this.config.solutionModifiers.limitOffset?.limit === undefined
     ) {
       this.config.solutionModifiers.limitOffset = {
         type: 'solutionModifier',
         subType: 'limitOffset',
-        limit: limit,
+        // @ts-ignore A workaround of a bug in the underlying library
+        limit: String(limit),
         offset: this.config.solutionModifiers.limitOffset?.offset,
         loc: {
           sourceLocationType: 'autoGenerate',
@@ -159,13 +160,14 @@ export abstract class QueryBuilderBase<
   > {
     if (
       !this.config.solutionModifiers.limitOffset ||
-      !this.config.solutionModifiers.limitOffset?.offset
+      this.config.solutionModifiers.limitOffset?.offset === undefined
     ) {
       this.config.solutionModifiers.limitOffset = {
         type: 'solutionModifier',
         subType: 'limitOffset',
         limit: this.config.solutionModifiers.limitOffset?.limit,
-        offset: offset,
+        // @ts-ignore A workaround of a bug in the underlying library
+        offset: String(offset),
         loc: {
           sourceLocationType: 'autoGenerate',
         },
