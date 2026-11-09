@@ -1,3 +1,4 @@
+import type { ExtensionPattern } from '../database/dialect.js';
 import {
   BasicGraphPatternInput,
   ExpressionInput,
@@ -15,7 +16,7 @@ import {
   TermIriInput,
   TermVariableInput,
   ValuePatternColumnsInput,
-  Presence
+  Presence,
 } from '../helpers/types.js';
 
 export function bgp(...triples: BasicGraphPatternInput): PatternBgpInput {
@@ -29,7 +30,9 @@ export function bgp(...triples: BasicGraphPatternInput): PatternBgpInput {
   };
 }
 
-export function optional(...patterns: PatternInput[]): PatternOptionalInput {
+export function optional<P extends ExtensionPattern = never>(
+  ...patterns: PatternInput<P>[]
+): PatternOptionalInput<P> {
   return {
     type: 'pattern',
     subType: 'optional',
@@ -40,7 +43,9 @@ export function optional(...patterns: PatternInput[]): PatternOptionalInput {
   };
 }
 
-export function union(...patterns: PatternGroupInput[]): PatternUnionInput {
+export function union<P extends ExtensionPattern = never>(
+  ...patterns: PatternGroupInput<P>[]
+): PatternUnionInput<P> {
   return {
     type: 'pattern',
     subType: 'union',
@@ -51,7 +56,9 @@ export function union(...patterns: PatternGroupInput[]): PatternUnionInput {
   };
 }
 
-export function group(...patterns: PatternInput[]): PatternGroupInput {
+export function group<P extends ExtensionPattern = never>(
+  ...patterns: PatternInput<P>[]
+): PatternGroupInput<P> {
   return {
     type: 'pattern',
     subType: 'group',
@@ -62,10 +69,10 @@ export function group(...patterns: PatternInput[]): PatternGroupInput {
   };
 }
 
-export function graph(
+export function graph<P extends ExtensionPattern = never>(
   name: TermIriInput | TermVariableInput,
-  ...patterns: PatternInput[]
-): PatternGraphInput {
+  ...patterns: PatternInput<P>[]
+): PatternGraphInput<P> {
   return {
     type: 'pattern',
     subType: 'graph',
@@ -77,7 +84,9 @@ export function graph(
   };
 }
 
-export function minus(...patterns: PatternInput[]): PatternMinusInput {
+export function minus<P extends ExtensionPattern = never>(
+  ...patterns: PatternInput<P>[]
+): PatternMinusInput<P> {
   return {
     type: 'pattern',
     subType: 'minus',
@@ -88,11 +97,11 @@ export function minus(...patterns: PatternInput[]): PatternMinusInput {
   };
 }
 
-function serviceBase(
+function serviceBase<P extends ExtensionPattern = never>(
   name: TermIriInput | TermVariableInput,
   silent: boolean,
-  ...patterns: PatternInput[]
-): PatternServiceInput {
+  ...patterns: PatternInput<P>[]
+): PatternServiceInput<P> {
   return {
     type: 'pattern',
     subType: 'service',
@@ -105,17 +114,17 @@ function serviceBase(
   };
 }
 
-export function service(
+export function service<P extends ExtensionPattern = never>(
   name: TermIriInput | TermVariableInput,
-  ...patterns: PatternInput[]
-): PatternServiceInput {
+  ...patterns: PatternInput<P>[]
+): PatternServiceInput<P> {
   return serviceBase(name, false, ...patterns);
 }
 
-export function serviceSilent(
+export function serviceSilent<P extends ExtensionPattern = never>(
   name: TermIriInput | TermVariableInput,
-  ...patterns: PatternInput[]
-): PatternServiceInput {
+  ...patterns: PatternInput<P>[]
+): PatternServiceInput<P> {
   return serviceBase(name, true, ...patterns);
 }
 

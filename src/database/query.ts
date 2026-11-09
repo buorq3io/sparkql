@@ -1,9 +1,11 @@
+import type { AnySparqlDialect, DialectPattern, SparqlDialect } from './dialect.js';
 import { values, group } from '../structures/pattern.js';
 import { SparqlQueryBuilderBase } from './sparql-query.js';
 import {
   ExpressionInput,
   OrderingInput,
   PatternInput,
+  PatternGroupInput,
   QueryInput,
   SolutionModifierGroupBindInput,
   TermIriInput,
@@ -12,12 +14,12 @@ import {
 import { isObjectLike } from '../helpers/utilities.js';
 
 export type QueryBuilderBaseWithout<
-  T extends QueryBuilderBase<any, any, any>,
+  T extends QueryBuilderBase<any, any, any, any>,
   TDynamic extends boolean,
   TExcluded extends keyof T & string
 > = TDynamic extends true ? T : Omit<T, TExcluded>;
 
-export type RootQueryBuilderBaseWithout<T extends QueryBuilderBase<any, any, any>> =
+export type RootQueryBuilderBaseWithout<T extends QueryBuilderBase<any, any, any, any>> =
   QueryBuilderBaseWithout<
     T,
     false,
@@ -27,8 +29,9 @@ export type RootQueryBuilderBaseWithout<T extends QueryBuilderBase<any, any, any
 export abstract class QueryBuilderBase<
   TConfig extends QueryInput,
   KReturn,
-  TDynamic extends boolean = false
-> extends SparqlQueryBuilderBase<TConfig, KReturn> {
+  TDynamic extends boolean = false,
+  D extends AnySparqlDialect = SparqlDialect
+> extends SparqlQueryBuilderBase<TConfig, KReturn, D> {
   private fromBase(
     fromType: 'default' | 'named',
     iris: TermIriInput[]
@@ -60,12 +63,12 @@ export abstract class QueryBuilderBase<
   }
 
   where(
-    ...patterns: PatternInput[]
+    ...patterns: PatternInput<DialectPattern<D>>[]
   ): QueryBuilderBaseWithout<this, TDynamic, 'where' | 'from' | 'fromNamed'> {
     if (!this.config.where) {
-      this.config.where = group(...patterns);
+      this.config.where = group(...patterns) as PatternGroupInput;
     } else {
-      this.config.where.patterns = [...this.config.where.patterns, ...patterns];
+      this.config.where.patterns = [...this.config.where.patterns, ...(patterns as PatternInput[])];
     }
     return this;
   }

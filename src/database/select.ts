@@ -1,3 +1,4 @@
+import type { AnySparqlDialect, SparqlDialect } from './dialect.js';
 import {
   Presence,
   SparqlClient,
@@ -43,8 +44,11 @@ export type InferredSelectResult<T extends SelectedVariables> = {
     : ExtractDataType<T[K]>;
 };
 
-export class SelectQueryBuilderBase<T extends Record<string, any>>
-  extends QueryBuilderBase<QuerySelectInput, T[]>
+export class SelectQueryBuilderBase<
+    T extends Record<string, any>,
+    D extends AnySparqlDialect = SparqlDialect
+  >
+  extends QueryBuilderBase<QuerySelectInput, T[], false, D>
   implements PromiseLike<T[]>
 {
   private lookup: Record<string, string> = {};
@@ -59,7 +63,8 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
     factoryFunctions: FactoryFunctions,
     distict: QuerySelectInput['distinct'] = undefined,
     reduced: QuerySelectInput['reduced'] = undefined,
-    endpointUrl?: string
+    endpointUrl?: string,
+    dialect?: D
   ) {
     super(
       {
@@ -92,7 +97,8 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
         },
       },
       factoryFunctions,
-      endpointUrl
+      endpointUrl,
+      dialect
     );
 
     function createMaybeTransform<T extends DefaultQueryReturnType, K extends any[]>(
@@ -109,7 +115,7 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
     for (const key in variables) {
       if (Object.prototype.hasOwnProperty.call(variables, key)) {
         const value = variables[key as keyof T] as TermVariableAndBinding<any, Presence>;
-        if (value.type === "term") {
+        if (value.type === 'term') {
           this.lookup[value.value] = key;
           if (value.presence === Presence.optional) {
             this.lookupTransform[value.value] = value.transform
@@ -118,8 +124,7 @@ export class SelectQueryBuilderBase<T extends Record<string, any>>
           } else {
             this.lookupTransform[value.value] = value.transform ? value.transform : undefined;
           }
-        }
-        else if (value.type === "pattern") {
+        } else if (value.type === 'pattern') {
           this.lookup[value.variable.value] = key;
           if (value.variable.presence === Presence.optional) {
             this.lookupTransform[value.variable.value] = value.variable.transform

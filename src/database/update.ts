@@ -1,3 +1,4 @@
+import type { AnySparqlDialect, SparqlDialect } from './dialect.js';
 import { WithQueryBuilderBase } from './with.js';
 import { SparqlQueryBuilderBase } from './sparql-query.js';
 import {
@@ -21,13 +22,16 @@ import {
 } from '../helpers/types.js';
 import { TransferQueryBuilderBase } from './transfer.js';
 
-export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<UpdateInput, void> {
+export class UpdateQueryBuilderBase<
+  D extends AnySparqlDialect = SparqlDialect
+> extends SparqlQueryBuilderBase<UpdateInput, void, D> {
   private context;
 
   constructor(
     context: UpdateInput['updates'][number]['context'],
     factoryFunctions: FactoryFunctions,
-    endpointUrl?: string
+    endpointUrl?: string,
+    dialect?: D
   ) {
     super(
       {
@@ -38,7 +42,8 @@ export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<UpdateInput, 
         },
       },
       factoryFunctions,
-      endpointUrl
+      endpointUrl,
+      dialect
     );
     this.context = context;
   }
@@ -101,42 +106,45 @@ export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<UpdateInput, 
   }
 
   insert(...quads: QuadsInput[]) {
-    const base = new WithQueryBuilderBase(
+    const base = new WithQueryBuilderBase<false, D>(
       this.context,
       this.config,
       this,
       this.factoryFunctions,
       this.endpointUrl,
-      undefined
+      undefined,
+      this.dialect as D
     );
     return base.insert(...quads);
   }
 
   delete(...quads: QuadsInput[]) {
-    const base = new WithQueryBuilderBase(
+    const base = new WithQueryBuilderBase<false, D>(
       this.context,
       this.config,
       this,
       this.factoryFunctions,
       this.endpointUrl,
-      undefined
+      undefined,
+      this.dialect as D
     );
     return base.delete(...quads);
   }
 
   with(graph: TermIriInput) {
-    return new WithQueryBuilderBase(
+    return new WithQueryBuilderBase<false, D>(
       this.context,
       this.config,
       this,
       this.factoryFunctions,
       this.endpointUrl,
-      graph
+      graph,
+      this.dialect as D
     );
   }
 
   copy(source: TermIriInput) {
-    return new TransferQueryBuilderBase(
+    return new TransferQueryBuilderBase<D>(
       this.context,
       this.config,
       this,
@@ -146,11 +154,17 @@ export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<UpdateInput, 
   }
 
   copyDefault() {
-    return new TransferQueryBuilderBase(this.context, this.config, this, 'copy', graphRefDefault);
+    return new TransferQueryBuilderBase<D>(
+      this.context,
+      this.config,
+      this,
+      'copy',
+      graphRefDefault
+    );
   }
 
   copySilent(source: TermIriInput) {
-    return new TransferQueryBuilderBase(
+    return new TransferQueryBuilderBase<D>(
       this.context,
       this.config,
       this,
@@ -161,7 +175,7 @@ export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<UpdateInput, 
   }
 
   copySilentDefault() {
-    return new TransferQueryBuilderBase(
+    return new TransferQueryBuilderBase<D>(
       this.context,
       this.config,
       this,
@@ -172,7 +186,7 @@ export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<UpdateInput, 
   }
 
   move(source: TermIriInput) {
-    return new TransferQueryBuilderBase(
+    return new TransferQueryBuilderBase<D>(
       this.context,
       this.config,
       this,
@@ -182,11 +196,17 @@ export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<UpdateInput, 
   }
 
   moveDefault() {
-    return new TransferQueryBuilderBase(this.context, this.config, this, 'move', graphRefDefault);
+    return new TransferQueryBuilderBase<D>(
+      this.context,
+      this.config,
+      this,
+      'move',
+      graphRefDefault
+    );
   }
 
   moveSilent(source: TermIriInput) {
-    return new TransferQueryBuilderBase(
+    return new TransferQueryBuilderBase<D>(
       this.context,
       this.config,
       this,
@@ -197,7 +217,7 @@ export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<UpdateInput, 
   }
 
   moveSilentDefault() {
-    return new TransferQueryBuilderBase(
+    return new TransferQueryBuilderBase<D>(
       this.context,
       this.config,
       this,
@@ -208,7 +228,7 @@ export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<UpdateInput, 
   }
 
   add(source: TermIriInput) {
-    return new TransferQueryBuilderBase(
+    return new TransferQueryBuilderBase<D>(
       this.context,
       this.config,
       this,
@@ -218,11 +238,11 @@ export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<UpdateInput, 
   }
 
   addDefault() {
-    return new TransferQueryBuilderBase(this.context, this.config, this, 'add', graphRefDefault);
+    return new TransferQueryBuilderBase<D>(this.context, this.config, this, 'add', graphRefDefault);
   }
 
   addSilent(source: TermIriInput) {
-    return new TransferQueryBuilderBase(
+    return new TransferQueryBuilderBase<D>(
       this.context,
       this.config,
       this,
@@ -233,7 +253,7 @@ export class UpdateQueryBuilderBase extends SparqlQueryBuilderBase<UpdateInput, 
   }
 
   addSilentDefault() {
-    return new TransferQueryBuilderBase(
+    return new TransferQueryBuilderBase<D>(
       this.context,
       this.config,
       this,

@@ -1,4 +1,4 @@
-import { db, v, n, b } from '#test/index.js';
+import { db, v, n } from '#test/index.js';
 import {
   triples,
   predicates,

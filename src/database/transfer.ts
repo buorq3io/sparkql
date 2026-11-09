@@ -1,3 +1,4 @@
+import type { AnySparqlDialect, SparqlDialect } from './dialect.js';
 import {
   UpdateInput,
   TermIriInput,
@@ -9,10 +10,10 @@ import {
 } from '../helpers/types.js';
 import { createGraphRefSpecific, graphRefDefault, UpdateQueryBuilderBase } from './update.js';
 
-export class TransferQueryBuilderBase {
+export class TransferQueryBuilderBase<D extends AnySparqlDialect = SparqlDialect> {
   private updateConfig: UpdateInput;
   private updateContext: UpdateInput['updates'][number]['context'];
-  private updateBuilder: UpdateQueryBuilderBase;
+  private updateBuilder: UpdateQueryBuilderBase<D>;
   private readonly operation:
     | UpdateOperationCopyInput
     | UpdateOperationMoveInput
@@ -21,7 +22,7 @@ export class TransferQueryBuilderBase {
   constructor(
     updateContext: UpdateInput['updates'][number]['context'],
     updateConfig: UpdateInput,
-    updateBuilder: UpdateQueryBuilderBase,
+    updateBuilder: UpdateQueryBuilderBase<D>,
     type: 'copy' | 'move' | 'add',
     source: GraphRefSpecificInput | GraphRefDefaultInput,
     silent: boolean = false

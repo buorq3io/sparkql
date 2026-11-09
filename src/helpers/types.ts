@@ -1,3 +1,4 @@
+import type { ExtensionPattern } from '../database/dialect.js';
 import type * as AST from '@traqula/rules-sparql-1-1';
 import type * as RdfJs from 'rdf-data-factory';
 
@@ -97,47 +98,47 @@ export type PatternBgpInput = Override<
   }
 >;
 
-export type PatternGroupInput = Override<
+export type PatternGroupInput<P extends ExtensionPattern = never> = Override<
   AST.PatternGroup,
   {
-    patterns: PatternInput[];
+    patterns: PatternInput<P>[];
   }
 >;
 
-export type PatternUnionInput = Override<
+export type PatternUnionInput<P extends ExtensionPattern = never> = Override<
   AST.PatternUnion,
   {
-    patterns: PatternGroupInput[];
+    patterns: PatternGroupInput<P>[];
   }
 >;
 
-export type PatternOptionalInput = Override<
+export type PatternOptionalInput<P extends ExtensionPattern = never> = Override<
   AST.PatternOptional,
   {
-    patterns: PatternInput[];
+    patterns: PatternInput<P>[];
   }
 >;
 
-export type PatternMinusInput = Override<
+export type PatternMinusInput<P extends ExtensionPattern = never> = Override<
   AST.PatternMinus,
   {
-    patterns: PatternInput[];
+    patterns: PatternInput<P>[];
   }
 >;
 
-export type PatternGraphInput = Override<
+export type PatternGraphInput<P extends ExtensionPattern = never> = Override<
   AST.PatternGraph,
   {
     name: TermIriInput | TermVariableInput;
-    patterns: PatternInput[];
+    patterns: PatternInput<P>[];
   }
 >;
 
-export type PatternServiceInput = Override<
+export type PatternServiceInput<P extends ExtensionPattern = never> = Override<
   AST.PatternService,
   {
     name: TermIriInput | TermVariableInput;
-    patterns: PatternInput[];
+    patterns: PatternInput<P>[];
   }
 >;
 
@@ -174,18 +175,19 @@ export type ValuePatternColumnsInput = Override<
   }
 >;
 
-export type PatternInput =
+export type PatternInput<P extends ExtensionPattern = never> =
+  | P
   | PatternBgpInput
-  | PatternGroupInput
-  | PatternUnionInput
-  | PatternOptionalInput
-  | PatternMinusInput
-  | PatternGraphInput
-  | PatternServiceInput
+  | PatternGroupInput<P>
+  | PatternUnionInput<P>
+  | PatternOptionalInput<P>
+  | PatternMinusInput<P>
+  | PatternGraphInput<P>
+  | PatternServiceInput<P>
   | PatternFilterInput
   | PatternBindInput
   | PatternValuesInput
-  | QuerySelectInput;
+  | QuerySelectInput<P>;
 
 export type DatasetClausesInput = Override<
   AST.DatasetClauses,
@@ -265,14 +267,14 @@ export type ContextDefinitionInput = ContextDefinitionPrefixInput | ContextDefin
 
 type QuerySubtypeInput<TQuery extends AST.Query, TOverrides extends object = {}> = Override<
   TQuery,
-  Omit<QueryBaseInput, 'subType'> & TOverrides
+  Override<Omit<QueryBaseInput, 'subType'>, TOverrides>
 >;
 
-export type QuerySelectInput = QuerySubtypeInput<
+export type QuerySelectInput<P extends ExtensionPattern = never> = QuerySubtypeInput<
   AST.QuerySelect,
   {
     variables: (TermVariableInput | PatternBindInput)[] | [WildcardInput];
-    where: PatternGroupInput;
+    where: PatternGroupInput<P>;
   }
 >;
 

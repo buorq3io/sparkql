@@ -19,6 +19,34 @@ pnpm add sparkql
 - **SPARQL Client** - Built-in HTTP client for executing queries
 - **Path Expressions** - Property path support
 - **Functions** - Comprehensive SPARQL function support
+- **Custom dialects** - [Type-safe graph pattern extensions](docs/dialects.md), plus built-in LET/LATERAL, MOD/IDIV, and collation support through `sparkql/arq`
+
+## ARQ
+
+Use the ARQ entry point for LET, LATERAL, MOD, IDIV, and locale-aware sorting:
+
+```typescript
+import { SparqlDatabase, letBinding, lateral } from 'sparkql/arq';
+
+const db = SparqlDatabase.create();
+const value = db.variable('value');
+const query = db.select({ value }).where(lateral(letBinding(42, value)));
+
+console.log(query.toSPARQL());
+```
+
+The ARQ entry point also exports `mod(left, right)`, `idiv(left, right)`, and
+`collation(locale, expression)`, along with the standard query helpers:
+
+```typescript
+import { mod, idiv, collation, desc } from 'sparkql/arq';
+
+const remainder = mod(value, 3);
+const quotient = idiv(value, 3);
+const sorted = db.select().where().orderBy(desc(collation('fi', value)));
+```
+
+See the [dialect guide](docs/dialects.md) for configuration and custom extensions.
 
 ## Quick Start
 

@@ -1,6 +1,11 @@
 import SparqlClient from 'sparql-http-client';
 import type * as AST from '@traqula/rules-sparql-1-1';
-import { Generator } from '@traqula/generator-sparql-1-1';
+import {
+  sparql11Dialect,
+  type AnySparqlDialect,
+  type DialectAST,
+  type SparqlDialect,
+} from './dialect.js';
 import type {
   BasicGraphPatternInput,
   ContextDefinitionInput,
@@ -80,40 +85,45 @@ type ASTConfig<T extends SparqlQueryInput> = T extends UpdateInput
   ? AST.QueryAsk
   : never;
 
-export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Return> {
+export abstract class SparqlQueryBuilderBase<
+  Config extends SparqlQueryInput,
+  Return,
+  D extends AnySparqlDialect = SparqlDialect
+> {
   protected readonly config: Config;
   protected readonly endpointUrl?: string;
   protected _promise: Promise<Return> | null = null;
-  protected readonly sparqlGenerator: Generator;
+  protected readonly dialect: AnySparqlDialect;
   protected readonly factoryFunctions: FactoryFunctions;
   protected readonly anonymousBlanks: Map<symbol, AST.TermBlank>;
 
   protected constructor(
     initialConfig: Config,
     factoryFunctions: FactoryFunctions,
-    endpointUrl?: string
+    endpointUrl?: string,
+    dialect?: D
   ) {
     this.config = initialConfig;
     this.anonymousBlanks = new Map<symbol, AST.TermBlank>();
     this.factoryFunctions = factoryFunctions;
-    this.sparqlGenerator = new Generator();
+    this.dialect = dialect ?? sparql11Dialect;
     this.endpointUrl = endpointUrl;
   }
 
-  public getSPARQL(): ASTConfig<Config> {
+  public getSPARQL(): DialectAST<D, ASTConfig<Config>> {
     if (this.config.type === 'query') {
-      return this.buildQuery(this.config) as ASTConfig<Config>;
+      return this.buildQuery(this.config) as DialectAST<D, ASTConfig<Config>>;
     }
 
     if (this.config.type === 'update') {
-      return this.buildUpdate(this.config) as ASTConfig<Config>;
+      return this.buildUpdate(this.config) as DialectAST<D, ASTConfig<Config>>;
     }
 
     throw new Error('Unsupported query provided.');
   }
 
   public toSPARQL(): string {
-    return this.sparqlGenerator.generate(this.getSPARQL());
+    return this.dialect.generator.generate(this.getSPARQL());
   }
 
   protected abstract makeQuery(client: SparqlClient): Promise<Return>;
@@ -148,8 +158,6 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
   ): Promise<TResult1 | TResult2> {
     return this.execute().then(onfulfilled, onrejected);
   }
-
-
 
   private buildQuery(query: QueryInput): AST.Query {
     switch (query.subType) {
@@ -441,7 +449,9 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
   ): AST.UpdateOperationModify {
     return {
       ...operation,
-      graph: operation.graph ? termIri.parseOrThrow(operation.graph, this.factoryFunctions) : undefined,
+      graph: operation.graph
+        ? termIri.parseOrThrow(operation.graph, this.factoryFunctions)
+        : undefined,
       insert: operation.insert.map(quads => this.sanitizeQuads(quads)),
       delete: operation.delete.map(quads => this.sanitizeQuads(quads)),
       from: this.sanitizeDatasetClauses(operation.from),
@@ -692,7 +702,9 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
   private sanitizePatternValues(pattern: PatternValuesInput): AST.PatternValues {
     return {
       ...pattern,
-      variables: pattern.variables.map(variable => termVariable.parseOrThrow(variable, this.factoryFunctions)),
+      variables: pattern.variables.map(variable =>
+        termVariable.parseOrThrow(variable, this.factoryFunctions)
+      ),
       values: this.sanitizeValuePatternColumns(pattern.values),
     };
   }
@@ -714,6 +726,16 @@ export abstract class SparqlQueryBuilderBase<Config extends SparqlQueryInput, Re
   protected sanitizePattern(pattern: QuerySelectInput): AST.QuerySelect;
   protected sanitizePattern(pattern: PatternInput): AST.Pattern;
   protected sanitizePattern(pattern: PatternInput): AST.Pattern {
+    const candidate: unknown = pattern;
+    if (this.dialect.patterns.is(candidate)) {
+      // The runtime dialect erases its node types only at the normalization seam.
+      // Public builders and getSPARQL retain the concrete dialect types.
+      return this.dialect.patterns.normalize(candidate, {
+        factory: this.factoryFunctions,
+        pattern: value => this.sanitizePattern(value),
+        expression: value => this.sanitizeExpression(value),
+      }) as AST.Pattern;
+    }
     if (pattern.type === 'query') {
       return this.buildSelectQuery(pattern);
     }

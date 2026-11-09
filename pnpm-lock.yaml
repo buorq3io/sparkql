@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@traqula/core':
+        specifier: ^1.1.0
+        version: 1.1.0
       '@traqula/generator-sparql-1-1':
         specifier: ^1.0.7
         version: 1.1.0

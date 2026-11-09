@@ -1,3 +1,4 @@
+import type { AnySparqlDialect, SparqlDialect } from './dialect.js';
 import { QueryBuilderBase } from './query.js';
 import {
   FactoryFunctions,
@@ -8,15 +9,16 @@ import {
 } from '../helpers/types.js';
 import { bgp } from '../structures/index.js';
 
-export class ConstructQueryBuilderBase
-  extends QueryBuilderBase<QueryConstructInput, QuadsInput[]>
+export class ConstructQueryBuilderBase<D extends AnySparqlDialect = SparqlDialect>
+  extends QueryBuilderBase<QueryConstructInput, QuadsInput[], false, D>
   implements PromiseLike<QuadsInput[]>
 {
   constructor(
     template: PatternBgpInput[],
     context: QueryConstructInput['context'],
     factoryFunctions: FactoryFunctions,
-    endpointUrl?: string
+    endpointUrl?: string,
+    dialect?: D
   ) {
     super(
       {
@@ -45,7 +47,8 @@ export class ConstructQueryBuilderBase
         },
       },
       factoryFunctions,
-      endpointUrl
+      endpointUrl,
+      dialect
     );
   }
 

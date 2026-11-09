@@ -1,3 +1,4 @@
+import { sparql11Dialect, type AnySparqlDialect, type SparqlDialect } from './dialect.js';
 import * as AST from '@traqula/rules-sparql-1-1';
 
 import {
@@ -39,9 +40,15 @@ interface PrivateSparqlDatabaseOptions {
   formats?: TermFormats;
   factory?: AST.AstFactory;
   endpointUrl?: string;
+  dialect?: AnySparqlDialect;
 }
 
-export interface SparqlDatabaseOptions<T extends IriManagerConfig, F extends TermFormats = {}> {
+export interface SparqlDatabaseOptions<
+  T extends IriManagerConfig,
+  F extends TermFormats = {},
+  D extends AnySparqlDialect = SparqlDialect
+> {
+  dialect?: D;
   formats?: F & TermFormats;
   managerConfig?: T;
   endpointUrl?: string;
@@ -50,8 +57,10 @@ export interface SparqlDatabaseOptions<T extends IriManagerConfig, F extends Ter
 export class SparqlDatabase<
   T extends IriManagerConfig,
   R extends string = 'g_',
-  F extends TermFormats = {}
+  F extends TermFormats = {},
+  D extends AnySparqlDialect = SparqlDialect
 > {
+  private readonly dialect: D;
   private readonly formats: TermFormats;
   private readonly endpointUrl?: string;
   private readonly initialContext;
@@ -59,6 +68,7 @@ export class SparqlDatabase<
   protected readonly factoryFunctions: FactoryFunctions;
 
   private constructor(options?: PrivateSparqlDatabaseOptions) {
+    this.dialect = (options?.dialect ?? sparql11Dialect) as D;
     this.formats = {
       iri: [...(options?.formats?.iri ?? [])],
       literal: [...(options?.formats?.literal ?? [])],
@@ -82,10 +92,14 @@ export class SparqlDatabase<
     };
   }
 
-  static create<T extends IriManagerConfig, K extends string = 'g_', F extends TermFormats = {}>(
-    options?: SparqlDatabaseOptions<T, F>
-  ): SparqlDatabase<T, K, F> {
-    return new SparqlDatabase<T, K, F>({
+  static create<
+    T extends IriManagerConfig,
+    K extends string = 'g_',
+    F extends TermFormats = {},
+    D extends AnySparqlDialect = SparqlDialect
+  >(options?: SparqlDatabaseOptions<T, F, D>): SparqlDatabase<T, K, F, D> {
+    return new SparqlDatabase<T, K, F, D>({
+      dialect: options?.dialect,
       formats: options?.formats,
       endpointUrl: options?.endpointUrl,
       context: transformIntoPrefixObject(options?.managerConfig ?? {}),
@@ -93,7 +107,8 @@ export class SparqlDatabase<
   }
 
   base(value: string) {
-    return new SparqlDatabase<T, R, F>({
+    return new SparqlDatabase<T, R, F, D>({
+      dialect: this.dialect,
       formats: this.formats,
       endpointUrl: this.endpointUrl,
       factory: this.factory,
@@ -112,7 +127,8 @@ export class SparqlDatabase<
   }
 
   prefix(values: { [x in string]: string }) {
-    return new SparqlDatabase<T, R, F>({
+    return new SparqlDatabase<T, R, F, D>({
+      dialect: this.dialect,
       formats: this.formats,
       endpointUrl: this.endpointUrl,
       factory: this.factory,
@@ -136,90 +152,100 @@ export class SparqlDatabase<
 
   select<U extends SelectedVariables>(
     variables?: U
-  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<InferredSelectResult<U>>>;
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<InferredSelectResult<U>, D>>;
 
   select<U extends Record<string, any>>(
     variables?: TypedSelectedVariables<U>
-  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U>>;
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U, D>>;
 
   select<U extends Record<string, any>>(
     variables?: TypedSelectedVariables<U>
-  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U>> {
-    return new SelectQueryBuilderBase(
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U, D>> {
+    return new SelectQueryBuilderBase<U, D>(
       variables,
       this.initialContext,
       this.factoryFunctions,
       undefined,
       undefined,
-      this.endpointUrl
+      this.endpointUrl,
+      this.dialect
     );
   }
 
   selectDistinct<U extends SelectedVariables>(
     variables?: U
-  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<InferredSelectResult<U>>>;
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<InferredSelectResult<U>, D>>;
 
   selectDistinct<U extends Record<string, any>>(
     variables?: TypedSelectedVariables<U>
-  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U>>;
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U, D>>;
 
   selectDistinct<U extends Record<string, any>>(
     variables?: TypedSelectedVariables<U>
-  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U>> {
-    return new SelectQueryBuilderBase(
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U, D>> {
+    return new SelectQueryBuilderBase<U, D>(
       variables,
       this.initialContext,
       this.factoryFunctions,
       true,
       undefined,
-      this.endpointUrl
+      this.endpointUrl,
+      this.dialect
     );
   }
 
   selectReduced<U extends SelectedVariables>(
     variables?: U
-  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<InferredSelectResult<U>>>;
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<InferredSelectResult<U>, D>>;
 
   selectReduced<U extends Record<string, any>>(
     variables?: TypedSelectedVariables<U>
-  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U>>;
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U, D>>;
 
   selectReduced<U extends Record<string, any>>(
     variables?: TypedSelectedVariables<U>
-  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U>> {
-    return new SelectQueryBuilderBase(
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U, D>> {
+    return new SelectQueryBuilderBase<U, D>(
       variables,
       this.initialContext,
       this.factoryFunctions,
       undefined,
       true,
-      this.endpointUrl
+      this.endpointUrl,
+      this.dialect
     );
   }
 
-  ask(): RootQueryBuilderBaseWithout<AskQueryBuilderBase> {
-    return new AskQueryBuilderBase(this.initialContext, this.factoryFunctions, this.endpointUrl);
+  ask(): RootQueryBuilderBaseWithout<AskQueryBuilderBase<D>> {
+    return new AskQueryBuilderBase<D>(
+      this.initialContext,
+      this.factoryFunctions,
+      this.endpointUrl,
+      this.dialect
+    );
   }
 
   describe(
     ...variables: (TermIriInput | TermVariableInput)[]
-  ): RootQueryBuilderBaseWithout<DescribeQueryBuilderBase> {
-    return new DescribeQueryBuilderBase(
+  ): RootQueryBuilderBaseWithout<DescribeQueryBuilderBase<D>> {
+    return new DescribeQueryBuilderBase<D>(
       variables,
       this.initialContext,
       this.factoryFunctions,
-      this.endpointUrl
+      this.endpointUrl,
+      this.dialect
     );
   }
 
   construct(
     ...templates: PatternBgpInput[]
-  ): RootQueryBuilderBaseWithout<ConstructQueryBuilderBase> {
-    return new ConstructQueryBuilderBase(
+  ): RootQueryBuilderBaseWithout<ConstructQueryBuilderBase<D>> {
+    return new ConstructQueryBuilderBase<D>(
       templates,
       this.initialContext,
       this.factoryFunctions,
-      this.endpointUrl
+      this.endpointUrl,
+      this.dialect
     );
   }
 
@@ -384,7 +410,12 @@ export class SparqlDatabase<
   }
 
   protected update() {
-    return new UpdateQueryBuilderBase(this.initialContext, this.factoryFunctions, this.endpointUrl);
+    return new UpdateQueryBuilderBase<D>(
+      this.initialContext,
+      this.factoryFunctions,
+      this.endpointUrl,
+      this.dialect
+    );
   }
 
   variable(value: string): AST.TermVariable {

@@ -1,0 +1,145 @@
+# Extending SPARQL with dialects
+
+A database defaults to SPARQL 1.1. Configure a dialect to accept additional graph
+patterns, such as ARQ's LET and LATERAL, without widening every database in the
+application or augmenting global types.
+
+## Built-in ARQ support
+
+Import `sparkql/arq` to use LET, LATERAL, MOD, IDIV, and collation directly. Its `SparqlDatabase.create()`
+automatically configures the ARQ dialect and accepts the same manager, endpoint,
+and term-format options as the standard database. The entry point also exports
+the standard query helpers, `letBinding()`, `lateral()`, `mod()`, `idiv()`,
+`collation()`, and `arqDialect`.
+No generator setup or extra dependency installation is needed.
+
+```ts
+import { SparqlDatabase, optional, letBinding, lateral } from 'sparkql/arq';
+import { SparqlDatabase as StandardDatabase } from 'sparkql';
+
+const db = SparqlDatabase.create();
+const value = db.variable('value');
+
+const query = db.select({ value }).where(optional(lateral(letBinding(42, value))));
+
+console.log(query.toSPARQL());
+// SELECT ?value WHERE { OPTIONAL { LATERAL { LET (?value := 42) } } }
+// Literal spelling and whitespace are controlled by the generator.
+
+// Custom nodes retain their normalized types in query.getSPARQL().
+// SELECT result inference and fluent method restrictions are preserved.
+
+const standard = StandardDatabase.create();
+// @ts-expect-error: this database has no ARQ extensions
+standard.select().where(letBinding(42, value));
+```
+
+The shipped ARQ support covers LET and LATERAL graph patterns, numeric MOD and
+IDIV expressions, and locale-aware collation. These helpers use existing
+expression types and require no new expression node kinds. You can also import `arqDialect` from `sparkql/arq` and pass it explicitly to the standard
+`SparqlDatabase.create({ dialect: arqDialect })` factory. Its implementation is in
+[src/arq/dialect.ts](../src/arq/dialect.ts) and can serve as a reference for custom
+dialects.
+
+### Arithmetic and locale-aware sorting
+
+```ts
+import { SparqlDatabase, as, mod, idiv, collation, desc } from 'sparkql/arq';
+
+const db = SparqlDatabase.create();
+const value = db.variable('value');
+const label = db.variable('label');
+
+const query = db
+  .select({
+    remainder: as(mod(value, 3), db.variable('remainder')),
+    quotient: as(idiv(value, 3), db.variable('quotient')),
+    label,
+  })
+  .where()
+  .orderBy(desc(collation('fi', label)));
+```
+
+`mod(left, right)` emits `MOD(left, right)` and `idiv(left, right)` emits
+`IDIV(left, right)`, both accepted by the
+[Jena ARQ grammar](https://github.com/apache/jena/blob/main/jena-arq/Grammar/arq.jj).
+They accept two expressions and compose with existing arithmetic, filters,
+aggregates, bindings, LET, and solution modifiers. Selected results infer `number`
+and use the same numeric result conversion as the standard arithmetic helpers.
+ARQ evaluates the operations, including division-by-zero errors and truncation
+toward zero for IDIV; Sparkql does not evaluate them in JavaScript.
+
+`collation(locale, expression)` emits
+`<http://jena.apache.org/ARQ/function#collation>(locale, expression)` without
+requiring a prefix declaration. Use it directly in `orderBy()` or wrap it with
+`asc()`/`desc()`. Both arguments accept expressions, including variables; a string
+locale is normalized as a literal. The helper creates Jena's sorting key and
+returns an RDF literal if projected, with no JavaScript sorting or conversion.
+Locale handling and fallback follow the endpoint's JVM, as described in
+[Jena's collation documentation](https://jena.apache.org/documentation/query/collation.html).
+
+## The dialect contract
+
+`defineDialect<Input, Output>()` couples three responsibilities:
+
+- `patterns.is(value)` recognizes the custom input nodes. Give each extension a
+  distinct `subType`; avoid built-in subtypes. Type guards are trusted TypeScript
+  contracts, so validate external, untyped data before claiming it has your type.
+- `patterns.normalize(value, context)` returns the extension's canonical AST.
+  Use `context.expression()` for expressions, `context.pattern()` recursively
+  for nested patterns, and `context.factory` to construct canonical RDF terms.
+  Input and output types can differ: a LET input can accept a number while the
+  normalized AST contains a literal node.
+- `generator.generate(query)` serializes the complete normalized query or update,
+  including extension nodes. Its input is
+  `WithDialectPatterns<AST.SparqlQuery, Output>`. A generator that only accepts
+  standard AST nodes does not satisfy an extended dialect's contract.
+
+A union of custom input/output types allows a dialect to combine multiple
+extensions. The generator must support the entire output union. Custom dialects supply their own generator without mutating the standard
+dialect.
+
+## Connecting a Traqula generator
+
+Copy the standard builder with
+`GeneratorBuilder.create(sparql11GeneratorBuilder)` before patching rules.
+Traqula builders are mutable; patching the shared exported builder changes other
+users of it. Patch the pattern dispatch rule to handle your custom nodes and
+retain its original implementation for standard nodes. New rules can be added
+with `addRule()` and invoked from that dispatch rule.
+
+The ARQ implementation uses `typePatch()` to declare the extended root query type and wraps
+`queryOrUpdate(query, context)` as the dialect's `generate()` function. Existing
+Traqula rule signatures describe the standard grammar; the implementation has one
+localized assertion when delegating standard nodes to those existing rules.
+Sparkql callers need no assertions to use the extension.
+
+## Scope and compatibility
+
+Dialect types follow SELECT, SELECT DISTINCT, SELECT REDUCED, ASK, CONSTRUCT,
+DESCRIBE, and UPDATE builders. They survive `base()`, `prefix()`, update chaining,
+and nested `group`, `optional`, `union`, `minus`, `graph`, `service`, and
+`serviceSilent` helpers. Query inputs can contain extended SELECT subqueries too.
+
+`getSPARQL()` includes the dialect's output node types at pattern positions;
+`toSPARQL()` and execution use the configured generator. The default dialect
+preserves existing input/output types and behavior. Unrecognized pattern nodes
+still throw at runtime, protecting JavaScript callers that bypass TypeScript.
+
+This seam extends graph patterns. It does not add custom expression node kinds,
+query kinds, or update operation kinds. Existing expressions can be used inside
+custom patterns through the normalization context.
+
+## Design references
+
+Drizzle keeps its dialect separate from query construction and carries generic
+state through fluent query builders. Sparkql follows that separation, retaining
+its existing fluent builder restrictions and result inference rather than adding
+an HKT hierarchy for a fixed set of builder classes.
+
+- [Drizzle query builder](https://github.com/drizzle-team/drizzle-orm/blob/main/drizzle-orm/src/pg-core/query-builders/query-builder.ts)
+- [Drizzle select types](https://github.com/drizzle-team/drizzle-orm/blob/main/drizzle-orm/src/pg-core/query-builders/select.types.ts)
+- [Traqula generator extension guide](https://comunica.github.io/traqula/documents/modifications_create-generator.html)
+
+- [ARQ LET assignment](https://jena.apache.org/documentation/query/assignment.html)
+- [ARQ LATERAL join](https://jena.apache.org/documentation/query/lateral-join.html)

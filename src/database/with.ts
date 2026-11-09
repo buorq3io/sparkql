@@ -1,3 +1,4 @@
+import type { AnySparqlDialect, DialectPattern, SparqlDialect } from './dialect.js';
 import { UpdateQueryBuilderBase } from './update.js';
 import { SparqlQueryBuilderBase } from './sparql-query.js';
 import {
@@ -10,28 +11,31 @@ import {
 } from '../helpers/types.js';
 
 export type WithBuilderBaseWithout<
-  T extends WithQueryBuilderBase<any>,
+  T extends WithQueryBuilderBase<any, any>,
   TDynamic extends boolean,
-  TExcluded extends keyof T & string,
+  TExcluded extends keyof T & string
 > = TDynamic extends true ? T : Omit<T, TExcluded>;
 
-
-export class WithQueryBuilderBase<TDynamic extends boolean = false>
-  extends SparqlQueryBuilderBase<UpdateInput, void>
+export class WithQueryBuilderBase<
+    TDynamic extends boolean = false,
+    D extends AnySparqlDialect = SparqlDialect
+  >
+  extends SparqlQueryBuilderBase<UpdateInput, void, D>
   implements PromiseLike<void>
 {
   private updateConfig: UpdateInput;
   private updateContext: UpdateInput['updates'][number]['context'];
-  private updateBuilder: UpdateQueryBuilderBase;
+  private updateBuilder: UpdateQueryBuilderBase<D>;
   private readonly operation: UpdateOperationModifyInput;
 
   constructor(
     updateContext: UpdateInput['updates'][number]['context'],
     updateConfig: UpdateInput,
-    updateBuilder: UpdateQueryBuilderBase,
+    updateBuilder: UpdateQueryBuilderBase<D>,
     factoryFunctions: FactoryFunctions,
     endpointUrl?: string,
-    iri?: TermIriInput
+    iri?: TermIriInput,
+    dialect?: D
   ) {
     super(
       {
@@ -42,7 +46,8 @@ export class WithQueryBuilderBase<TDynamic extends boolean = false>
         },
       },
       factoryFunctions,
-      endpointUrl
+      endpointUrl,
+      dialect
     );
     this.operation = {
       type: 'updateOperation',
@@ -74,29 +79,17 @@ export class WithQueryBuilderBase<TDynamic extends boolean = false>
     this.updateBuilder = updateBuilder;
   }
 
-  delete(...quads: QuadsInput[]): WithBuilderBaseWithout<
-    this,
-    TDynamic,
-    'delete'
-  > {
+  delete(...quads: QuadsInput[]): WithBuilderBaseWithout<this, TDynamic, 'delete'> {
     this.operation.delete = [...this.operation.delete, ...quads];
     return this;
   }
 
-  insert(...quads: QuadsInput[]): WithBuilderBaseWithout<
-    this,
-    TDynamic,
-    'insert' | 'delete'
-  > {
+  insert(...quads: QuadsInput[]): WithBuilderBaseWithout<this, TDynamic, 'insert' | 'delete'> {
     this.operation.insert = [...this.operation.insert, ...quads];
     return this;
   }
 
-  using(iri: TermIriInput): WithBuilderBaseWithout<
-    this,
-    TDynamic,
-    'insert' | 'delete'
-  > {
+  using(iri: TermIriInput): WithBuilderBaseWithout<this, TDynamic, 'insert' | 'delete'> {
     this.operation.from.clauses = [
       ...this.operation.from.clauses,
       {
@@ -107,11 +100,7 @@ export class WithQueryBuilderBase<TDynamic extends boolean = false>
     return this;
   }
 
-  usingNamed(iri: TermIriInput): WithBuilderBaseWithout<
-    this,
-    TDynamic,
-    'insert' | 'delete'
-  > {
+  usingNamed(iri: TermIriInput): WithBuilderBaseWithout<this, TDynamic, 'insert' | 'delete'> {
     this.operation.from.clauses = [
       ...this.operation.from.clauses,
       {
@@ -122,17 +111,18 @@ export class WithQueryBuilderBase<TDynamic extends boolean = false>
     return this;
   }
 
-  where(...patterns: PatternInput[]): WithBuilderBaseWithout<
-    this,
-    TDynamic,
-    'where' | 'insert' | 'delete'
-  > {
-    this.operation.where.patterns = [...this.operation.where.patterns, ...patterns];
+  where(
+    ...patterns: PatternInput<DialectPattern<D>>[]
+  ): WithBuilderBaseWithout<this, TDynamic, 'where' | 'insert' | 'delete'> {
+    this.operation.where.patterns = [
+      ...this.operation.where.patterns,
+      ...(patterns as PatternInput[]),
+    ];
     return this;
   }
 
   $dynamic(): WithBuilderBaseWithout<this, true, any> {
-    return this
+    return this;
   }
 
   $end() {
@@ -145,6 +135,6 @@ export class WithQueryBuilderBase<TDynamic extends boolean = false>
 
   protected async makeQuery(): Promise<void> {
     this.$end();
-    return await this.updateBuilder
+    return await this.updateBuilder;
   }
 }

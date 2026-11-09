@@ -58,6 +58,16 @@
         "types": "./dist/index.d.cts",
         "default": "./dist/index.cjs"
       }
+    },
+    "./arq": {
+      "import": {
+        "types": "./dist/arq.d.mts",
+        "default": "./dist/arq.mjs"
+      },
+      "require": {
+        "types": "./dist/arq.d.cts",
+        "default": "./dist/arq.cjs"
+      }
     }
   },
   "imports": {
@@ -76,6 +86,7 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
+    "@traqula/core": "^1.1.0",
     "@traqula/generator-sparql-1-1": "^1.0.7",
     "@traqula/rules-sparql-1-1": "^1.0.7",
     "rdf-data-factory": "^2.0.2",

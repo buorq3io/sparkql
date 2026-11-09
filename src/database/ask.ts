@@ -1,22 +1,24 @@
+import type { AnySparqlDialect, SparqlDialect } from './dialect.js';
 import { QueryBuilderBase } from './query.js';
 import { FactoryFunctions, QueryAskInput, SparqlClient } from '../helpers/types.js';
 
-export class AskQueryBuilderBase
-  extends QueryBuilderBase<QueryAskInput, boolean>
+export class AskQueryBuilderBase<D extends AnySparqlDialect = SparqlDialect>
+  extends QueryBuilderBase<QueryAskInput, boolean, false, D>
   implements PromiseLike<boolean>
 {
   constructor(
     context: QueryAskInput['context'],
     factoryFunctions: FactoryFunctions,
-    endpointUrl?: string
+    endpointUrl?: string,
+    dialect?: D
   ) {
     super(
       {
-        type: "query",
-        subType: "ask",
+        type: 'query',
+        subType: 'ask',
         context: context,
         datasets: {
-          type: "datasetClauses",
+          type: 'datasetClauses',
           clauses: [],
           loc: {
             sourceLocationType: 'autoGenerate',
@@ -24,8 +26,8 @@ export class AskQueryBuilderBase
         },
         solutionModifiers: {},
         where: {
-          type: "pattern",
-          subType: "group",
+          type: 'pattern',
+          subType: 'group',
           patterns: [],
           loc: {
             sourceLocationType: 'autoGenerate',
@@ -34,10 +36,10 @@ export class AskQueryBuilderBase
         loc: {
           sourceLocationType: 'autoGenerate',
         },
-
       },
       factoryFunctions,
-      endpointUrl
+      endpointUrl,
+      dialect
     );
   }
 

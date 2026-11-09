@@ -1,3 +1,4 @@
+import type { AnySparqlDialect, SparqlDialect } from './dialect.js';
 import {
   QuadsInput,
   SparqlClient,
@@ -8,23 +9,24 @@ import {
 } from '../helpers/types.js';
 import { QueryBuilderBase } from './query.js';
 
-export class DescribeQueryBuilderBase
-  extends QueryBuilderBase<QueryDescribeInput, QuadsInput[]>
+export class DescribeQueryBuilderBase<D extends AnySparqlDialect = SparqlDialect>
+  extends QueryBuilderBase<QueryDescribeInput, QuadsInput[], false, D>
   implements PromiseLike<QuadsInput[]>
 {
   constructor(
     variables: (TermVariableInput | TermIriInput)[],
     context: QueryDescribeInput['context'],
     factoryFunctions: FactoryFunctions,
-    endpointUrl?: string
+    endpointUrl?: string,
+    dialect?: D
   ) {
     super(
       {
         type: 'query',
-        subType: "describe",
+        subType: 'describe',
         context: context,
         datasets: {
-          type: "datasetClauses",
+          type: 'datasetClauses',
           clauses: [],
           loc: {
             sourceLocationType: 'autoGenerate',
@@ -37,7 +39,8 @@ export class DescribeQueryBuilderBase
         },
       },
       factoryFunctions,
-      endpointUrl
+      endpointUrl,
+      dialect
     );
   }
 

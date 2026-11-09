@@ -21,6 +21,7 @@
     "declaration": true,
     "declarationMap": true,
     "outDir": "./dist/",
+    "rootDir": ".",
     "sourceMap": true,
     "skipLibCheck": true,
     /* Interop Options */
