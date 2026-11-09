@@ -16,7 +16,7 @@ pnpm add sparkql
 - **Prefix Management** - Easy prefix definition and IRI handling
 - **Aggregates** - Built-in aggregate functions (COUNT, SUM, AVG, etc.)
 - **Transformations** - Type-safe data transformations
-- **SPARQL Client** - Built-in HTTP client for executing queries
+- **Pluggable execution** - Built-in HTTP client, or [bring your own client or session](#connecting)
 - **Path Expressions** - Property path support
 - **Functions** - Comprehensive SPARQL function support
 - **Custom dialects** - [Type-safe graph pattern extensions](docs/dialects.md), plus built-in LET/LATERAL, MOD/IDIV, and collation support through `sparkql/arq`
@@ -81,8 +81,10 @@ const prefixes = {
 // Create a database instance with prefixes
 const db = SparqlDatabase.create({
   managerConfig: prefixes,
-  endpointUrl: 'https://your-sparql-endpoint.com/sparql',
-  updateUrl: 'https://your-sparql-endpoint.com/update', // Optional; defaults to endpointUrl
+  connection: {
+    endpointUrl: 'https://your-sparql-endpoint.com/sparql',
+    updateUrl: 'https://your-sparql-endpoint.com/update', // Optional; defaults to endpointUrl
+  },
 });
 
 // Create variable and IRI managers
@@ -100,6 +102,94 @@ const results = await db
 console.log(results); // Type-safe results
 ```
 
+## Connecting
+
+Builders produce SPARQL and decode results; a **session** runs the SPARQL.
+Configure it once in `SparqlDatabase.create()` with one of `connection`,
+`client` or `session`. `base()` and `prefix()` keep it.
+
+### `connection`: the default HTTP session
+
+A URL, or options for the built-in session
+(which uses [`sparql-http-client`](https://github.com/rdf-ext/sparql-http-client)):
+
+```typescript
+import { SparqlDatabase } from 'sparkql';
+
+const simple = SparqlDatabase.create({
+  connection: 'https://your-sparql-endpoint.com/sparql',
+});
+
+const db = SparqlDatabase.create({
+  connection: {
+    endpointUrl: 'https://your-sparql-endpoint.com/sparql',
+    updateUrl: 'https://your-sparql-endpoint.com/update', // Optional; defaults to endpointUrl
+    headers: { 'x-api-key': 'secret' },
+    user: 'admin', // HTTP basic authentication
+    password: 'secret',
+    // Any fetch implementation: add timeouts, retries, request signing...
+    fetch: (input, init) => fetch(input, { ...init, signal: AbortSignal.timeout(10_000) }),
+  },
+});
+
+// The client is created on first use, so `$client` is a promise here.
+const client = await db.$client;
+```
+
+### `client`: a `sparql-http-client` instance you own
+
+```typescript
+import { SparqlDatabase } from 'sparkql';
+import SparqlClient from 'sparql-http-client';
+
+const client = new SparqlClient({ endpointUrl: 'https://your-sparql-endpoint.com/sparql' });
+const db = SparqlDatabase.create({ client });
+
+db.$client === client; // true: reuse it for anything sparkql does not cover
+```
+
+### `session`: any other engine
+
+Implement `SparqlSession` to run queries in-process, through another protocol,
+or against a test double. It has one method per result format:
+
+```typescript
+import { type SparqlSession, SparqlDatabase } from 'sparkql';
+
+const session: SparqlSession = {
+  bindings: async sparql => [], // SELECT: one record of RDF/JS terms per solution
+  boolean: async sparql => true, // ASK
+  quads: async sparql => [], // CONSTRUCT and DESCRIBE: RDF/JS quads
+  update: async sparql => {}, // SPARQL Update
+  raw: async (sparql, { accept }) => new Response('{}'), // other result formats
+};
+const db = SparqlDatabase.create({ session });
+await db.ask().where(); // true, without any network request
+```
+
+### Build-only
+
+Without any of the three, a database builds queries and cannot run them:
+
+```typescript
+import { SparqlDatabase } from 'sparkql';
+
+const db = SparqlDatabase.create();
+const query = db.ask().where();
+query.toSPARQL(); // 'ASK WHERE {\n}'
+await query.then(undefined, error => console.log(error.message));
+// This database is build-only: it has no session to execute queries with. ...
+```
+
+### Execution
+
+`await query` and `query.execute()` send a request **every time**. A builder
+never caches its result, so awaiting the same builder twice runs it twice.
+Keep the awaited value if you need it again.
+
+The top-level `endpointUrl` and `updateUrl` options are deprecated; they still
+work in this release and are equivalent to `connection: { endpointUrl, updateUrl }`.
+
 ## Building Queries
 
 ### SELECT Queries
@@ -113,7 +203,7 @@ const prefixes = {
 };
 const db = SparqlDatabase.create({
   managerConfig: prefixes,
-  endpointUrl: 'https://your-sparql-endpoint.com/sparql',
+  connection: 'https://your-sparql-endpoint.com/sparql',
 });
 const [v, n] = db.createManagers([], prefixes);
 
@@ -144,7 +234,7 @@ const prefixes = {
 };
 const db = SparqlDatabase.create({
   managerConfig: prefixes,
-  endpointUrl: 'https://your-sparql-endpoint.com/sparql',
+  connection: 'https://your-sparql-endpoint.com/sparql',
 });
 const [v, n] = db.createManagers([], prefixes);
 
@@ -164,7 +254,7 @@ const prefixes = {
 };
 const db = SparqlDatabase.create({
   managerConfig: prefixes,
-  endpointUrl: 'https://your-sparql-endpoint.com/sparql',
+  connection: 'https://your-sparql-endpoint.com/sparql',
 });
 const [v, n] = db.createManagers([], prefixes);
 
@@ -175,8 +265,8 @@ const constructed = await db
 
 ### UPDATE Queries
 
-Build and execute an INSERT DATA update. `endpointUrl` handles queries;
-`updateUrl` handles updates and defaults to `endpointUrl` when omitted.
+Build and execute an INSERT DATA update. The connection's `endpointUrl` handles
+queries; `updateUrl` handles updates and defaults to `endpointUrl` when omitted.
 For an update-only database, configuring just `updateUrl` is sufficient.
 
 ```typescript
@@ -187,8 +277,10 @@ const prefixes = {
 };
 const db = SparqlDatabase.create({
   managerConfig: prefixes,
-  endpointUrl: 'https://your-sparql-endpoint.com/sparql',
-  updateUrl: 'https://your-sparql-endpoint.com/update',
+  connection: {
+    endpointUrl: 'https://your-sparql-endpoint.com/sparql',
+    updateUrl: 'https://your-sparql-endpoint.com/update',
+  },
 });
 const [, n] = db.createManagers([], prefixes);
 
@@ -269,7 +361,7 @@ const prefixes = {
 };
 const db = SparqlDatabase.create({
   managerConfig: prefixes,
-  endpointUrl: 'https://your-sparql-endpoint.com/sparql',
+  connection: 'https://your-sparql-endpoint.com/sparql',
 });
 const [v, n] = db.createManagers([], prefixes);
 
@@ -293,7 +385,7 @@ const prefixes = {
 };
 const db = SparqlDatabase.create({
   managerConfig: prefixes,
-  endpointUrl: 'https://your-sparql-endpoint.com/sparql',
+  connection: 'https://your-sparql-endpoint.com/sparql',
 });
 const [v, n] = db.createManagers([], prefixes);
 
@@ -316,7 +408,7 @@ const prefixes = {
 };
 const db = SparqlDatabase.create({
   managerConfig: prefixes,
-  endpointUrl: 'https://your-sparql-endpoint.com/sparql',
+  connection: 'https://your-sparql-endpoint.com/sparql',
 });
 const [v, n] = db.createManagers([], prefixes);
 

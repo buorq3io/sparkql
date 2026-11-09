@@ -1,30 +1,24 @@
-import type SparqlClient from 'sparql-http-client';
+import type { SparqlSession } from './session.js';
+
+const MISSING_SESSION_MESSAGE =
+  'This database is build-only: it has no session to execute queries with. ' +
+  'Pass `connection`, `client` or `session` to SparqlDatabase.create().';
 
 /** Shared execution lifecycle for standard and dialect-defined query forms. */
 export abstract class ExecutableQuery<Result> implements PromiseLike<Result> {
-  protected _promise: Promise<Result> | null = null;
-
-  protected constructor(
-    protected readonly endpointUrl?: string,
-    protected readonly updateUrl: string | undefined = endpointUrl,
-    private readonly isUpdate: boolean = false
-  ) {}
+  protected constructor(protected readonly session: SparqlSession | undefined) {}
 
   public abstract getSPARQL(): unknown;
   public abstract toSPARQL(): string;
-  protected abstract makeQuery(client: SparqlClient): Promise<Result>;
+  protected abstract makeQuery(session: SparqlSession): Promise<Result>;
 
-  protected execute(): Promise<Result> {
-    if (!(this.isUpdate ? this.updateUrl : this.endpointUrl)) {
-      throw new Error(
-        'Database URL should be defined as your SPARQL endpoint in order to make a request.'
-      );
-    }
-    // The client is ESM-only; dynamic import also works in the CommonJS build.
-    this._promise ??= import('sparql-http-client').then(({ default: Client }) =>
-      this.makeQuery(new Client({ endpointUrl: this.endpointUrl, updateUrl: this.updateUrl }))
-    );
-    return this._promise;
+  /**
+   * Sends the query through the database's session. Every call, and so every
+   * `await` of the builder, sends a new request; nothing is cached.
+   */
+  public async execute(): Promise<Result> {
+    if (!this.session) throw new Error(MISSING_SESSION_MESSAGE);
+    return this.makeQuery(this.session);
   }
 
   // biome-ignore lint/suspicious/noThenProperty: Queries intentionally implement PromiseLike for await.

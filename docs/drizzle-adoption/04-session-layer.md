@@ -99,3 +99,89 @@ Read in this order; it follows a query from builder to wire.
 - Build-only databases build every query form and throw a clear error on await.
 - `docs/query-modules.md` explains how a module talks to the session.
 - README shows the `connection` and `client` forms.
+
+## Implementation notes
+
+What drizzle does, and what was taken from it:
+
+- `PgSelectBase` builds SQL and cannot run; `PgAsyncSelectBase` adds
+  `execute()` and gets `then` from `QueryPromise`, which calls `execute()` on
+  every await. The session (`PgSession.prepareQuery`) owns the driver, and since
+  rc.1/rc.4 a driver contributes only an `executor` closure rather than its own
+  prepared-query class. `drizzle()` accepts `string | { connection } |
+  { client }`, and `drizzle.mock()` builds a database around an empty client.
+- sparkql has one executor flavour, so there is no build/async class split and
+  no HKT. `ExecutableQuery` (`src/database/executable.ts`) stays the single base;
+  it now holds a `SparqlSession | undefined` and its public `execute()` is the
+  one place every query form passes through.
+- Drizzle's session has one entry point per row _shape_ (`arrays`, `objects`,
+  raw `execute`). The SPARQL equivalent is one per result _format_:
+  `SparqlSession` (`src/database/session.ts`) has `bindings`, `boolean`, `quads`,
+  `update` and `raw`. Builders keep their decoders; sessions return RDF/JS terms
+  and quads.
+
+Decisions (the first three are user-visible):
+
+- **Await re-runs the query.** `_promise` memoisation is gone; each `await` or
+  `execute()` sends a request. Brief 07's `prepare()` is the reuse path.
+  `scripts/check-package.mjs` asserted the old behaviour and now expects two
+  requests per builder. `WithQueryBuilderBase.$end()` became idempotent, because
+  re-running a WITH chain would otherwise append its operation twice.
+- **`QueryModule.execute(sparql, session, ast)`** receives a `SparqlSession`
+  instead of a `sparql-http-client` client. Third-party modules that called
+  `client.postDirect` must switch to `session.raw` (see `docs/query-modules.md`).
+  `requestQueryJson` takes the session too.
+- **Errors.** Build-only databases reject with `This database is build-only: …`
+  (replaces `Database URL should be defined …`). A connection with only
+  `updateUrl` rejects reads with `This connection has no \`endpointUrl\` …`.
+  Both are rejections of the awaited promise, never synchronous throws.
+- **Construction.** `create()` takes one of `connection` (URL string or
+  `SparqlConnectionOptions`), `client` or `session`; more than one throws.
+  Top-level `endpointUrl`/`updateUrl` still work and are marked `@deprecated`:
+  remove them in the next major.
+- **`$client` / `$session`.** `$session` is always the session. `$client` is the
+  `client` you passed (its exact type, via a fifth class generic `C`), a
+  `Promise` of the client for `connection` (it is created lazily because
+  `sparql-http-client` is ESM-only and must be loaded with dynamic import), and
+  `undefined` for custom sessions and build-only databases. `await db.$client`
+  works in every case. `base()` and `prefix()` now return `this`, so the client
+  type and query-module methods survive them.
+- **Context object.** `QueryModuleContext` kept its name; `endpointUrl` and
+  `updateUrl` were replaced by `session`. Every standard builder constructor is
+  now `(context, formSpecificArgument?)`, and `QueryNormalizer` is
+  `(input, context)`. `SparqlQueryBuilderBase` keeps it as `builderContext` for
+  nested builders (`update` → `with`).
+- **Custom `fetch`.** `sparql-http-client` pipes response bodies as Node
+  streams, so a standard `fetch` (web streams) breaks SELECT and CONSTRUCT when
+  passed to it directly. `HttpSparqlSession` wraps the `connection.fetch` so the
+  body is a Node stream. A user-supplied `client` is used untouched.
+- **HTTP methods are unchanged:** SELECT/ASK/CONSTRUCT/DESCRIBE use GET, updates
+  a URL-encoded POST, `raw()` and `quads()` with a custom `accept` a direct POST.
+
+For later briefs:
+
+- **05 (errors):** wrap in `ExecutableQuery.execute()`; it has the builder (so
+  `toSPARQL()`) and catches every form and session. `raw()` returns non-2xx
+  responses unwrapped and `requestQueryJson` turns them into a plain `Error`;
+  HTTP failures of the other methods are `sparql-http-client` errors with a
+  numeric `status`. `SparqlDatabase.$client` and `resolveSession` use
+  `instanceof HttpSparqlSession` / `isSparqlSession` (duck-typed); the
+  `instanceof` is safe today only because the instance is created by the same
+  module copy.
+- **06 (logger):** same choke point. Add the logger to `QueryModuleContext` in
+  the `SparqlDatabase` constructor and pass it through `PrivateSparqlDatabaseOptions`
+  so `base()`/`prefix()` keep it, as `session` does.
+- **07 (prepared):** a prepared query can capture `toSPARQL()` once and call the
+  session method directly; builders' decoders live in `makeQuery(session)`.
+- **02 (packaging):** the public declarations reference `sparql-http-client`
+  types (`SparqlHttpClient`, previously `SparqlClient` in `helpers/types.ts`),
+  so `@types/sparql-http-client` moved from `devDependencies` to
+  `dependencies`. Consumers now get a typed `$client` without installing it.
+- `ConstructQueryBuilderBase` and `DescribeQueryBuilderBase` are still declared
+  to resolve to `QuadsInput[]` although the values are RDF/JS quads (as before
+  this change). Brief 09 or 10 should correct the result type.
+
+Validation: `typecheck`, 73 tests (54 at brief time, 62 before this change) and
+`test:package` (CJS and ESM) pass. `check` reports the same two formatting
+errors as before, in `08-raw-sparql-tag.md` and this directory's `README.md`;
+changed files are clean. New coverage is in `test/session.spec.ts`.

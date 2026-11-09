@@ -1,5 +1,4 @@
 import type {
-  FactoryFunctions,
   PatternInput,
   QuadsInput,
   TermIriInput,
@@ -7,6 +6,7 @@ import type {
   UpdateOperationModifyInput,
 } from '../helpers/types.js';
 import type { AnySparqlDialect, DialectPattern, SparqlDialect } from './dialect.js';
+import type { QueryModuleContext } from './query-module.js';
 import { SparqlQueryBuilderBase } from './sparql-query.js';
 import type { UpdateQueryBuilderBase } from './update.js';
 
@@ -15,6 +15,13 @@ export type WithBuilderBaseWithout<
   TDynamic extends boolean,
   TExcluded extends keyof T & string,
 > = TDynamic extends true ? T : Omit<T, TExcluded>;
+
+/** The update request a WITH/INSERT/DELETE operation is appended to. */
+export interface WithParent<D extends AnySparqlDialect = SparqlDialect> {
+  context: UpdateInput['updates'][number]['context'];
+  config: UpdateInput;
+  builder: UpdateQueryBuilderBase<D>;
+}
 
 export class WithQueryBuilderBase<
     TDynamic extends boolean = false,
@@ -27,17 +34,9 @@ export class WithQueryBuilderBase<
   private updateContext: UpdateInput['updates'][number]['context'];
   private updateBuilder: UpdateQueryBuilderBase<D>;
   private readonly operation: UpdateOperationModifyInput;
+  private ended = false;
 
-  constructor(
-    updateContext: UpdateInput['updates'][number]['context'],
-    updateConfig: UpdateInput,
-    updateBuilder: UpdateQueryBuilderBase<D>,
-    factoryFunctions: FactoryFunctions,
-    endpointUrl?: string,
-    iri?: TermIriInput,
-    dialect?: D,
-    updateUrl?: string
-  ) {
+  constructor(context: QueryModuleContext<D>, parent: WithParent<D>, iri?: TermIriInput) {
     super(
       {
         type: 'update',
@@ -46,10 +45,7 @@ export class WithQueryBuilderBase<
           sourceLocationType: 'autoGenerate',
         },
       },
-      factoryFunctions,
-      endpointUrl,
-      dialect,
-      updateUrl
+      context
     );
     this.operation = {
       type: 'updateOperation',
@@ -76,9 +72,9 @@ export class WithQueryBuilderBase<
         patterns: [],
       },
     };
-    this.updateContext = updateContext;
-    this.updateConfig = updateConfig;
-    this.updateBuilder = updateBuilder;
+    this.updateContext = parent.context;
+    this.updateConfig = parent.config;
+    this.updateBuilder = parent.builder;
   }
 
   delete(...quads: QuadsInput[]): WithBuilderBaseWithout<this, TDynamic, 'delete'> {
@@ -127,16 +123,19 @@ export class WithQueryBuilderBase<
     return this;
   }
 
+  /** Appends this operation to the update request, once, and returns the request builder. */
   $end() {
-    this.updateConfig.updates.push({
-      context: this.updateContext,
-      operation: this.operation,
-    });
+    if (!this.ended) {
+      this.ended = true;
+      this.updateConfig.updates.push({
+        context: this.updateContext,
+        operation: this.operation,
+      });
+    }
     return this.updateBuilder;
   }
 
-  protected async makeQuery(): Promise<void> {
-    this.$end();
-    return await this.updateBuilder;
+  protected makeQuery(): Promise<void> {
+    return this.$end().execute();
   }
 }

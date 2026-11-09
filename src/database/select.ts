@@ -1,10 +1,8 @@
 import { createWildCardInput } from '../functions/utils.js';
 import {
   type DefaultQueryReturnType,
-  type FactoryFunctions,
   Presence,
   type QuerySelectInput,
-  type SparqlClient,
   type TermVariableAndBinding,
   type TermVariableOptionalTransform,
   type TermVariableTransform,
@@ -12,6 +10,8 @@ import {
 import { group } from '../structures/pattern.js';
 import type { AnySparqlDialect, SparqlDialect } from './dialect.js';
 import { QueryBuilderBase } from './query.js';
+import type { QueryModuleContext } from './query-module.js';
+import type { SparqlSession } from './session.js';
 
 export type SelectedVariables = Record<string, TermVariableAndBinding<any, Presence>>;
 
@@ -58,20 +58,19 @@ export class SelectQueryBuilderBase<
   > = {};
 
   constructor(
-    variables: TypedSelectedVariables<T> | undefined,
-    context: QuerySelectInput['context'],
-    factoryFunctions: FactoryFunctions,
-    distict: QuerySelectInput['distinct'] = undefined,
-    reduced: QuerySelectInput['reduced'] = undefined,
-    endpointUrl?: string,
-    dialect?: D,
-    updateUrl?: string
+    context: QueryModuleContext<D>,
+    select: {
+      variables?: TypedSelectedVariables<T>;
+      distinct?: QuerySelectInput['distinct'];
+      reduced?: QuerySelectInput['reduced'];
+    } = {}
   ) {
+    const { variables } = select;
     super(
       {
         type: 'query',
         subType: 'select',
-        context: context,
+        context: [...context.context],
         datasets: {
           type: 'datasetClauses',
           clauses: [],
@@ -91,16 +90,13 @@ export class SelectQueryBuilderBase<
         variables: variables
           ? <TermVariableAndBinding[]>Object.values(variables)
           : [createWildCardInput()],
-        distinct: distict,
-        reduced: reduced,
+        distinct: select.distinct,
+        reduced: select.reduced,
         loc: {
           sourceLocationType: 'autoGenerate',
         },
       },
-      factoryFunctions,
-      endpointUrl,
-      dialect,
-      updateUrl
+      context
     );
 
     function createMaybeTransform<T extends DefaultQueryReturnType, K extends any[]>(
@@ -147,15 +143,14 @@ export class SelectQueryBuilderBase<
     return group(this.config);
   }
 
-  protected async makeQuery(client: SparqlClient): Promise<T[]> {
-    const stream = client.query.select(this.toSPARQL());
-
+  protected async makeQuery(session: SparqlSession): Promise<T[]> {
     const items: T[] = [];
-    for await (const binding of stream) {
+    for (const binding of await session.bindings(this.toSPARQL())) {
       const temp = Object.entries(this.lookup).reduce(
         (acc, curr) => {
           const func = this.lookupTransform[curr[0]] ?? ((self: any) => self);
-          acc[curr[1]] = func(binding[curr[0]]);
+          // Unbound variables are absent; optional transforms accept undefined.
+          acc[curr[1]] = func(binding[curr[0]] as DefaultQueryReturnType);
           return acc;
         },
         {} as Record<string, any>

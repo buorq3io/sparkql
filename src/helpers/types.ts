@@ -577,8 +577,6 @@ export type PathInput =
   | PathModifiedInput
   | PathNegatedInput;
 
-export type { StreamClient as SparqlClient } from 'sparql-http-client';
-
 export type FactoryFunctions = {
   variable: (value: string) => AST.TermVariable;
   iri: (value: string, prefix?: string) => AST.TermIri;

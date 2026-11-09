@@ -25,6 +25,11 @@ import { AskQueryBuilderBase } from './ask.js';
 import { ConstructQueryBuilderBase } from './construct.js';
 import { DescribeQueryBuilderBase } from './describe.js';
 import { type AnySparqlDialect, type SparqlDialect, sparql11Dialect } from './dialect.js';
+import {
+  HttpSparqlSession,
+  type SparqlConnectionOptions,
+  type SparqlHttpClient,
+} from './http-session.js';
 import type { RootQueryBuilderBaseWithout } from './query.js';
 import {
   emptySelect,
@@ -38,14 +43,14 @@ import {
   SelectQueryBuilderBase,
   type TypedSelectedVariables,
 } from './select.js';
+import { isSparqlSession, type SparqlSession } from './session.js';
 import { UpdateQueryBuilderBase } from './update.js';
 
 interface PrivateSparqlDatabaseOptions {
   context: QueryInput['context'];
   formats?: TermFormats;
   factory?: AST.AstFactory;
-  endpointUrl?: string;
-  updateUrl?: string;
+  session?: SparqlSession;
   dialect?: AnySparqlDialect;
 }
 
@@ -57,8 +62,48 @@ export interface SparqlDatabaseOptions<
   dialect?: D;
   formats?: F & TermFormats;
   managerConfig?: T;
+  /**
+   * Options for the default HTTP session. A string is the query endpoint URL,
+   * which then also receives updates.
+   */
+  connection?: string | SparqlConnectionOptions;
+  /** A ready `sparql-http-client` instance for the default HTTP session to use. */
+  client?: SparqlHttpClient;
+  /** A custom session, e.g. an in-process engine or a test double. */
+  session?: SparqlSession;
+  /** @deprecated Use `connection`. */
   endpointUrl?: string;
+  /** @deprecated Use `connection.updateUrl`. */
   updateUrl?: string;
+}
+
+/**
+ * The client behind a database made with `connection`: it is loaded on first
+ * use, so it is a promise. `undefined` for custom-session and build-only databases.
+ */
+export type DefaultSparqlClient = Promise<SparqlHttpClient> | undefined;
+/** Every value `$client` can hold when the way the database was created is unknown. */
+export type AnySparqlClient = SparqlHttpClient | DefaultSparqlClient;
+
+function resolveSession(
+  options: SparqlDatabaseOptions<any, any, any> = {}
+): SparqlSession | undefined {
+  const { connection, client, session, endpointUrl, updateUrl } = options;
+  const legacy = endpointUrl !== undefined || updateUrl !== undefined;
+  const given = [connection !== undefined, client !== undefined, session !== undefined, legacy];
+  if (given.filter(Boolean).length > 1)
+    throw new Error(
+      'Pass only one of `connection`, `client`, `session` or the deprecated `endpointUrl`/`updateUrl`.'
+    );
+  if (session !== undefined) {
+    if (!isSparqlSession(session))
+      throw new Error('`session` must implement bindings, boolean, quads, update and raw.');
+    return session;
+  }
+  if (client !== undefined) return new HttpSparqlSession({ client });
+  if (connection !== undefined) return new HttpSparqlSession({ connection });
+  if (legacy) return new HttpSparqlSession({ connection: { endpointUrl, updateUrl } });
+  return undefined;
 }
 
 export class SparqlDatabase<
@@ -66,11 +111,13 @@ export class SparqlDatabase<
   R extends string = 'g_',
   F extends TermFormats = {},
   D extends AnySparqlDialect = SparqlDialect,
+  C extends AnySparqlClient = AnySparqlClient,
 > {
   private readonly dialect: D;
   private readonly formats: TermFormats;
-  private readonly endpointUrl?: string;
-  private readonly updateUrl?: string;
+  /** The session queries run through. `undefined` on a build-only database. */
+  readonly $session: SparqlSession | undefined;
+  private readonly moduleContext: QueryModuleContext<D>;
   private readonly initialContext;
   private readonly factory: AST.AstFactory;
   protected readonly factoryFunctions: FactoryFunctions;
@@ -82,8 +129,7 @@ export class SparqlDatabase<
       literal: [...(options?.formats?.literal ?? [])],
       blank: [...(options?.formats?.blank ?? [])],
     };
-    this.endpointUrl = options?.endpointUrl;
-    this.updateUrl = options?.updateUrl ?? options?.endpointUrl;
+    this.$session = options?.session;
     this.initialContext = options?.context ?? [];
     this.factory = options?.factory ?? new AST.AstFactory();
     this.factoryFunctions = {
@@ -103,15 +149,11 @@ export class SparqlDatabase<
       context: this.initialContext,
       factory: this.factoryFunctions,
       dialect: this.dialect,
-      endpointUrl: this.endpointUrl,
-      updateUrl: this.updateUrl,
+      session: this.$session,
       normalizer: input =>
-        new QueryNormalizer(
-          input ?? emptySelect(this.initialContext),
-          this.factoryFunctions,
-          this.dialect
-        ),
+        new QueryNormalizer(input ?? emptySelect(this.initialContext), moduleContext),
     };
+    this.moduleContext = moduleContext;
     for (const [name, factory] of Object.entries(this.dialect.queries ?? {})) {
       if (name === 'then' || name in this)
         throw new Error(`Query module name conflicts with database member: ${name}`);
@@ -119,6 +161,39 @@ export class SparqlDatabase<
     }
   }
 
+  /**
+   * The `sparql-http-client` instance behind the default HTTP session: the
+   * `client` passed to `create()`, or a promise of the one created from
+   * `connection`. `undefined` for custom-session and build-only databases.
+   */
+  get $client(): C {
+    return (this.$session instanceof HttpSparqlSession ? this.$session.client : undefined) as C;
+  }
+
+  /**
+   * Creates a database. Configure the transport once with `connection`
+   * (options for the default HTTP session), `client` (a ready
+   * `sparql-http-client` instance) or `session` (any {@link SparqlSession}).
+   * Without one the database is build-only: queries generate SPARQL and
+   * reject when awaited.
+   */
+  static create<
+    T extends IriManagerConfig,
+    K extends string = 'g_',
+    F extends TermFormats = {},
+    D extends AnySparqlDialect = SparqlDialect,
+    C extends SparqlHttpClient = SparqlHttpClient,
+  >(
+    options: SparqlDatabaseOptions<T, F, D> & { client: C }
+  ): WithQueryMethods<SparqlDatabase<T, K, F, D, C>, D>;
+  static create<
+    T extends IriManagerConfig,
+    K extends string = 'g_',
+    F extends TermFormats = {},
+    D extends AnySparqlDialect = SparqlDialect,
+  >(
+    options?: SparqlDatabaseOptions<T, F, D>
+  ): WithQueryMethods<SparqlDatabase<T, K, F, D, DefaultSparqlClient>, D>;
   static create<
     T extends IriManagerConfig,
     K extends string = 'g_',
@@ -128,18 +203,16 @@ export class SparqlDatabase<
     return new SparqlDatabase<T, K, F, D>({
       dialect: options?.dialect,
       formats: options?.formats,
-      endpointUrl: options?.endpointUrl,
-      updateUrl: options?.updateUrl,
+      session: resolveSession(options),
       context: transformIntoPrefixObject(options?.managerConfig ?? {}),
     }) as WithQueryMethods<SparqlDatabase<T, K, F, D>, D>;
   }
 
-  base(value: string): WithQueryMethods<SparqlDatabase<T, R, F, D>, D> {
+  base(value: string): this {
     return new SparqlDatabase<T, R, F, D>({
       dialect: this.dialect,
       formats: this.formats,
-      endpointUrl: this.endpointUrl,
-      updateUrl: this.updateUrl,
+      session: this.$session,
       factory: this.factory,
       context: [
         ...this.initialContext,
@@ -152,15 +225,14 @@ export class SparqlDatabase<
           value: this.iri(value),
         },
       ],
-    }) as WithQueryMethods<SparqlDatabase<T, R, F, D>, D>;
+    }) as unknown as this;
   }
 
-  prefix(values: { [x in string]: string }): WithQueryMethods<SparqlDatabase<T, R, F, D>, D> {
+  prefix(values: { [x in string]: string }): this {
     return new SparqlDatabase<T, R, F, D>({
       dialect: this.dialect,
       formats: this.formats,
-      endpointUrl: this.endpointUrl,
-      updateUrl: this.updateUrl,
+      session: this.$session,
       factory: this.factory,
       context: [
         ...this.initialContext,
@@ -177,7 +249,7 @@ export class SparqlDatabase<
             }) as const
         ),
       ],
-    }) as WithQueryMethods<SparqlDatabase<T, R, F, D>, D>;
+    }) as unknown as this;
   }
 
   select<U extends SelectedVariables>(
@@ -191,16 +263,7 @@ export class SparqlDatabase<
   select<U extends Record<string, any>>(
     variables?: TypedSelectedVariables<U>
   ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U, D>> {
-    return new SelectQueryBuilderBase<U, D>(
-      variables,
-      this.initialContext,
-      this.factoryFunctions,
-      undefined,
-      undefined,
-      this.endpointUrl,
-      this.dialect,
-      this.updateUrl
-    );
+    return new SelectQueryBuilderBase<U, D>(this.moduleContext, { variables });
   }
 
   selectDistinct<U extends SelectedVariables>(
@@ -214,16 +277,7 @@ export class SparqlDatabase<
   selectDistinct<U extends Record<string, any>>(
     variables?: TypedSelectedVariables<U>
   ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U, D>> {
-    return new SelectQueryBuilderBase<U, D>(
-      variables,
-      this.initialContext,
-      this.factoryFunctions,
-      true,
-      undefined,
-      this.endpointUrl,
-      this.dialect,
-      this.updateUrl
-    );
+    return new SelectQueryBuilderBase<U, D>(this.moduleContext, { variables, distinct: true });
   }
 
   selectReduced<U extends SelectedVariables>(
@@ -237,52 +291,23 @@ export class SparqlDatabase<
   selectReduced<U extends Record<string, any>>(
     variables?: TypedSelectedVariables<U>
   ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U, D>> {
-    return new SelectQueryBuilderBase<U, D>(
-      variables,
-      this.initialContext,
-      this.factoryFunctions,
-      undefined,
-      true,
-      this.endpointUrl,
-      this.dialect,
-      this.updateUrl
-    );
+    return new SelectQueryBuilderBase<U, D>(this.moduleContext, { variables, reduced: true });
   }
 
   ask(): RootQueryBuilderBaseWithout<AskQueryBuilderBase<D>> {
-    return new AskQueryBuilderBase<D>(
-      this.initialContext,
-      this.factoryFunctions,
-      this.endpointUrl,
-      this.dialect,
-      this.updateUrl
-    );
+    return new AskQueryBuilderBase<D>(this.moduleContext);
   }
 
   describe(
     ...variables: (TermIriInput | TermVariableInput)[]
   ): RootQueryBuilderBaseWithout<DescribeQueryBuilderBase<D>> {
-    return new DescribeQueryBuilderBase<D>(
-      variables,
-      this.initialContext,
-      this.factoryFunctions,
-      this.endpointUrl,
-      this.dialect,
-      this.updateUrl
-    );
+    return new DescribeQueryBuilderBase<D>(this.moduleContext, variables);
   }
 
   construct(
     ...templates: PatternBgpInput[]
   ): RootQueryBuilderBaseWithout<ConstructQueryBuilderBase<D>> {
-    return new ConstructQueryBuilderBase<D>(
-      templates,
-      this.initialContext,
-      this.factoryFunctions,
-      this.endpointUrl,
-      this.dialect,
-      this.updateUrl
-    );
+    return new ConstructQueryBuilderBase<D>(this.moduleContext, templates);
   }
 
   insertData(...quads: QuadsInput[]) {
@@ -446,13 +471,7 @@ export class SparqlDatabase<
   }
 
   protected update() {
-    return new UpdateQueryBuilderBase<D>(
-      this.initialContext,
-      this.factoryFunctions,
-      this.endpointUrl,
-      this.dialect,
-      this.updateUrl
-    );
+    return new UpdateQueryBuilderBase<D>(this.moduleContext);
   }
 
   variable(value: string): AST.TermVariable {

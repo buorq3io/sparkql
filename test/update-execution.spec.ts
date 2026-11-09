@@ -52,11 +52,11 @@ describe('update execution', () => {
     '%s POSTs to the configured or default update URL',
     async (name, build) => {
       for (const separateUpdateUrl of [true, false]) {
-        const options = {
+        const connection = {
           endpointUrl: `${endpoint}/query`,
           updateUrl: separateUpdateUrl ? `${endpoint}/update` : undefined,
         };
-        const db = SparqlDatabase.create(options)
+        const db = SparqlDatabase.create({ connection })
           .base('https://example.org/')
           .prefix({ ex: 'https://example.org/' });
         const query = build(db);
@@ -81,26 +81,36 @@ describe('update execution', () => {
   );
 
   test('allows updates with only an update URL and still requires a query endpoint for reads', async () => {
-    const options = { updateUrl: `${endpoint}/update` };
-    const db = SparqlDatabase.create(options);
+    const db = SparqlDatabase.create({ connection: { updateUrl: `${endpoint}/update` } });
     await db.clearAll();
     expect(requests[0]).toEqual({ method: 'POST', url: '/update', body: 'update=CLEAR+ALL' });
-    await expect(Promise.resolve(db.ask())).rejects.toThrow('Database URL should be defined');
+    await expect(db.ask()).rejects.toThrow('no `endpointUrl`');
     expect(requests).toHaveLength(1);
   });
 
   test('keeps reads on the query endpoint when a separate update URL is configured', async () => {
-    const options = { endpointUrl: `${endpoint}/query`, updateUrl: `${endpoint}/update` };
-    const db = SparqlDatabase.create(options);
+    const connection = { endpointUrl: `${endpoint}/query`, updateUrl: `${endpoint}/update` };
+    const db = SparqlDatabase.create({ connection });
     expect(await db.ask().where()).toBe(true);
     expect(requests[0].method).toBe('GET');
     expect(new URL(requests[0].url!, endpoint).pathname).toBe('/query');
   });
 
-  test('rejects updates without either endpoint', async () => {
-    await expect(Promise.resolve(SparqlDatabase.create().clearAll())).rejects.toThrow(
-      'Database URL should be defined'
-    );
+  test('still accepts the deprecated top-level endpointUrl and updateUrl options', async () => {
+    const db = SparqlDatabase.create({
+      endpointUrl: `${endpoint}/query`,
+      updateUrl: `${endpoint}/update`,
+    });
+    expect(await db.ask().where()).toBe(true);
+    await db.clearAll();
+    expect(requests.map(request => [request.method, request.url?.split('?')[0]])).toEqual([
+      ['GET', '/query'],
+      ['POST', '/update'],
+    ]);
+  });
+
+  test('rejects updates on a build-only database', async () => {
+    await expect(SparqlDatabase.create().clearAll()).rejects.toThrow('build-only');
     expect(requests).toHaveLength(0);
   });
 });

@@ -1,5 +1,10 @@
-import type { SparqlDatabaseOptions as BaseSparqlDatabaseOptions } from '../database/base.js';
+import type {
+  AnySparqlClient,
+  SparqlDatabaseOptions as BaseSparqlDatabaseOptions,
+  DefaultSparqlClient,
+} from '../database/base.js';
 import { SparqlDatabase as BaseSparqlDatabase } from '../database/base.js';
+import type { SparqlHttpClient } from '../database/http-session.js';
 import type { WithQueryMethods } from '../database/query-module.js';
 import type { TermFormats } from '../helpers/term-formats.js';
 import type { IriManagerConfig } from '../structures/iri.js';
@@ -24,16 +29,26 @@ export type SparqlDatabase<
   T extends IriManagerConfig,
   R extends string = 'g_',
   F extends TermFormats = {},
-> = WithQueryMethods<BaseSparqlDatabase<T, R, F, typeof arqDialect>, typeof arqDialect>;
+  C extends AnySparqlClient = AnySparqlClient,
+> = WithQueryMethods<BaseSparqlDatabase<T, R, F, typeof arqDialect, C>, typeof arqDialect>;
+
+function create<
+  T extends IriManagerConfig,
+  K extends string = 'g_',
+  F extends TermFormats = {},
+  C extends SparqlHttpClient = SparqlHttpClient,
+>(options: ArqDatabaseOptions<T, F> & { client: C }): SparqlDatabase<T, K, F, C>;
+function create<T extends IriManagerConfig, K extends string = 'g_', F extends TermFormats = {}>(
+  options?: ArqDatabaseOptions<T, F>
+): SparqlDatabase<T, K, F, DefaultSparqlClient>;
+function create<T extends IriManagerConfig, K extends string = 'g_', F extends TermFormats = {}>(
+  options?: ArqDatabaseOptions<T, F>
+): SparqlDatabase<T, K, F> {
+  return BaseSparqlDatabase.create<T, K, F, typeof arqDialect>({
+    ...options,
+    dialect: arqDialect,
+  });
+}
 
 /** Creates databases with ARQ support enabled. */
-export const SparqlDatabase = {
-  create<T extends IriManagerConfig, K extends string = 'g_', F extends TermFormats = {}>(
-    options?: ArqDatabaseOptions<T, F>
-  ): SparqlDatabase<T, K, F> {
-    return BaseSparqlDatabase.create<T, K, F, typeof arqDialect>({
-      ...options,
-      dialect: arqDialect,
-    });
-  },
-};
+export const SparqlDatabase = { create };
