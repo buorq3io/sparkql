@@ -115,6 +115,10 @@ export abstract class SparqlQueryBuilderBase<
     throw new SparkqlNormalizationError('query', this.config);
   }
 
+  protected override get operationName(): string {
+    return this.config.type === 'update' ? 'update' : this.config.subType;
+  }
+
   public toSPARQL(): string {
     return this.dialect.generator.generate(this.getSPARQL());
   }

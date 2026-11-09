@@ -79,6 +79,17 @@ export class HttpSparqlSession<C extends SparqlHttpClient = SparqlHttpClient>
     return this.resolved;
   }
 
+  getRequestUrl(kind: 'query' | 'update'): string | undefined {
+    if (this.connection) {
+      return kind === 'update'
+        ? (this.connection.updateUrl ?? this.connection.endpointUrl)
+        : this.connection.endpointUrl;
+    }
+    // A supplied client is already available; do not load a lazy client for logging.
+    const client = this.resolved as C;
+    return kind === 'update' ? client.updateUrl : client.endpointUrl;
+  }
+
   async bindings(sparql: string): Promise<SparqlBindings[]> {
     const client = await this.queryClient();
     return collect<SparqlBindings>(client.query.select(sparql));

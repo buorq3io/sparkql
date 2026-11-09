@@ -21,6 +21,8 @@ export interface SparqlRawOptions {
  * per query form, so custom query forms reuse the format they need.
  */
 export interface SparqlSession {
+  /** Optional logging metadata. Return undefined for transports without a URL. */
+  getRequestUrl?(kind: 'query' | 'update'): string | undefined;
   /** Runs a query whose result is a solution sequence (SELECT). */
   bindings(sparql: string): Promise<SparqlBindings[]>;
   /** Runs a query whose result is a boolean (ASK). */

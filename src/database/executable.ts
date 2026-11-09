@@ -1,5 +1,6 @@
 import { is } from './entity.js';
 import { SparkqlError, SparkqlQueryError } from './errors.js';
+import { type Logger, LoggingSparqlSession } from './logger.js';
 import type { SparqlSession } from './session.js';
 
 const MISSING_SESSION_MESSAGE =
@@ -10,6 +11,9 @@ const MISSING_SESSION_MESSAGE =
 export interface ExecutionContext {
   /** Transport for execution. Absent on build-only databases. */
   readonly session?: SparqlSession;
+  readonly logger?: Logger;
+  /** Dialect query factory name, used in log metadata. */
+  readonly operationName?: string;
   /** Repeat the SPARQL in `SparkqlQueryError.message`. */
   readonly queryInErrors?: boolean;
 }
@@ -18,10 +22,18 @@ export interface ExecutionContext {
 export abstract class ExecutableQuery<Result> implements PromiseLike<Result> {
   protected readonly session: SparqlSession | undefined;
   private readonly queryInErrors: boolean;
+  private readonly logger: Logger | undefined;
+  private readonly moduleName: string;
 
   protected constructor(context: ExecutionContext) {
     this.session = context.session;
+    this.logger = context.logger;
+    this.moduleName = context.operationName ?? 'query';
     this.queryInErrors = context.queryInErrors ?? false;
+  }
+
+  protected get operationName(): string {
+    return this.moduleName;
   }
 
   public abstract getSPARQL(): unknown;
@@ -42,7 +54,10 @@ export abstract class ExecutableQuery<Result> implements PromiseLike<Result> {
     if (!this.session) throw new SparkqlError({ message: MISSING_SESSION_MESSAGE });
     const sparql = this.toSPARQL();
     try {
-      return await this.makeQuery(this.session, sparql);
+      const session = this.logger
+        ? new LoggingSparqlSession(this.session, this.logger, this.operationName)
+        : this.session;
+      return await this.makeQuery(session, sparql);
     } catch (error) {
       if (is(error, SparkqlQueryError)) throw error;
       throw new SparkqlQueryError({

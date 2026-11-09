@@ -190,6 +190,47 @@ Keep the awaited value if you need it again.
 The top-level `endpointUrl` and `updateUrl` options are deprecated; they still
 work in this release and are equivalent to `connection: { endpointUrl, updateUrl }`.
 
+### Query logging
+
+Set `logger: true` to print each executed SPARQL request to the console, or pass
+an application logger:
+
+```typescript
+import { type Logger, SparqlDatabase } from 'sparkql';
+
+const logger: Logger = {
+  logQuery(sparql, { operation, targetUrl }) {
+    console.log({ operation, targetUrl, sparql });
+  },
+};
+const db = SparqlDatabase.create({
+  connection: 'https://your-sparql-endpoint.com/sparql',
+  logger, // Or `true` for the default console logger.
+});
+await db.ask().where();
+```
+
+The logger receives the exact generated string, a standard query form (`select`,
+`ask`, `construct`, `describe`, `update`) or dialect query factory name (`json`,
+`constructQuads`, `paths`), and the target URL when available. Custom sessions can
+provide `getRequestUrl(kind)` for URL metadata; otherwise `targetUrl` is
+`undefined`. Logging happens once per session request, before sending, including
+requests that fail. Building a query with `toSPARQL()` does not log it.
+`base()` and `prefix()` preserve the logger. Direct calls to `$session` or
+`$client` bypass builder logging.
+
+Omit `logger` or set it to `false` to disable logging. This path uses the original
+session directly and skips logger wrappers, metadata, and formatting.
+`DefaultLogger` also accepts `{ writer: LogWriter }` for a custom output sink;
+`NoopLogger` is available for integrations that require a logger object. Logger
+callbacks are synchronous; throwing prevents the request and rejects execution.
+SPARQL includes inlined values, so logging the full string includes those values.
+
+Built-in OpenTelemetry spans are deferred. The pinned Drizzle implementation
+leaves its optional API loader disabled; probing for that dependency would add
+import work even when it is absent. This release adds no telemetry dependency or
+import probe. Applications can instrument their custom session or `fetch`.
+
 ### Errors
 
 Every error sparkql throws itself extends `SparkqlError`. A query that was
