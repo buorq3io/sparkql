@@ -126,9 +126,12 @@ and nested `group`, `optional`, `union`, `minus`, `graph`, `service`, and
 preserves existing input/output types and behavior. Unrecognized pattern nodes
 still throw at runtime, protecting JavaScript callers that bypass TypeScript.
 
-This seam extends graph patterns. It does not add custom expression node kinds,
-query kinds, or update operation kinds. Existing expressions can be used inside
-custom patterns through the normalization context.
+The pattern seam extends graph patterns. Existing expression node kinds can be
+used inside custom patterns through the normalization context. Dialects can also
+register [top-level query modules](query-modules.md), each with its own builder,
+AST and result decoder. The built-in ARQ modules add JSON and quad construction;
+the Stardog entry point adds PATHS. Custom expression node kinds and update
+operation kinds require separate extension interfaces.
 
 ## Design references
 

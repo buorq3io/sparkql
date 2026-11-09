@@ -48,6 +48,14 @@ const sorted = db.select().where().orderBy(desc(collation('fi', value)));
 
 See the [dialect guide](docs/dialects.md) for configuration and custom extensions.
 
+## Top-level query extensions
+
+ARQ databases also provide `json(projection)` and `constructQuads(...templates)`.
+Import `SparqlDatabase` from `sparkql/stardog` for a typed `paths()` builder with
+START, END, VIA, and path-specific modifiers. Each query form has its own AST and
+result decoder. See [top-level query modules](docs/query-modules.md) for examples
+and instructions for registering your own forms.
+
 ## Quick Start
 
 ```typescript

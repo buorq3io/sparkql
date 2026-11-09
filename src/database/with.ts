@@ -116,7 +116,7 @@ export class WithQueryBuilderBase<
   ): WithBuilderBaseWithout<this, TDynamic, 'where' | 'insert' | 'delete'> {
     this.operation.where.patterns = [
       ...this.operation.where.patterns,
-      ...(patterns as PatternInput[]),
+      ...(patterns as unknown as PatternInput[]),
     ];
     return this;
   }

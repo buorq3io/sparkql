@@ -1,3 +1,9 @@
+import {
+  emptySelect,
+  QueryNormalizer,
+  type WithQueryMethods,
+  type QueryModuleContext,
+} from './query-module.js';
 import { sparql11Dialect, type AnySparqlDialect, type SparqlDialect } from './dialect.js';
 import * as AST from '@traqula/rules-sparql-1-1';
 
@@ -90,6 +96,23 @@ export class SparqlDatabase<
             : termIri.parseOrThrow(lang, this.factoryFunctions)
         ),
     };
+    const moduleContext: QueryModuleContext<D> = {
+      context: this.initialContext,
+      factory: this.factoryFunctions,
+      dialect: this.dialect,
+      endpointUrl: this.endpointUrl,
+      normalizer: input =>
+        new QueryNormalizer(
+          input ?? emptySelect(this.initialContext),
+          this.factoryFunctions,
+          this.dialect
+        ),
+    };
+    for (const [name, factory] of Object.entries(this.dialect.queries ?? {})) {
+      if (name === 'then' || name in this)
+        throw new Error(`Query module name conflicts with database member: ${name}`);
+      Object.defineProperty(this, name, { value: factory(moduleContext), enumerable: true });
+    }
   }
 
   static create<
@@ -97,16 +120,16 @@ export class SparqlDatabase<
     K extends string = 'g_',
     F extends TermFormats = {},
     D extends AnySparqlDialect = SparqlDialect
-  >(options?: SparqlDatabaseOptions<T, F, D>): SparqlDatabase<T, K, F, D> {
+  >(options?: SparqlDatabaseOptions<T, F, D>): WithQueryMethods<SparqlDatabase<T, K, F, D>, D> {
     return new SparqlDatabase<T, K, F, D>({
       dialect: options?.dialect,
       formats: options?.formats,
       endpointUrl: options?.endpointUrl,
       context: transformIntoPrefixObject(options?.managerConfig ?? {}),
-    });
+    }) as WithQueryMethods<SparqlDatabase<T, K, F, D>, D>;
   }
 
-  base(value: string) {
+  base(value: string): WithQueryMethods<SparqlDatabase<T, R, F, D>, D> {
     return new SparqlDatabase<T, R, F, D>({
       dialect: this.dialect,
       formats: this.formats,
@@ -123,10 +146,10 @@ export class SparqlDatabase<
           value: this.iri(value),
         },
       ],
-    });
+    }) as WithQueryMethods<SparqlDatabase<T, R, F, D>, D>;
   }
 
-  prefix(values: { [x in string]: string }) {
+  prefix(values: { [x in string]: string }): WithQueryMethods<SparqlDatabase<T, R, F, D>, D> {
     return new SparqlDatabase<T, R, F, D>({
       dialect: this.dialect,
       formats: this.formats,
@@ -147,7 +170,7 @@ export class SparqlDatabase<
             } as const)
         ),
       ],
-    });
+    }) as WithQueryMethods<SparqlDatabase<T, R, F, D>, D>;
   }
 
   select<U extends SelectedVariables>(

@@ -66,9 +66,12 @@ export abstract class QueryBuilderBase<
     ...patterns: PatternInput<DialectPattern<D>>[]
   ): QueryBuilderBaseWithout<this, TDynamic, 'where' | 'from' | 'fromNamed'> {
     if (!this.config.where) {
-      this.config.where = group(...patterns) as PatternGroupInput;
+      this.config.where = group(...patterns) as unknown as PatternGroupInput;
     } else {
-      this.config.where.patterns = [...this.config.where.patterns, ...(patterns as PatternInput[])];
+      this.config.where.patterns = [
+        ...this.config.where.patterns,
+        ...(patterns as unknown as PatternInput[]),
+      ];
     }
     return this;
   }

@@ -1,3 +1,4 @@
+import type { QueryFactories } from './query-module.js';
 import type * as AST from '@traqula/rules-sparql-1-1';
 import { Generator } from '@traqula/generator-sparql-1-1';
 import type { ExpressionInput, FactoryFunctions, PatternInput } from '../helpers/types.js';
@@ -9,14 +10,19 @@ export interface ExtensionPattern {
   loc: AST.Pattern['loc'];
 }
 
-/** Preserve the query shape while adding custom patterns at every nesting level. */
+type NodeSubtypes<T> = T extends { subType: infer S } ? S : never;
+type DeepDialectPatterns<T, P> = T extends readonly unknown[]
+  ? { [K in keyof T]: WithDialectPatterns<T[K], P> }
+  : T extends object
+  ? { [K in keyof T]: DeepDialectPatterns<T[K], P> }
+  : T;
+
+/** Preserve concrete node shapes; widen only complete pattern unions in arrays. */
 export type WithDialectPatterns<T, P> = [P] extends [never]
   ? T
-  : [AST.Pattern] extends [T]
-  ? P | { [K in keyof T]: WithDialectPatterns<T[K], P> }
-  : T extends object
-  ? { [K in keyof T]: WithDialectPatterns<T[K], P> }
-  : T;
+  : [AST.Pattern['subType']] extends [NodeSubtypes<T>]
+  ? P | DeepDialectPatterns<T, P>
+  : DeepDialectPatterns<T, P>;
 
 export interface PatternNormalizationContext<
   P extends ExtensionPattern,
@@ -43,6 +49,7 @@ export interface SparqlDialect<
 
 /** Runtime shape used to carry a concrete dialect through generic builders. */
 export interface AnySparqlDialect {
+  readonly queries?: QueryFactories;
   readonly patterns: {
     is(value: unknown): boolean;
     normalize(value: any, context: PatternNormalizationContext<any, any>): ExtensionPattern;
@@ -56,9 +63,17 @@ export type DialectAST<D extends AnySparqlDialect, T> = D extends SparqlDialect<
   ? WithDialectPatterns<T, A>
   : never;
 
+export function defineDialect<
+  P extends ExtensionPattern,
+  A extends ExtensionPattern,
+  Q extends QueryFactories
+>(
+  dialect: SparqlDialect<P, A> & { readonly queries: Q }
+): SparqlDialect<P, A> & { readonly queries: Q };
 export function defineDialect<P extends ExtensionPattern, A extends ExtensionPattern>(
   dialect: SparqlDialect<P, A>
-): SparqlDialect<P, A> {
+): SparqlDialect<P, A>;
+export function defineDialect(dialect: AnySparqlDialect): AnySparqlDialect {
   return dialect;
 }
 

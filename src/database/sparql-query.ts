@@ -1,4 +1,4 @@
-import SparqlClient from 'sparql-http-client';
+import { ExecutableQuery } from './executable.js';
 import type * as AST from '@traqula/rules-sparql-1-1';
 import {
   sparql11Dialect,
@@ -89,10 +89,8 @@ export abstract class SparqlQueryBuilderBase<
   Config extends SparqlQueryInput,
   Return,
   D extends AnySparqlDialect = SparqlDialect
-> {
+> extends ExecutableQuery<Return> {
   protected readonly config: Config;
-  protected readonly endpointUrl?: string;
-  protected _promise: Promise<Return> | null = null;
   protected readonly dialect: AnySparqlDialect;
   protected readonly factoryFunctions: FactoryFunctions;
   protected readonly anonymousBlanks: Map<symbol, AST.TermBlank>;
@@ -103,20 +101,20 @@ export abstract class SparqlQueryBuilderBase<
     endpointUrl?: string,
     dialect?: D
   ) {
+    super(endpointUrl);
     this.config = initialConfig;
     this.anonymousBlanks = new Map<symbol, AST.TermBlank>();
     this.factoryFunctions = factoryFunctions;
     this.dialect = dialect ?? sparql11Dialect;
-    this.endpointUrl = endpointUrl;
   }
 
   public getSPARQL(): DialectAST<D, ASTConfig<Config>> {
     if (this.config.type === 'query') {
-      return this.buildQuery(this.config) as DialectAST<D, ASTConfig<Config>>;
+      return this.buildQuery(this.config) as unknown as DialectAST<D, ASTConfig<Config>>;
     }
 
     if (this.config.type === 'update') {
-      return this.buildUpdate(this.config) as DialectAST<D, ASTConfig<Config>>;
+      return this.buildUpdate(this.config) as unknown as DialectAST<D, ASTConfig<Config>>;
     }
 
     throw new Error('Unsupported query provided.');
@@ -124,39 +122,6 @@ export abstract class SparqlQueryBuilderBase<
 
   public toSPARQL(): string {
     return this.dialect.generator.generate(this.getSPARQL());
-  }
-
-  protected abstract makeQuery(client: SparqlClient): Promise<Return>;
-
-  protected execute(): Promise<Return> {
-    if (!this.endpointUrl) {
-      throw new Error(
-        'Database URL should be defined as your SPARQL endpoint in order to make a request.'
-      );
-    }
-
-    if (this._promise) {
-      return this._promise;
-    }
-
-    this._promise = (async () => {
-      try {
-        const client = new SparqlClient({ endpointUrl: this.endpointUrl });
-        return await this.makeQuery(client);
-      } catch (error) {
-        console.error('SPARQL execution failed:', error);
-        throw error;
-      }
-    })();
-
-    return this._promise;
-  }
-
-  public then<TResult1 = Return, TResult2 = never>(
-    onfulfilled?: ((value: Return) => TResult1 | PromiseLike<TResult1>) | null,
-    onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
-  ): Promise<TResult1 | TResult2> {
-    return this.execute().then(onfulfilled, onrejected);
   }
 
   private buildQuery(query: QueryInput): AST.Query {
@@ -734,7 +699,7 @@ export abstract class SparqlQueryBuilderBase<
         factory: this.factoryFunctions,
         pattern: value => this.sanitizePattern(value),
         expression: value => this.sanitizeExpression(value),
-      }) as AST.Pattern;
+      }) as unknown as AST.Pattern;
     }
     if (pattern.type === 'query') {
       return this.buildSelectQuery(pattern);
