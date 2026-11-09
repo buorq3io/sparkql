@@ -44,7 +44,7 @@
     "url": "https://github.com/buorq3io"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=20.0.0"
   },
   "keywords": [
     "sparql",
@@ -92,7 +92,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.6.6",
     "@traqula/parser-sparql-1-1": "^1.0.7",
-    "@types/node": "^18.0.0",
+    "@types/node": "^20.19.43",
     "@types/sparql-http-client": "^3.0.5",
     "@vitest/coverage-v8": "^3.2.4",
     "dotenv": "^16.5.0",
