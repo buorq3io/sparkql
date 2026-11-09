@@ -32,8 +32,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build the package
-        run: pnpm run build
+      - name: Build and check the packed package
+        run: pnpm run test:package
 
       - name: Publish the package
         run: npm publish --provenance
