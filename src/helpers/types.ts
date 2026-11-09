@@ -1,16 +1,10 @@
 import type * as AST from '@traqula/rules-sparql-1-1';
 import type * as RdfJs from 'rdf-data-factory';
 
-type ValueOf<T> = T[keyof T];
-
-export interface BlankFormatMap {}
-export interface LiteralFormatMap {}
-export interface NamedNodeFormatMap {}
-
 export type TermIriFullInput = AST.TermIriFull;
-export type TermIriInput = AST.TermIri | ValueOf<NamedNodeFormatMap>;
-export type TermLiteralInput = AST.TermLiteral | ValueOf<LiteralFormatMap>;
-export type TermBlankInput = AST.TermBlank | ValueOf<BlankFormatMap>;
+export type TermIriInput = AST.TermIri | URL;
+export type TermLiteralInput = AST.TermLiteral | string | RegExp | number | bigint | boolean | Date;
+export type TermBlankInput = AST.TermBlank | [];
 
 export type TermVariableInput<
   T extends QueryReturnType = DefaultQueryReturnType,

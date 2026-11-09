@@ -19,36 +19,51 @@ import {
 import { DescribeQueryBuilderBase } from './describe.js';
 import { ConstructQueryBuilderBase } from './construct.js';
 import {
-  BasicGraphPatternInput,
   FactoryFunctions,
   PatternBgpInput,
   QuadsInput,
   QueryInput,
   Strictness,
   TermIriInput,
+  TermLiteralInput,
+  TermBlankInput,
   TermVariableInput,
 } from '../helpers/types.js';
-import { termIri } from '../helpers/utilities.js';
+import { termIri, termLiteral, termBlank } from '../helpers/utilities.js';
+import { FormatInput, TermFormats } from '../helpers/term-formats.js';
+import { Formatter } from '../helpers/generators.js';
 import { RootQueryBuilderBaseWithout } from './query.js';
 
 interface PrivateSparqlDatabaseOptions {
   context: QueryInput['context'];
+  formats?: TermFormats;
   factory?: AST.AstFactory;
   endpointUrl?: string;
 }
 
-export interface SparqlDatabaseOptions<T extends IriManagerConfig> {
+export interface SparqlDatabaseOptions<T extends IriManagerConfig, F extends TermFormats = {}> {
+  formats?: F & TermFormats;
   managerConfig?: T;
   endpointUrl?: string;
 }
 
-export class SparqlDatabase<T extends IriManagerConfig, R extends string = 'g_'> {
+export class SparqlDatabase<
+  T extends IriManagerConfig,
+  R extends string = 'g_',
+  F extends TermFormats = {}
+> {
+  private readonly formats: TermFormats;
   private readonly endpointUrl?: string;
   private readonly initialContext;
   private readonly factory: AST.AstFactory;
   protected readonly factoryFunctions: FactoryFunctions;
 
   private constructor(options?: PrivateSparqlDatabaseOptions) {
+    this.formats = {
+      iri: [...(options?.formats?.iri ?? [])],
+      literal: [...(options?.formats?.literal ?? [])],
+      blank: [...(options?.formats?.blank ?? [])],
+    };
     this.endpointUrl = options?.endpointUrl;
     this.initialContext = options?.context ?? [];
     this.factory = options?.factory ?? new AST.AstFactory();
@@ -56,21 +71,30 @@ export class SparqlDatabase<T extends IriManagerConfig, R extends string = 'g_'>
       variable: value => this.variable(value),
       iri: (value, prefix) => (prefix === undefined ? this.iri(value) : this.iri(value, prefix)),
       blank: value => this.blank(value),
-      literal: (value, lang) => this.literal(value, lang),
+      literal: (value, lang) =>
+        this.factory.termLiteral(
+          { sourceLocationType: 'autoGenerate' },
+          value,
+          typeof lang === 'string' || !lang
+            ? lang
+            : termIri.parseOrThrow(lang, this.factoryFunctions)
+        ),
     };
   }
 
-  static create<T extends IriManagerConfig, K extends string = 'g_'>(
-    options?: SparqlDatabaseOptions<T>
-  ): SparqlDatabase<T, K> {
-    return new SparqlDatabase<T, K>({
+  static create<T extends IriManagerConfig, K extends string = 'g_', F extends TermFormats = {}>(
+    options?: SparqlDatabaseOptions<T, F>
+  ): SparqlDatabase<T, K, F> {
+    return new SparqlDatabase<T, K, F>({
+      formats: options?.formats,
       endpointUrl: options?.endpointUrl,
       context: transformIntoPrefixObject(options?.managerConfig ?? {}),
     });
   }
 
   base(value: string) {
-    return new SparqlDatabase<T, R>({
+    return new SparqlDatabase<T, R, F>({
+      formats: this.formats,
       endpointUrl: this.endpointUrl,
       factory: this.factory,
       context: [
@@ -88,7 +112,8 @@ export class SparqlDatabase<T extends IriManagerConfig, R extends string = 'g_'>
   }
 
   prefix(values: { [x in string]: string }) {
-    return new SparqlDatabase<T, R>({
+    return new SparqlDatabase<T, R, F>({
+      formats: this.formats,
       endpointUrl: this.endpointUrl,
       factory: this.factory,
       context: [
@@ -176,7 +201,9 @@ export class SparqlDatabase<T extends IriManagerConfig, R extends string = 'g_'>
     return new AskQueryBuilderBase(this.initialContext, this.factoryFunctions, this.endpointUrl);
   }
 
-  describe(...variables: (TermIriInput | TermVariableInput)[]): RootQueryBuilderBaseWithout<DescribeQueryBuilderBase> {
+  describe(
+    ...variables: (TermIriInput | TermVariableInput)[]
+  ): RootQueryBuilderBaseWithout<DescribeQueryBuilderBase> {
     return new DescribeQueryBuilderBase(
       variables,
       this.initialContext,
@@ -185,7 +212,9 @@ export class SparqlDatabase<T extends IriManagerConfig, R extends string = 'g_'>
     );
   }
 
-  construct(...templates: PatternBgpInput[]): RootQueryBuilderBaseWithout<ConstructQueryBuilderBase> {
+  construct(
+    ...templates: PatternBgpInput[]
+  ): RootQueryBuilderBaseWithout<ConstructQueryBuilderBase> {
     return new ConstructQueryBuilderBase(
       templates,
       this.initialContext,
@@ -364,22 +393,51 @@ export class SparqlDatabase<T extends IriManagerConfig, R extends string = 'g_'>
 
   iri(value: string): AST.TermIriFull;
   iri(value: string, prefix: string): AST.TermIriPrefixed;
-  iri(value: string, prefix?: string): AST.TermIri {
-    return prefix === undefined
-      ? this.factory.termNamed({ sourceLocationType: 'autoGenerate' }, value)
-      : this.factory.termNamed({ sourceLocationType: 'autoGenerate' }, value, prefix);
+  iri(value: TermIriInput | FormatInput<F, 'iri'>): AST.TermIri;
+  iri(value: string | TermIriInput | FormatInput<F, 'iri'>, prefix?: string): AST.TermIri {
+    if (typeof value === 'string') {
+      return prefix === undefined
+        ? this.factory.termNamed({ sourceLocationType: 'autoGenerate' }, value)
+        : this.factory.termNamed({ sourceLocationType: 'autoGenerate' }, value, prefix);
+    }
+    return this.formatTerm(value, this.formats.iri, termIri);
   }
 
-  blank(value?: string): AST.TermBlank {
-    return this.factory.termBlank(value, { sourceLocationType: 'autoGenerate' });
+  blank(value?: string | TermBlankInput | FormatInput<F, 'blank'>): AST.TermBlank {
+    if (value === undefined)
+      return this.factory.termBlank(undefined, { sourceLocationType: 'autoGenerate' });
+    if (typeof value === 'string') {
+      return this.factory.termBlank(value, { sourceLocationType: 'autoGenerate' });
+    }
+    return this.formatTerm(value, this.formats.blank, termBlank);
   }
 
-  literal(value: string, lang?: string | TermIriInput): AST.TermLiteral {
+  literal(
+    value: TermLiteralInput | FormatInput<F, 'literal'>,
+    lang?: string | TermIriInput | FormatInput<F, 'iri'>
+  ): AST.TermLiteral {
+    const result = this.formatTerm(value, this.formats.literal, termLiteral);
+    if (lang === undefined) return result;
     return this.factory.termLiteral(
       { sourceLocationType: 'autoGenerate' },
-      value,
-      typeof lang === 'string' || !lang ? lang : termIri.parseOrThrow(lang, this.factoryFunctions)
+      result.value,
+      typeof lang === 'string' ? lang : this.iri(lang)
     );
+  }
+
+  private formatTerm<O>(
+    value: unknown,
+    formats: readonly Formatter<any, O>[] | undefined,
+    fallback: {
+      is(value: unknown): value is O;
+      parseOrThrow(value: unknown, factory: FactoryFunctions): O;
+    }
+  ): O {
+    if (fallback.is(value)) return value;
+    for (const formatter of formats ?? []) {
+      if (formatter.test(value)) return formatter.format(value, this.factoryFunctions);
+    }
+    return fallback.parseOrThrow(value, this.factoryFunctions);
   }
 
   resetBlankCounter() {

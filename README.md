@@ -126,6 +126,58 @@ await db
   );
 ```
 
+## Per-instance input types
+
+Configure custom input formats when creating a database. TypeScript infers the
+accepted values for that instance's `iri`, `literal`, and `blank` methods from the
+formatters' type guards.
+
+```typescript
+import { SparqlDatabase, triples } from 'sparkql';
+
+class Money {
+  constructor(readonly amount: number) {}
+}
+
+const db = SparqlDatabase.create({
+  formats: {
+    literal: [{
+      test: (value): value is Money => value instanceof Money,
+      format: (value: Money, factory) => factory.literal(String(value.amount)),
+    }],
+  },
+});
+
+const balance = db.literal(new Money(42));
+const pattern = triples(
+  db.iri('https://example.com/alice'),
+  db.iri('https://example.com/balance'),
+  balance,
+);
+const query = db.ask().where(pattern);
+
+const other = SparqlDatabase.create();
+// TypeScript error: Money is not an input type for this instance.
+// other.literal(new Money(42));
+```
+
+Use `formats.iri`, `formats.literal`, and `formats.blank` to add formats for each
+term kind. Convert custom values with the configured database's term methods,
+then use the resulting terms in any query, expression, path, or update helper.
+Standalone helpers accept the built-in inputs and standard terms.
+
+Custom formatters run in array order before built-in conversions. Existing terms
+pass through unchanged. IRI strings, blank labels, and omitted blank labels retain
+their native constructor behavior. Formatter factories construct primitive terms
+without reapplying custom formats. Built-in inputs (URLs, strings, regular
+expressions, numbers, bigints, booleans, dates, and empty blank tuples) remain
+available. Both `base()` and `prefix()` preserve an instance's formats and types.
+
+This replaces global format registries and `LiteralFormatMap`,
+`NamedNodeFormatMap`, and `BlankFormatMap` module augmentation. Move custom
+registrations into `SparqlDatabase.create({ formats: ... })`; importing a module
+no longer changes another database's accepted types or formatting behavior.
+
 ## Advanced Features
 
 ### Aggregates

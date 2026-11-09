@@ -1,35 +1,17 @@
-import { termIriRegistry, termBlankRegistry, termLiteralRegistry } from './utilities.js';
+import type * as AST from '@traqula/rules-sparql-1-1';
+import type { Formatter } from './generators.js';
 
-declare module './types.js' {
-  interface LiteralFormatMap {
-    string: string;
-    regex: RegExp;
-    number: number;
-    bigint: bigint;
-    boolean: boolean;
-    date: Date;
-  }
-
-  interface NamedNodeFormatMap {
-    url: URL;
-  }
-
-  interface BlankFormatMap {
-    tuple: [];
-  }
-}
-
-termLiteralRegistry.register('string', {
+const stringFormatter: Formatter<string, AST.TermLiteral> = {
   test: (value): value is string => typeof value === 'string',
   format: (value, factory) => factory.literal(value),
-});
+};
 
-termLiteralRegistry.register('regex', {
+const regexFormatter: Formatter<RegExp, AST.TermLiteral> = {
   test: (value): value is RegExp => value instanceof RegExp,
   format: (value, factory) => factory.literal(value.source),
-});
+};
 
-termLiteralRegistry.register('number', {
+const numberFormatter: Formatter<number, AST.TermLiteral> = {
   test: (value): value is number => typeof value === 'number',
   format: (value, factory) =>
     factory.literal(
@@ -40,32 +22,58 @@ termLiteralRegistry.register('number', {
           : 'http://www.w3.org/2001/XMLSchema#decimal'
       )
     ),
-});
+};
 
-termLiteralRegistry.register('bigint', {
+const bigintFormatter: Formatter<bigint, AST.TermLiteral> = {
   test: (value): value is bigint => typeof value === 'bigint',
   format: (value, factory) =>
     factory.literal(String(value), factory.iri('http://www.w3.org/2001/XMLSchema#integer')),
-});
+};
 
-termLiteralRegistry.register('date', {
+const dateFormatter: Formatter<Date, AST.TermLiteral> = {
   test: (value): value is Date => value instanceof Date,
   format: (value, factory) =>
     factory.literal(value.toISOString(), factory.iri('http://www.w3.org/2001/XMLSchema#dateTime')),
-});
+};
 
-termLiteralRegistry.register('boolean', {
+const booleanFormatter: Formatter<boolean, AST.TermLiteral> = {
   test: (value): value is boolean => typeof value === 'boolean',
   format: (value, factory) =>
     factory.literal(String(value), factory.iri('http://www.w3.org/2001/XMLSchema#boolean')),
-});
+};
 
-termIriRegistry.register('url', {
+const urlFormatter: Formatter<URL, AST.TermIri> = {
   test: (value): value is URL => value instanceof URL,
   format: (value, factory) => factory.iri(String(value)),
-});
+};
 
-termBlankRegistry.register('tuple', {
+const tupleFormatter: Formatter<[], AST.TermBlank> = {
   test: (value): value is [] => Array.isArray(value) && value.length === 0,
   format: (_, factory) => factory.blank(),
-});
+};
+
+/** Custom input formats belong to the database that receives them. */
+export type TermFormats = {
+  iri?: readonly Formatter<any, AST.TermIri>[];
+  literal?: readonly Formatter<any, AST.TermLiteral>[];
+  blank?: readonly Formatter<any, AST.TermBlank>[];
+};
+
+export type FormatInput<F extends TermFormats, K extends keyof TermFormats> = NonNullable<
+  F[K]
+> extends readonly Formatter<infer I, any>[]
+  ? I
+  : never;
+
+export const defaultTermFormats = {
+  iri: Object.freeze([urlFormatter]),
+  literal: Object.freeze([
+    stringFormatter,
+    regexFormatter,
+    numberFormatter,
+    bigintFormatter,
+    dateFormatter,
+    booleanFormatter,
+  ]),
+  blank: Object.freeze([tupleFormatter]),
+} as const;

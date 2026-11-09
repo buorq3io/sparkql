@@ -204,21 +204,3 @@ export function expect<T>(
     throw new Error(message);
   };
 }
-
-type Values<M> = M[keyof M];
-
-export function createFormatRegistry<M extends object, O>() {
-  const formatters: Formatter<any, O>[] = [];
-
-  const register = <K extends keyof M>(
-    _key: K,
-    formatter: Formatter<M[K], O>
-  ): void => {
-    formatters.push(formatter);
-  };
-
-  return {
-    register,
-    formatters: formatters as readonly Formatter<Values<M>, O>[],
-  };
-}
