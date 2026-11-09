@@ -64,7 +64,8 @@ export class SelectQueryBuilderBase<
     distict: QuerySelectInput['distinct'] = undefined,
     reduced: QuerySelectInput['reduced'] = undefined,
     endpointUrl?: string,
-    dialect?: D
+    dialect?: D,
+    updateUrl?: string
   ) {
     super(
       {
@@ -98,7 +99,8 @@ export class SelectQueryBuilderBase<
       },
       factoryFunctions,
       endpointUrl,
-      dialect
+      dialect,
+      updateUrl
     );
 
     function createMaybeTransform<T extends DefaultQueryReturnType, K extends any[]>(

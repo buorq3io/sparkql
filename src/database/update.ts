@@ -31,7 +31,8 @@ export class UpdateQueryBuilderBase<
     context: UpdateInput['updates'][number]['context'],
     factoryFunctions: FactoryFunctions,
     endpointUrl?: string,
-    dialect?: D
+    dialect?: D,
+    updateUrl?: string
   ) {
     super(
       {
@@ -43,7 +44,8 @@ export class UpdateQueryBuilderBase<
       },
       factoryFunctions,
       endpointUrl,
-      dialect
+      dialect,
+      updateUrl
     );
     this.context = context;
   }
@@ -113,7 +115,8 @@ export class UpdateQueryBuilderBase<
       this.factoryFunctions,
       this.endpointUrl,
       undefined,
-      this.dialect as D
+      this.dialect as D,
+      this.updateUrl
     );
     return base.insert(...quads);
   }
@@ -126,7 +129,8 @@ export class UpdateQueryBuilderBase<
       this.factoryFunctions,
       this.endpointUrl,
       undefined,
-      this.dialect as D
+      this.dialect as D,
+      this.updateUrl
     );
     return base.delete(...quads);
   }
@@ -139,7 +143,8 @@ export class UpdateQueryBuilderBase<
       this.factoryFunctions,
       this.endpointUrl,
       graph,
-      this.dialect as D
+      this.dialect as D,
+      this.updateUrl
     );
   }
 

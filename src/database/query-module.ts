@@ -48,6 +48,7 @@ export interface QueryModuleContext<D extends AnySparqlDialect = AnySparqlDialec
   readonly factory: FactoryFunctions;
   readonly dialect: D;
   readonly endpointUrl?: string;
+  readonly updateUrl?: string;
   normalizer(input?: QuerySelectInput): QueryNormalizer<D>;
 }
 
@@ -83,7 +84,7 @@ export abstract class ModuleQueryBuilder<
     protected readonly module: QueryModule<Config, Ast, Result, D>,
     protected readonly moduleContext: QueryModuleContext<D>
   ) {
-    super(moduleContext.endpointUrl);
+    super(moduleContext.endpointUrl, moduleContext.updateUrl);
   }
 
   public getSPARQL(): Ast {

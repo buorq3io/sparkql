@@ -45,6 +45,7 @@ interface PrivateSparqlDatabaseOptions {
   formats?: TermFormats;
   factory?: AST.AstFactory;
   endpointUrl?: string;
+  updateUrl?: string;
   dialect?: AnySparqlDialect;
 }
 
@@ -57,6 +58,7 @@ export interface SparqlDatabaseOptions<
   formats?: F & TermFormats;
   managerConfig?: T;
   endpointUrl?: string;
+  updateUrl?: string;
 }
 
 export class SparqlDatabase<
@@ -68,6 +70,7 @@ export class SparqlDatabase<
   private readonly dialect: D;
   private readonly formats: TermFormats;
   private readonly endpointUrl?: string;
+  private readonly updateUrl?: string;
   private readonly initialContext;
   private readonly factory: AST.AstFactory;
   protected readonly factoryFunctions: FactoryFunctions;
@@ -80,6 +83,7 @@ export class SparqlDatabase<
       blank: [...(options?.formats?.blank ?? [])],
     };
     this.endpointUrl = options?.endpointUrl;
+    this.updateUrl = options?.updateUrl ?? options?.endpointUrl;
     this.initialContext = options?.context ?? [];
     this.factory = options?.factory ?? new AST.AstFactory();
     this.factoryFunctions = {
@@ -100,6 +104,7 @@ export class SparqlDatabase<
       factory: this.factoryFunctions,
       dialect: this.dialect,
       endpointUrl: this.endpointUrl,
+      updateUrl: this.updateUrl,
       normalizer: input =>
         new QueryNormalizer(
           input ?? emptySelect(this.initialContext),
@@ -124,6 +129,7 @@ export class SparqlDatabase<
       dialect: options?.dialect,
       formats: options?.formats,
       endpointUrl: options?.endpointUrl,
+      updateUrl: options?.updateUrl,
       context: transformIntoPrefixObject(options?.managerConfig ?? {}),
     }) as WithQueryMethods<SparqlDatabase<T, K, F, D>, D>;
   }
@@ -133,6 +139,7 @@ export class SparqlDatabase<
       dialect: this.dialect,
       formats: this.formats,
       endpointUrl: this.endpointUrl,
+      updateUrl: this.updateUrl,
       factory: this.factory,
       context: [
         ...this.initialContext,
@@ -153,6 +160,7 @@ export class SparqlDatabase<
       dialect: this.dialect,
       formats: this.formats,
       endpointUrl: this.endpointUrl,
+      updateUrl: this.updateUrl,
       factory: this.factory,
       context: [
         ...this.initialContext,
@@ -190,7 +198,8 @@ export class SparqlDatabase<
       undefined,
       undefined,
       this.endpointUrl,
-      this.dialect
+      this.dialect,
+      this.updateUrl
     );
   }
 
@@ -212,7 +221,8 @@ export class SparqlDatabase<
       true,
       undefined,
       this.endpointUrl,
-      this.dialect
+      this.dialect,
+      this.updateUrl
     );
   }
 
@@ -234,7 +244,8 @@ export class SparqlDatabase<
       undefined,
       true,
       this.endpointUrl,
-      this.dialect
+      this.dialect,
+      this.updateUrl
     );
   }
 
@@ -243,7 +254,8 @@ export class SparqlDatabase<
       this.initialContext,
       this.factoryFunctions,
       this.endpointUrl,
-      this.dialect
+      this.dialect,
+      this.updateUrl
     );
   }
 
@@ -255,7 +267,8 @@ export class SparqlDatabase<
       this.initialContext,
       this.factoryFunctions,
       this.endpointUrl,
-      this.dialect
+      this.dialect,
+      this.updateUrl
     );
   }
 
@@ -267,7 +280,8 @@ export class SparqlDatabase<
       this.initialContext,
       this.factoryFunctions,
       this.endpointUrl,
-      this.dialect
+      this.dialect,
+      this.updateUrl
     );
   }
 
@@ -436,7 +450,8 @@ export class SparqlDatabase<
       this.initialContext,
       this.factoryFunctions,
       this.endpointUrl,
-      this.dialect
+      this.dialect,
+      this.updateUrl
     );
   }
 

@@ -10,7 +10,8 @@ export class AskQueryBuilderBase<D extends AnySparqlDialect = SparqlDialect>
     context: QueryAskInput['context'],
     factoryFunctions: FactoryFunctions,
     endpointUrl?: string,
-    dialect?: D
+    dialect?: D,
+    updateUrl?: string
   ) {
     super(
       {
@@ -39,7 +40,8 @@ export class AskQueryBuilderBase<D extends AnySparqlDialect = SparqlDialect>
       },
       factoryFunctions,
       endpointUrl,
-      dialect
+      dialect,
+      updateUrl
     );
   }
 

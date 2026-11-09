@@ -99,9 +99,10 @@ export abstract class SparqlQueryBuilderBase<
     initialConfig: Config,
     factoryFunctions: FactoryFunctions,
     endpointUrl?: string,
-    dialect?: D
+    dialect?: D,
+    updateUrl?: string
   ) {
-    super(endpointUrl);
+    super(endpointUrl, updateUrl, initialConfig.type === 'update');
     this.config = initialConfig;
     this.anonymousBlanks = new Map<symbol, AST.TermBlank>();
     this.factoryFunctions = factoryFunctions;

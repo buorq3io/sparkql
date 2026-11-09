@@ -4,20 +4,24 @@ import SparqlClient from 'sparql-http-client';
 export abstract class ExecutableQuery<Result> implements PromiseLike<Result> {
   protected _promise: Promise<Result> | null = null;
 
-  protected constructor(protected readonly endpointUrl?: string) {}
+  protected constructor(
+    protected readonly endpointUrl?: string,
+    protected readonly updateUrl: string | undefined = endpointUrl,
+    private readonly isUpdate: boolean = false
+  ) {}
 
   public abstract getSPARQL(): unknown;
   public abstract toSPARQL(): string;
   protected abstract makeQuery(client: SparqlClient): Promise<Result>;
 
   protected execute(): Promise<Result> {
-    if (!this.endpointUrl) {
+    if (!(this.isUpdate ? this.updateUrl : this.endpointUrl)) {
       throw new Error(
         'Database URL should be defined as your SPARQL endpoint in order to make a request.'
       );
     }
     this._promise ??= Promise.resolve().then(() =>
-      this.makeQuery(new SparqlClient({ endpointUrl: this.endpointUrl }))
+      this.makeQuery(new SparqlClient({ endpointUrl: this.endpointUrl, updateUrl: this.updateUrl }))
     );
     return this._promise;
   }

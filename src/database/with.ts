@@ -35,7 +35,8 @@ export class WithQueryBuilderBase<
     factoryFunctions: FactoryFunctions,
     endpointUrl?: string,
     iri?: TermIriInput,
-    dialect?: D
+    dialect?: D,
+    updateUrl?: string
   ) {
     super(
       {
@@ -47,7 +48,8 @@ export class WithQueryBuilderBase<
       },
       factoryFunctions,
       endpointUrl,
-      dialect
+      dialect,
+      updateUrl
     );
     this.operation = {
       type: 'updateOperation',

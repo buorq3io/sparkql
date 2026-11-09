@@ -79,6 +79,7 @@ const prefixes = {
 const db = SparqlDatabase.create({
   prefixes: prefixes,
   endpointUrl: 'https://your-sparql-endpoint.com/sparql',
+  updateUrl: 'https://your-sparql-endpoint.com/update', // Optional; defaults to endpointUrl
 });
 
 // Create variable and IRI managers

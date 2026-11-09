@@ -18,7 +18,8 @@ export class DescribeQueryBuilderBase<D extends AnySparqlDialect = SparqlDialect
     context: QueryDescribeInput['context'],
     factoryFunctions: FactoryFunctions,
     endpointUrl?: string,
-    dialect?: D
+    dialect?: D,
+    updateUrl?: string
   ) {
     super(
       {
@@ -40,7 +41,8 @@ export class DescribeQueryBuilderBase<D extends AnySparqlDialect = SparqlDialect
       },
       factoryFunctions,
       endpointUrl,
-      dialect
+      dialect,
+      updateUrl
     );
   }
 

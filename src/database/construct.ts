@@ -18,7 +18,8 @@ export class ConstructQueryBuilderBase<D extends AnySparqlDialect = SparqlDialec
     context: QueryConstructInput['context'],
     factoryFunctions: FactoryFunctions,
     endpointUrl?: string,
-    dialect?: D
+    dialect?: D,
+    updateUrl?: string
   ) {
     super(
       {
@@ -48,7 +49,8 @@ export class ConstructQueryBuilderBase<D extends AnySparqlDialect = SparqlDialec
       },
       factoryFunctions,
       endpointUrl,
-      dialect
+      dialect,
+      updateUrl
     );
   }
 
