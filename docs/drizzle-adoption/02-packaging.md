@@ -66,3 +66,33 @@ In both cases:
 - A test (or CI step) packs the package and runs attw across `node16-cjs`,
   `node16-esm` and `bundler` for `.`, `./arq` and `./stardog` with no problems.
 - CI runs that check (`.github/workflows/test.yml`).
+
+## Implementation notes
+
+- Chose the preferred real dual build: `tsdown.config.ts` compiles the three
+  TypeScript entries to unbundled CJS and ESM, with matching `.d.cts` and
+  `.d.mts` declarations. This keeps the existing Node consumer range and removes
+  all six format wrappers. tsdown is pinned to 0.15.12 so the build tooling still
+  runs on the Node 20 CI runner (20.19+ is needed to build from source).
+- Drizzle's import fixer handles its source aliases and relative extension
+  changes; its directory-index shims support the wildcard exports map. Here,
+  tsdown rewrites relative imports to the configured extensions and the three
+  named entries match the explicit exports map, so neither postprocessor is
+  needed. The test aliases in `package.json` are unchanged.
+- `sparql-http-client` is ESM-only. Execution now loads it with dynamic import,
+  which works in both formats without requiring Node's `require(esm)` support.
+  The existing promise still caches execution.
+- `pnpm test:package` builds, packs, checks all three exports with attw's
+  `node16` profile (`node16-cjs`, `node16-esm`, and `bundler`), then installs the
+  tarball in a temporary consumer. Both formats must build and execute queries
+  against a local HTTP server, including repeated awaits without duplicate
+  requests. Runtime probes disable `require(esm)`. Test and publish CI both run
+  this command; temporary files are removed even on failure.
+- For brief 05: the only `instanceof` checks currently in `src/` are built-ins:
+  `RegExp`, `Date`, and `URL` in `src/helpers/term-formats.ts`, plus `Date` and
+  `RegExp` in `src/arq/queries.ts`. There are no package-defined class checks to
+  fix here; CJS and ESM still have separate class identities.
+- Validation: all 54 existing tests, type checking, the packed-package check,
+  and direct CJS query construction on Node 20.0.0 pass. The repository-wide
+  Biome check has two pre-existing formatting errors in
+  `08-raw-sparql-tag.md` and this directory's `README.md`; changed code passes.

@@ -1,4 +1,4 @@
-import SparqlClient from 'sparql-http-client';
+import type SparqlClient from 'sparql-http-client';
 
 /** Shared execution lifecycle for standard and dialect-defined query forms. */
 export abstract class ExecutableQuery<Result> implements PromiseLike<Result> {
@@ -20,8 +20,9 @@ export abstract class ExecutableQuery<Result> implements PromiseLike<Result> {
         'Database URL should be defined as your SPARQL endpoint in order to make a request.'
       );
     }
-    this._promise ??= Promise.resolve().then(() =>
-      this.makeQuery(new SparqlClient({ endpointUrl: this.endpointUrl, updateUrl: this.updateUrl }))
+    // The client is ESM-only; dynamic import also works in the CommonJS build.
+    this._promise ??= import('sparql-http-client').then(({ default: Client }) =>
+      this.makeQuery(new Client({ endpointUrl: this.endpointUrl, updateUrl: this.updateUrl }))
     );
     return this._promise;
   }
