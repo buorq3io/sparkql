@@ -143,9 +143,9 @@ export class SelectQueryBuilderBase<
     return group(this.config);
   }
 
-  protected async makeQuery(session: SparqlSession): Promise<T[]> {
+  protected async makeQuery(session: SparqlSession, sparql: string): Promise<T[]> {
     const items: T[] = [];
-    for (const binding of await session.bindings(this.toSPARQL())) {
+    for (const binding of await session.bindings(sparql)) {
       const temp = Object.entries(this.lookup).reduce(
         (acc, curr) => {
           const func = this.lookupTransform[curr[0]] ?? ((self: any) => self);

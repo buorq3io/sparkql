@@ -382,8 +382,8 @@ export class UpdateQueryBuilderBase<
     return this.createClearDropOperation('drop', graphRefNamed, true);
   }
 
-  protected makeQuery(session: SparqlSession): Promise<void> {
-    return session.update(this.toSPARQL());
+  protected makeQuery(session: SparqlSession, sparql: string): Promise<void> {
+    return session.update(sparql);
   }
 }
 

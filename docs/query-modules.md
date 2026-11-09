@@ -192,11 +192,17 @@ Prefer a decoded method when the result fits one: ARQ's `constructQuads()`
 calls `quads()` with `accept: 'application/n-quads'`. Use `raw()` for formats
 sparkql does not model: ARQ `json()` and Stardog `paths()` call it through
 `requestQueryJson(session, sparql, accept)`, which rejects non-2xx responses
-and parses the JSON body. `raw()` itself returns the response whatever its
+with a `SparqlResponseError` (`status`, `statusText`, `body`) and parses the
+JSON body. `raw()` itself returns the response whatever its
 status, so check `response.ok` when you call it directly.
 
 `execute` only runs when the database has a session; on a build-only database
-the builder rejects before reaching the module. The default HTTP session sends
+the builder rejects before reaching the module. Anything `execute` throws, from
+the session or from your own result validation, reaches the caller as a
+`SparkqlQueryError` with the generated SPARQL as `query` and your error as
+`cause`, so throw plain errors and leave the wrapping to the builder. A
+`SparkqlQueryError` you let through (from running another builder) is not
+wrapped again. The default HTTP session sends
 `raw()` and `quads()` with a custom `accept` as a direct POST
 (`application/sparql-query` body). A custom session decides for itself how to
 honour `accept`; one that cannot produce the requested format should reject.

@@ -25,6 +25,7 @@ import { AskQueryBuilderBase } from './ask.js';
 import { ConstructQueryBuilderBase } from './construct.js';
 import { DescribeQueryBuilderBase } from './describe.js';
 import { type AnySparqlDialect, type SparqlDialect, sparql11Dialect } from './dialect.js';
+import { is } from './entity.js';
 import {
   HttpSparqlSession,
   type SparqlConnectionOptions,
@@ -52,6 +53,7 @@ interface PrivateSparqlDatabaseOptions {
   factory?: AST.AstFactory;
   session?: SparqlSession;
   dialect?: AnySparqlDialect;
+  queryInErrors?: boolean;
 }
 
 export interface SparqlDatabaseOptions<
@@ -71,6 +73,13 @@ export interface SparqlDatabaseOptions<
   client?: SparqlHttpClient;
   /** A custom session, e.g. an in-process engine or a test double. */
   session?: SparqlSession;
+  /**
+   * Repeat the generated SPARQL in the `message` of a `SparkqlQueryError`.
+   * Off by default: values inlined into a query (VALUES rows, literals) would
+   * reach every log that records error messages. The `query` property always
+   * holds it.
+   */
+  queryInErrors?: boolean;
   /** @deprecated Use `connection`. */
   endpointUrl?: string;
   /** @deprecated Use `connection.updateUrl`. */
@@ -115,6 +124,7 @@ export class SparqlDatabase<
 > {
   private readonly dialect: D;
   private readonly formats: TermFormats;
+  private readonly queryInErrors: boolean;
   /** The session queries run through. `undefined` on a build-only database. */
   readonly $session: SparqlSession | undefined;
   private readonly moduleContext: QueryModuleContext<D>;
@@ -130,6 +140,7 @@ export class SparqlDatabase<
       blank: [...(options?.formats?.blank ?? [])],
     };
     this.$session = options?.session;
+    this.queryInErrors = options?.queryInErrors ?? false;
     this.initialContext = options?.context ?? [];
     this.factory = options?.factory ?? new AST.AstFactory();
     this.factoryFunctions = {
@@ -150,6 +161,7 @@ export class SparqlDatabase<
       factory: this.factoryFunctions,
       dialect: this.dialect,
       session: this.$session,
+      queryInErrors: this.queryInErrors,
       normalizer: input =>
         new QueryNormalizer(input ?? emptySelect(this.initialContext), moduleContext),
     };
@@ -167,7 +179,7 @@ export class SparqlDatabase<
    * `connection`. `undefined` for custom-session and build-only databases.
    */
   get $client(): C {
-    return (this.$session instanceof HttpSparqlSession ? this.$session.client : undefined) as C;
+    return (is(this.$session, HttpSparqlSession) ? this.$session.client : undefined) as C;
   }
 
   /**
@@ -204,6 +216,7 @@ export class SparqlDatabase<
       dialect: options?.dialect,
       formats: options?.formats,
       session: resolveSession(options),
+      queryInErrors: options?.queryInErrors,
       context: transformIntoPrefixObject(options?.managerConfig ?? {}),
     }) as WithQueryMethods<SparqlDatabase<T, K, F, D>, D>;
   }
@@ -213,6 +226,7 @@ export class SparqlDatabase<
       dialect: this.dialect,
       formats: this.formats,
       session: this.$session,
+      queryInErrors: this.queryInErrors,
       factory: this.factory,
       context: [
         ...this.initialContext,
@@ -233,6 +247,7 @@ export class SparqlDatabase<
       dialect: this.dialect,
       formats: this.formats,
       session: this.$session,
+      queryInErrors: this.queryInErrors,
       factory: this.factory,
       context: [
         ...this.initialContext,
