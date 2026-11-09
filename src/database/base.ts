@@ -31,6 +31,7 @@ import {
   type SparqlConnectionOptions,
   type SparqlHttpClient,
 } from './http-session.js';
+import { DefaultLogger, type Logger } from './logger.js';
 import type { RootQueryBuilderBaseWithout } from './query.js';
 import {
   emptySelect,
@@ -54,6 +55,7 @@ interface PrivateSparqlDatabaseOptions {
   session?: SparqlSession;
   dialect?: AnySparqlDialect;
   queryInErrors?: boolean;
+  logger?: Logger;
 }
 
 export interface SparqlDatabaseOptions<
@@ -62,6 +64,8 @@ export interface SparqlDatabaseOptions<
   D extends AnySparqlDialect = SparqlDialect,
 > {
   dialect?: D;
+  /** Log each request: `true` uses the console; omitted or `false` disables logging. */
+  logger?: boolean | Logger;
   formats?: F & TermFormats;
   managerConfig?: T;
   /**
@@ -125,6 +129,7 @@ export class SparqlDatabase<
   private readonly dialect: D;
   private readonly formats: TermFormats;
   private readonly queryInErrors: boolean;
+  private readonly logger: Logger | undefined;
   /** The session queries run through. `undefined` on a build-only database. */
   readonly $session: SparqlSession | undefined;
   private readonly moduleContext: QueryModuleContext<D>;
@@ -140,6 +145,7 @@ export class SparqlDatabase<
       blank: [...(options?.formats?.blank ?? [])],
     };
     this.$session = options?.session;
+    this.logger = options?.logger;
     this.queryInErrors = options?.queryInErrors ?? false;
     this.initialContext = options?.context ?? [];
     this.factory = options?.factory ?? new AST.AstFactory();
@@ -162,6 +168,7 @@ export class SparqlDatabase<
       dialect: this.dialect,
       session: this.$session,
       queryInErrors: this.queryInErrors,
+      logger: this.logger,
       normalizer: input =>
         new QueryNormalizer(input ?? emptySelect(this.initialContext), moduleContext),
     };
@@ -169,7 +176,10 @@ export class SparqlDatabase<
     for (const [name, factory] of Object.entries(this.dialect.queries ?? {})) {
       if (name === 'then' || name in this)
         throw new Error(`Query module name conflicts with database member: ${name}`);
-      Object.defineProperty(this, name, { value: factory(moduleContext), enumerable: true });
+      Object.defineProperty(this, name, {
+        value: factory({ ...moduleContext, operationName: name }),
+        enumerable: true,
+      });
     }
   }
 
@@ -216,6 +226,7 @@ export class SparqlDatabase<
       dialect: options?.dialect,
       formats: options?.formats,
       session: resolveSession(options),
+      logger: options?.logger === true ? new DefaultLogger() : options?.logger || undefined,
       queryInErrors: options?.queryInErrors,
       context: transformIntoPrefixObject(options?.managerConfig ?? {}),
     }) as WithQueryMethods<SparqlDatabase<T, K, F, D>, D>;
@@ -227,6 +238,7 @@ export class SparqlDatabase<
       formats: this.formats,
       session: this.$session,
       queryInErrors: this.queryInErrors,
+      logger: this.logger,
       factory: this.factory,
       context: [
         ...this.initialContext,
@@ -248,6 +260,7 @@ export class SparqlDatabase<
       formats: this.formats,
       session: this.$session,
       queryInErrors: this.queryInErrors,
+      logger: this.logger,
       factory: this.factory,
       context: [
         ...this.initialContext,
