@@ -39,7 +39,10 @@ The ARQ entry point also exports `mod(left, right)`, `idiv(left, right)`, and
 `collation(locale, expression)`, along with the standard query helpers:
 
 ```typescript
-import { mod, idiv, collation, desc } from 'sparkql/arq';
+import { SparqlDatabase, mod, idiv, collation, desc } from 'sparkql/arq';
+
+const db = SparqlDatabase.create();
+const value = db.variable('value');
 
 const remainder = mod(value, 3);
 const quotient = idiv(value, 3);
@@ -62,7 +65,7 @@ and instructions for registering your own forms.
 ## Quick Start
 
 ```typescript
-import { SparqlDatabase, triple } from 'sparkql';
+import { SparqlDatabase, triples } from 'sparkql';
 
 const prefixes = {
   foaf: {
@@ -77,13 +80,13 @@ const prefixes = {
 
 // Create a database instance with prefixes
 const db = SparqlDatabase.create({
-  prefixes: prefixes,
+  managerConfig: prefixes,
   endpointUrl: 'https://your-sparql-endpoint.com/sparql',
   updateUrl: 'https://your-sparql-endpoint.com/update', // Optional; defaults to endpointUrl
 });
 
 // Create variable and IRI managers
-const [v, n] = db.create([], prefixes);
+const [v, n] = db.createManagers([], prefixes);
 
 // Build and execute a SELECT query
 const results = await db
@@ -91,7 +94,7 @@ const results = await db
     name: v.name,
     age: v.age,
   })
-  .where(triple(v.person, n.foaf.name, v.name), triple(v.person, n.foaf.age, v.age))
+  .where(triples(v.person, n.foaf.name, v.name), triples(v.person, n.foaf.age, v.age))
   .limit(10);
 
 console.log(results); // Type-safe results
@@ -102,14 +105,24 @@ console.log(results); // Type-safe results
 ### SELECT Queries
 
 ```typescript
-import { triple, asc } from 'sparkql';
+import { SparqlDatabase, triples, asc } from 'sparkql';
+
+const prefixes = {
+  foaf: { uri: 'http://xmlns.com/foaf/0.1/', fields: [] },
+  rdf: { uri: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#', fields: [] },
+};
+const db = SparqlDatabase.create({
+  managerConfig: prefixes,
+  endpointUrl: 'https://your-sparql-endpoint.com/sparql',
+});
+const [v, n] = db.createManagers([], prefixes);
 
 const query = db
   .select({
     name: v.name,
     email: v.email,
   })
-  .where(triple(v.person, n.foaf.name, v.name), triple(v.person, n.foaf.mbox, v.email))
+  .where(triples(v.person, n.foaf.name, v.name), triples(v.person, n.foaf.mbox, v.email))
   .orderBy(asc(v.name))
   .limit(100);
 
@@ -123,9 +136,19 @@ const results = await query;
 ### ASK Queries
 
 ```typescript
-import { triple } from 'sparkql';
+import { SparqlDatabase, triples } from 'sparkql';
 
-const exists = await db.ask().where(triple(v.s, n.rdf.type, n.foaf.Person));
+const prefixes = {
+  foaf: { uri: 'http://xmlns.com/foaf/0.1/', fields: [] },
+  rdf: { uri: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#', fields: [] },
+};
+const db = SparqlDatabase.create({
+  managerConfig: prefixes,
+  endpointUrl: 'https://your-sparql-endpoint.com/sparql',
+});
+const [v, n] = db.createManagers([], prefixes);
+
+const exists = await db.ask().where(triples(v.s, n.rdf.type, n.foaf.Person));
 
 console.log(exists); // boolean
 ```
@@ -133,19 +156,47 @@ console.log(exists); // boolean
 ### CONSTRUCT Queries
 
 ```typescript
-import { triple } from 'sparkql';
+import { SparqlDatabase, triples } from 'sparkql';
 
-const triples = await db
-  .construct(triple(v.person, n.rdf.type, n.foaf.Person))
-  .where(triple(v.person, n.foaf.name, v.name));
+const prefixes = {
+  foaf: { uri: 'http://xmlns.com/foaf/0.1/', fields: [] },
+  rdf: { uri: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#', fields: [] },
+};
+const db = SparqlDatabase.create({
+  managerConfig: prefixes,
+  endpointUrl: 'https://your-sparql-endpoint.com/sparql',
+});
+const [v, n] = db.createManagers([], prefixes);
+
+const constructed = await db
+  .construct(triples(v.person, n.rdf.type, n.foaf.Person))
+  .where(triples(v.person, n.foaf.name, v.name));
 ```
 
 ### UPDATE Queries
 
-```typescript
-import { triple } from 'sparkql';
+Build and execute an INSERT DATA update. `endpointUrl` handles queries;
+`updateUrl` handles updates and defaults to `endpointUrl` when omitted.
+For an update-only database, configuring just `updateUrl` is sufficient.
 
-await db.update().insert(triple(db.iri('ex:person1'), n.foaf.name, db.literal('John Doe')));
+```typescript
+import { SparqlDatabase, triples } from 'sparkql';
+
+const prefixes = {
+  foaf: { uri: 'http://xmlns.com/foaf/0.1/', fields: [] },
+};
+const db = SparqlDatabase.create({
+  managerConfig: prefixes,
+  endpointUrl: 'https://your-sparql-endpoint.com/sparql',
+  updateUrl: 'https://your-sparql-endpoint.com/update',
+});
+const [, n] = db.createManagers([], prefixes);
+
+const update = db.insertData(
+  triples(db.iri('https://example.org/person1'), n.foaf.name, db.literal('John Doe'))
+);
+console.log(update.toSPARQL()); // INSERT DATA { ... }
+await update;
 ```
 
 ## Per-instance input types
@@ -206,36 +257,68 @@ no longer changes another database's accepted types or formatting behavior.
 
 ### Aggregates
 
+Put aggregate bindings in the SELECT projection and aggregate filters in HAVING.
+Without GROUP BY, the query aggregates all matching people into one row.
+
 ```typescript
-import { triple, as, count, avg } from 'sparkql';
+import { SparqlDatabase, triples, as, count, avg, gt } from 'sparkql';
+
+const prefixes = {
+  foaf: { uri: 'http://xmlns.com/foaf/0.1/', fields: [] },
+  rdf: { uri: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#', fields: [] },
+};
+const db = SparqlDatabase.create({
+  managerConfig: prefixes,
+  endpointUrl: 'https://your-sparql-endpoint.com/sparql',
+});
+const [v, n] = db.createManagers([], prefixes);
 
 const stats = await db
   .select({
-    count: v.count,
-    avgAge: v.avgAge,
+    count: as(count(v.person), v.count),
+    avgAge: as(avg(v.age), v.avgAge),
   })
-  .where(...triples(v.person, predicates([n.rdf.type, n.foaf.Person], [n.foaf.age, v.age])))
-  .groupBy()
-  .having(as(count(v.person), v.count), as(avg(v.age), v.avgAge));
+  .where(triples(v.person, n.rdf.type, n.foaf.Person), triples(v.person, n.foaf.age, v.age))
+  .having(gt(count(v.person), 0));
 ```
 
 ### Optional Patterns
 
 ```typescript
-import { triple, optional } from 'sparkql';
+import { SparqlDatabase, triples, optional } from 'sparkql';
+
+const prefixes = {
+  foaf: { uri: 'http://xmlns.com/foaf/0.1/', fields: [] },
+  rdf: { uri: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#', fields: [] },
+};
+const db = SparqlDatabase.create({
+  managerConfig: prefixes,
+  endpointUrl: 'https://your-sparql-endpoint.com/sparql',
+});
+const [v, n] = db.createManagers([], prefixes);
 
 const results = await db
   .select({
     name: v.name,
     email: v.email,
   })
-  .where(triple(v.person, n.foaf.name, v.name), optional(triple(v.person, n.foaf.mbox, v.email)));
+  .where(triples(v.person, n.foaf.name, v.name), optional(triples(v.person, n.foaf.mbox, v.email)));
 ```
 
 ### Filters
 
 ```typescript
-import { triple, filter, gt } from 'sparkql';
+import { SparqlDatabase, triples, filter, gt } from 'sparkql';
+
+const prefixes = {
+  foaf: { uri: 'http://xmlns.com/foaf/0.1/', fields: [] },
+  rdf: { uri: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#', fields: [] },
+};
+const db = SparqlDatabase.create({
+  managerConfig: prefixes,
+  endpointUrl: 'https://your-sparql-endpoint.com/sparql',
+});
+const [v, n] = db.createManagers([], prefixes);
 
 const filtered = await db
   .select({
@@ -243,8 +326,8 @@ const filtered = await db
     age: v.age,
   })
   .where(
-    triple(v.person, n.foaf.name, v.name),
-    triple(v.person, n.foaf.age, v.age),
+    triples(v.person, n.foaf.name, v.name),
+    triples(v.person, n.foaf.age, v.age),
     filter(gt(v.age, 18))
   );
 ```
@@ -261,3 +344,6 @@ Contributions are welcome! Please feel free to submit a pull request.
 
 Run `pnpm check` to check lint and formatting with Biome. Use `pnpm check:fix` to apply safe fixes,
 `pnpm lint` to run only the linter, or `pnpm format` to format supported files.
+
+`pnpm test --run test/docs.spec.ts` typechecks every TypeScript example in `README.md` and
+`docs/*.md` against the current source, offline. Keep each fenced example self-contained.
