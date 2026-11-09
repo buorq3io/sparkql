@@ -65,13 +65,9 @@ import {
   tripleCollectionBlankNodePropertiesInputBase,
   tripleCollectionListInputBase,
 } from '../helpers/utilities.js';
-import {
-  type AnySparqlDialect,
-  type DialectAST,
-  type SparqlDialect,
-  sparql11Dialect,
-} from './dialect.js';
+import type { AnySparqlDialect, DialectAST, SparqlDialect } from './dialect.js';
 import { ExecutableQuery } from './executable.js';
+import type { QueryModuleContext } from './query-module.js';
 
 type ASTConfig<T extends SparqlQueryInput> = T extends UpdateInput
   ? AST.Update
@@ -93,20 +89,17 @@ export abstract class SparqlQueryBuilderBase<
   protected readonly config: Config;
   protected readonly dialect: AnySparqlDialect;
   protected readonly factoryFunctions: FactoryFunctions;
+  /** The database context this builder was created from; nested builders reuse it. */
+  protected readonly builderContext: QueryModuleContext<D>;
   protected readonly anonymousBlanks: Map<symbol, AST.TermBlank>;
 
-  protected constructor(
-    initialConfig: Config,
-    factoryFunctions: FactoryFunctions,
-    endpointUrl?: string,
-    dialect?: D,
-    updateUrl?: string
-  ) {
-    super(endpointUrl, updateUrl, initialConfig.type === 'update');
+  protected constructor(initialConfig: Config, context: QueryModuleContext<D>) {
+    super(context.session);
     this.config = initialConfig;
+    this.builderContext = context;
     this.anonymousBlanks = new Map<symbol, AST.TermBlank>();
-    this.factoryFunctions = factoryFunctions;
-    this.dialect = dialect ?? sparql11Dialect;
+    this.factoryFunctions = context.factory;
+    this.dialect = context.dialect;
   }
 
   public getSPARQL(): DialectAST<D, ASTConfig<Config>> {

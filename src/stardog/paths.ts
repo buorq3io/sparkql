@@ -190,10 +190,11 @@ const pathsModule: QueryModule<PathsConfig, PathsQueryAST, PathResult[], SparqlD
     };
   },
   generate: ast => generator.stardogPaths(ast, AST.completeGeneratorContext({})).trim(),
-  execute: async (sparql, client) =>
-    decodePaths(await requestQueryJson(client, sparql, 'application/sparql-results+json')),
+  execute: async (sparql, session) =>
+    decodePaths(await requestQueryJson(session, sparql, 'application/sparql-results+json')),
 };
 
+type Incomplete = 'then' | 'execute' | 'getSPARQL' | 'toSPARQL';
 type Hidden<S extends boolean, E extends boolean, V extends boolean> =
   | (S extends true ? 'start' : never)
   | (E extends true ? 'end' : never)
@@ -202,9 +203,9 @@ type Hidden<S extends boolean, E extends boolean, V extends boolean> =
       ? E extends true
         ? V extends true
           ? never
-          : 'then' | 'getSPARQL' | 'toSPARQL'
-        : 'then' | 'getSPARQL' | 'toSPARQL'
-      : 'then' | 'getSPARQL' | 'toSPARQL');
+          : Incomplete
+        : Incomplete
+      : Incomplete);
 export type PathsQuery<
   S extends boolean = false,
   E extends boolean = false,

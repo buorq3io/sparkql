@@ -53,7 +53,7 @@ behind many v1 changes; briefs cite the relevant ones.
 | Area | Files |
 | --- | --- |
 | Database entry point and factories | `src/database/base.ts` |
-| Execution (await, HTTP client) | `src/database/executable.ts` |
+| Execution (await), session interface, default HTTP session | `src/database/{executable,session,http-session}.ts` |
 | AST normalisation (input to Traqula AST) | `src/database/sparql-query.ts` |
 | Fluent clause methods, `$dynamic` | `src/database/query.ts` |
 | Query forms | `src/database/{select,ask,construct,describe,update,with,transfer}.ts` |

@@ -1,12 +1,10 @@
 import type {
-  FactoryFunctions,
   GraphRefAllInput,
   GraphRefDefaultInput,
   GraphRefInput,
   GraphRefNamedInput,
   GraphRefSpecificInput,
   QuadsInput,
-  SparqlClient,
   TermIriInput,
   UpdateInput,
   UpdateOperationClearInput,
@@ -18,22 +16,18 @@ import type {
   UpdateOperationLoadInput,
 } from '../helpers/types.js';
 import type { AnySparqlDialect, SparqlDialect } from './dialect.js';
+import type { QueryModuleContext } from './query-module.js';
+import type { SparqlSession } from './session.js';
 import { SparqlQueryBuilderBase } from './sparql-query.js';
 import { TransferQueryBuilderBase } from './transfer.js';
-import { WithQueryBuilderBase } from './with.js';
+import { type WithParent, WithQueryBuilderBase } from './with.js';
 
 export class UpdateQueryBuilderBase<
   D extends AnySparqlDialect = SparqlDialect,
 > extends SparqlQueryBuilderBase<UpdateInput, void, D> {
-  private context;
+  private context: UpdateInput['updates'][number]['context'];
 
-  constructor(
-    context: UpdateInput['updates'][number]['context'],
-    factoryFunctions: FactoryFunctions,
-    endpointUrl?: string,
-    dialect?: D,
-    updateUrl?: string
-  ) {
+  constructor(context: QueryModuleContext<D>) {
     super(
       {
         type: 'update',
@@ -42,12 +36,9 @@ export class UpdateQueryBuilderBase<
           sourceLocationType: 'autoGenerate',
         },
       },
-      factoryFunctions,
-      endpointUrl,
-      dialect,
-      updateUrl
+      context
     );
-    this.context = context;
+    this.context = [...context.context];
   }
 
   insertData(...quads: QuadsInput[]) {
@@ -108,44 +99,21 @@ export class UpdateQueryBuilderBase<
   }
 
   insert(...quads: QuadsInput[]) {
-    const base = new WithQueryBuilderBase<false, D>(
-      this.context,
-      this.config,
-      this,
-      this.factoryFunctions,
-      this.endpointUrl,
-      undefined,
-      this.dialect as D,
-      this.updateUrl
-    );
+    const base = new WithQueryBuilderBase<false, D>(this.builderContext, this.parent());
     return base.insert(...quads);
   }
 
   delete(...quads: QuadsInput[]) {
-    const base = new WithQueryBuilderBase<false, D>(
-      this.context,
-      this.config,
-      this,
-      this.factoryFunctions,
-      this.endpointUrl,
-      undefined,
-      this.dialect as D,
-      this.updateUrl
-    );
+    const base = new WithQueryBuilderBase<false, D>(this.builderContext, this.parent());
     return base.delete(...quads);
   }
 
+  private parent(): WithParent<D> {
+    return { context: this.context, config: this.config, builder: this };
+  }
+
   with(graph: TermIriInput) {
-    return new WithQueryBuilderBase<false, D>(
-      this.context,
-      this.config,
-      this,
-      this.factoryFunctions,
-      this.endpointUrl,
-      graph,
-      this.dialect as D,
-      this.updateUrl
-    );
+    return new WithQueryBuilderBase<false, D>(this.builderContext, this.parent(), graph);
   }
 
   copy(source: TermIriInput) {
@@ -414,8 +382,8 @@ export class UpdateQueryBuilderBase<
     return this.createClearDropOperation('drop', graphRefNamed, true);
   }
 
-  protected makeQuery(client: SparqlClient): Promise<void> {
-    return client.query.update(this.toSPARQL());
+  protected makeQuery(session: SparqlSession): Promise<void> {
+    return session.update(this.toSPARQL());
   }
 }
 

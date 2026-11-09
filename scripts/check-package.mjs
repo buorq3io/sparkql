@@ -50,13 +50,14 @@ try {
         for (const specifier of ${JSON.stringify(specifiers)}) {
           const { SparqlDatabase } = ${load};
           assert.equal(typeof SparqlDatabase.create, 'function', specifier);
-          const db = SparqlDatabase.create({ endpointUrl });
+          const db = SparqlDatabase.create({ connection: endpointUrl });
           const query = db.ask();
           assert.match(query.toSPARQL(), /ASK/);
           assert.equal(await query, true, specifier);
           assert.equal(await query, true, specifier);
         }
-        assert.equal(requests, ${specifiers.length});
+        // Every await sends a request.
+        assert.equal(requests, ${specifiers.length * 2});
       } finally {
         server.closeAllConnections();
         await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));

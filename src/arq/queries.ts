@@ -1,6 +1,5 @@
 import { GeneratorBuilder } from '@traqula/core';
 import * as AST from '@traqula/rules-sparql-1-1';
-import type { DataFactory } from 'rdf-data-factory';
 import type { DialectAST, SparqlDialect } from '../database/dialect.js';
 import {
   PatternModuleQueryBuilder,
@@ -12,6 +11,7 @@ import {
   type QueryModuleContext,
   requestQueryJson,
 } from '../database/query-module.js';
+import type { SparqlQuad } from '../database/session.js';
 import type { QuadsInput, TermLiteralInput, TermVariableInput } from '../helpers/types.js';
 import { isObjectLike, termLiteral, termVariable } from '../helpers/utilities.js';
 import { arqGeneratorBuilder } from './generator.js';
@@ -49,7 +49,7 @@ export interface ConstructQuadsAST {
   template: AST.Quads[];
   body: Body;
 }
-export type ConstructedQuad = ReturnType<DataFactory['quad']>;
+export type ConstructedQuad = SparqlQuad;
 interface JsonConfig<P extends JsonProjection> extends PatternQueryConfig {
   projection: P;
 }
@@ -132,8 +132,8 @@ function jsonModule<P extends JsonProjection>(
       };
     },
     generate: ast => generator.arqJsonQuery(ast, AST.completeGeneratorContext({})).trim(),
-    execute: async (sparql, client, ast) => {
-      const data = await requestQueryJson(client, sparql, 'application/json');
+    execute: async (sparql, session, ast) => {
+      const data = await requestQueryJson(session, sparql, 'application/json');
       if (!Array.isArray(data)) throw new Error('Expected an ARQ JSON array.');
       for (const row of data) {
         if (!isObjectLike(row) || Array.isArray(row))
@@ -192,15 +192,7 @@ const quadsModule: QueryModule<QuadsConfig, ConstructQuadsAST, ConstructedQuad[]
       body: context.normalizer(config.body).getSPARQL(),
     }),
     generate: ast => generator.arqConstructQuads(ast, AST.completeGeneratorContext({})).trim(),
-    execute: async (sparql, client) => {
-      const results: ConstructedQuad[] = [];
-      const stream = client.query.construct(sparql, {
-        operation: 'postDirect',
-        headers: { accept: 'application/n-quads' },
-      });
-      for await (const quad of stream) results.push(quad);
-      return results;
-    },
+    execute: (sparql, session) => session.quads(sparql, { accept: 'application/n-quads' }),
   };
 export class ConstructQuadsQueryBuilder extends PatternModuleQueryBuilder<
   QuadsConfig,
