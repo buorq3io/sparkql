@@ -40,8 +40,8 @@ export class ConstructQueryBuilderBase<D extends AnySparqlDialect = SparqlDialec
     );
   }
 
-  protected async makeQuery(session: SparqlSession): Promise<QuadsInput[]> {
+  protected async makeQuery(session: SparqlSession, sparql: string): Promise<QuadsInput[]> {
     // The declared result type predates sessions; the values are RDF/JS quads.
-    return (await session.quads(this.toSPARQL())) as unknown as QuadsInput[];
+    return (await session.quads(sparql)) as unknown as QuadsInput[];
   }
 }

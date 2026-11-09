@@ -68,3 +68,79 @@ Two linked pieces:
   `multiple-instances.test.ts`) and `instanceof SparkqlQueryError` holds for an
   error thrown by the other copy.
 - Errors are exported from every entry point and documented in README.
+
+## Implementation notes
+
+What drizzle does, and what was taken from it:
+
+- `DrizzleQueryError(query, params, cause)` is thrown by the prepared query's
+  `executor(...).catch(...)` on every path (fast path and each cache strategy).
+  Its message always contains the SQL; since rc.5 `params` are left out unless
+  `paramsInErrors` is set, because they are user data.
+- `entity.ts` keys class identity on `Symbol.for('drizzle:entityKind')`, which
+  every copy of the package shares. `is()` tries the native `instanceof` first,
+  then compares the kind against the kinds collected along the value's
+  constructor chain (cached per constructor in a `WeakMap`). Error classes
+  override `Symbol.hasInstance` to call `is()`, so plain `instanceof` works across
+  copies. `multiple-instances.test.ts` proves it with `vi.resetModules()`.
+
+What sparkql does (`src/database/{entity,errors,executable}.ts`):
+
+- **One choke point.** `ExecutableQuery.execute()` generates the SPARQL once,
+  passes it to `makeQuery(session, sparql)` (builders no longer call
+  `toSPARQL()` themselves) and wraps any rejection in `SparkqlQueryError`.
+  That covers every standard form, transfers, WITH chains and every query module,
+  for every session. Failures before anything is sent are not wrapped: the
+  build-only rejection is a plain `SparkqlError`, and normalisation errors
+  propagate as `SparkqlNormalizationError`. A `SparkqlQueryError` that is already
+  thrown is not wrapped again. `WithQueryBuilderBase` overrides `execute()` to run
+  `$end().execute()`, so its error's `query` is the update request actually sent.
+- **Classes.** `SparkqlError` (base, `cause`), `SparkqlQueryError` (`query`,
+  `cause`, `status`, `body`), `SparkqlNormalizationError` (`input`, `inputType`,
+  `inputSubType`; message names the type/subType, or only the JS type of a value
+  without them, never its content), and `SparqlResponseError` (`status`,
+  `statusText`, `body`), which `requestQueryJson` now throws for a non-2xx
+  `raw()` response instead of a plain `Error`.
+- **`status`/`body`** are read from the cause: `status`/`body` properties
+  (`SparqlResponseError`), or `sparql-http-client`'s `err.status` plus its
+  message format `<statusText> (<status>): <body>`. That parse is tied to
+  `sparql-http-client` 3.x (`lib/checkResponse.js`); with another format only
+  `status` is filled. `body` is capped at `MAX_ERROR_BODY_LENGTH` (4096).
+- **User data decision (user-visible).** SPARQL has no separate params; values
+  are inlined in the text, so the query itself is the user data. `query` is
+  always a property, but `message` contains it only with the new
+  `queryInErrors: true` create option (drizzle's `paramsInErrors`, applied to
+  the whole query). For HTTP failures the message names only the status
+  (`Failed SPARQL query (HTTP 400 Bad Request)`), because endpoints echo the
+  query in error bodies. Non-HTTP causes contribute their message, cut at 500
+  characters. `queryInErrors` travels through `PrivateSparqlDatabaseOptions` and
+  `QueryModuleContext` (which now extends `ExecutionContext { session,
+  queryInErrors }`), so `base()`/`prefix()` keep it.
+- **Message changes (user-visible).** `Unrecognized pattern provided.` is now
+  `Unsupported pattern provided (type "…", subType "…").`; the other
+  normalisation messages gained the same suffix. `requestQueryJson`'s
+  `SPARQL query failed: <status> <statusText>` became `SparqlResponseError` and
+  reaches callers as the `cause` of a `SparkqlQueryError`.
+- **Entity kinds** only where sparkql or its users do class checks: the four
+  error classes and `HttpSparqlSession` (`SparqlDatabase.$client` now uses
+  `is()`, so a session from another copy still exposes its client). Builders are
+  not annotated: nothing checks them by class. `is` and `entityKind` are exported.
+- `entity.ts` collects kinds with an own-property check instead of drizzle's
+  `in`, so a subclass without its own kind does not report its parent's kind
+  twice; the result is the same set.
+
+For later briefs:
+
+- **06 (logger):** add the logger next to `queryInErrors` in `ExecutionContext`
+  and `PrivateSparqlDatabaseOptions`; `execute()` already has `sparql` before the
+  `try`, so log there and log the failure in the `catch`.
+- **07 (prepared):** a prepared query can call `makeQuery(session, sparql)` with
+  its captured string; reuse the same `try`/`catch` (factor it out of `execute()`)
+  so prepared runs throw `SparkqlQueryError` too.
+
+Validation: `typecheck`, 84 tests (73 before; new coverage in
+`test/errors.spec.ts`, including a two-copy test with `vi.resetModules()`) and
+`test:package` pass. A manual check confirmed that a rejection from the packed
+CJS build is `instanceof` the ESM build's `SparkqlError`. `check` reports only
+the two pre-existing formatting errors (`08-raw-sparql-tag.md`, this
+directory's `README.md`).

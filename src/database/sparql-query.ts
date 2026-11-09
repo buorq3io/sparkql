@@ -66,6 +66,7 @@ import {
   tripleCollectionListInputBase,
 } from '../helpers/utilities.js';
 import type { AnySparqlDialect, DialectAST, SparqlDialect } from './dialect.js';
+import { SparkqlNormalizationError } from './errors.js';
 import { ExecutableQuery } from './executable.js';
 import type { QueryModuleContext } from './query-module.js';
 
@@ -94,7 +95,7 @@ export abstract class SparqlQueryBuilderBase<
   protected readonly anonymousBlanks: Map<symbol, AST.TermBlank>;
 
   protected constructor(initialConfig: Config, context: QueryModuleContext<D>) {
-    super(context.session);
+    super(context);
     this.config = initialConfig;
     this.builderContext = context;
     this.anonymousBlanks = new Map<symbol, AST.TermBlank>();
@@ -111,7 +112,7 @@ export abstract class SparqlQueryBuilderBase<
       return this.buildUpdate(this.config) as unknown as DialectAST<D, ASTConfig<Config>>;
     }
 
-    throw new Error('Unsupported query provided.');
+    throw new SparkqlNormalizationError('query', this.config);
   }
 
   public toSPARQL(): string {
@@ -129,7 +130,7 @@ export abstract class SparqlQueryBuilderBase<
       case 'ask':
         return this.buildAskQuery(query);
       default:
-        throw new Error('Unsupported query provided.');
+        throw new SparkqlNormalizationError('query', query);
     }
   }
 
@@ -225,7 +226,7 @@ export abstract class SparqlQueryBuilderBase<
       case 'modify':
         return this.sanitizeModifyOperation(operation);
       default:
-        throw new Error('Unsupported update provided.');
+        throw new SparkqlNormalizationError('update', operation);
     }
   }
 
@@ -450,7 +451,7 @@ export abstract class SparqlQueryBuilderBase<
             expression: [this.sanitizeExpression(expression.expression[0])],
           };
         default:
-          throw new Error('Unsupported expression provided.');
+          throw new SparkqlNormalizationError('expression', expression);
       }
     }
 
@@ -458,7 +459,7 @@ export abstract class SparqlQueryBuilderBase<
       return termExpression.parseOrThrow(expression, this.factoryFunctions);
     }
 
-    throw new Error('Unsupported expression provided.');
+    throw new SparkqlNormalizationError('expression', expression);
   }
 
   protected sanitizeValuePatternColumns(columns: ValuePatternColumnsInput): AST.ValuePatternRow[] {
@@ -517,7 +518,7 @@ export abstract class SparqlQueryBuilderBase<
           items: [this.sanitizePropertyPath(path.items[0])],
         };
       default:
-        throw new Error('Unsupported property path provided.');
+        throw new SparkqlNormalizationError('property path', path);
     }
   }
 
@@ -550,7 +551,7 @@ export abstract class SparqlQueryBuilderBase<
     if (term.accepts(term_)) {
       return term.parseOrThrow(term_, this.factoryFunctions);
     }
-    throw Error('Unsupported term value provided');
+    throw new SparkqlNormalizationError('term', term_);
   }
 
   protected sanitizeTripleNesting(triple: TripleNestingInput): AST.TripleNesting {
@@ -721,7 +722,7 @@ export abstract class SparqlQueryBuilderBase<
       case 'values':
         return this.sanitizePatternValues(pattern);
       default:
-        throw new Error('Unrecognized pattern provided.');
+        throw new SparkqlNormalizationError('pattern', pattern);
     }
   }
 

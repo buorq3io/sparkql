@@ -124,7 +124,7 @@ and nested `group`, `optional`, `union`, `minus`, `graph`, `service`, and
 `getSPARQL()` includes the dialect's output node types at pattern positions;
 `toSPARQL()` and execution use the configured generator. The default dialect
 preserves existing input/output types and behavior. Unrecognized pattern nodes
-still throw at runtime, protecting JavaScript callers that bypass TypeScript.
+still throw `SparkqlNormalizationError` at runtime, protecting JavaScript callers that bypass TypeScript.
 
 The pattern seam extends graph patterns. Existing expression node kinds can be
 used inside custom patterns through the normalization context. Dialects can also

@@ -1,5 +1,6 @@
 import { Readable } from 'node:stream';
 import type { ParsingClient, StreamClient } from 'sparql-http-client';
+import { entityKind, is } from './entity.js';
 import type {
   SparqlBindings,
   SparqlQuad,
@@ -37,6 +38,12 @@ type RawClient = SparqlHttpClient & {
 export class HttpSparqlSession<C extends SparqlHttpClient = SparqlHttpClient>
   implements SparqlSession
 {
+  static readonly [entityKind]: string = 'HttpSparqlSession';
+
+  static [Symbol.hasInstance](value: unknown): boolean {
+    return is(value, this);
+  }
+
   private resolved: C | Promise<C> | undefined;
   private readonly connection: SparqlConnectionOptions | undefined;
 

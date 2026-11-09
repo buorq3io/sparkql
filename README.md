@@ -190,6 +190,51 @@ Keep the awaited value if you need it again.
 The top-level `endpointUrl` and `updateUrl` options are deprecated; they still
 work in this release and are equivalent to `connection: { endpointUrl, updateUrl }`.
 
+### Errors
+
+Every error sparkql throws itself extends `SparkqlError`. A query that was
+generated but failed to run (a network error, an HTTP error status, an engine
+error from a custom session, or a result that could not be decoded) rejects with
+a `SparkqlQueryError`:
+
+| Property | Value                                                                      |
+| -------- | -------------------------------------------------------------------------- |
+| `query`  | The SPARQL that was sent: the builder's `toSPARQL()`                       |
+| `cause`  | What the session or decoder threw, unchanged                               |
+| `status` | HTTP status of a failed response, when there is one                        |
+| `body`   | Body of a failed response, up to `MAX_ERROR_BODY_LENGTH` (4096) characters |
+
+```typescript
+import { SparkqlQueryError, SparqlDatabase } from 'sparkql';
+
+const db = SparqlDatabase.create({ connection: 'https://your-sparql-endpoint.com/sparql' });
+try {
+  await db.ask().where();
+} catch (error) {
+  if (error instanceof SparkqlQueryError) {
+    console.error(error.message); // 'Failed SPARQL query (HTTP 400 Bad Request)'
+    console.error(error.status, error.body, error.query);
+  }
+}
+```
+
+Values you pass to a builder (literals, VALUES rows) are written into the
+SPARQL text, so the query can contain user data. `message` therefore leaves the
+query and the response body out (endpoints often echo the query in it); read
+them from the properties. Create the database with `queryInErrors: true` to
+append the query to `message` as well.
+
+Other errors are thrown before anything is sent. Builder input that cannot be
+turned into SPARQL throws a `SparkqlNormalizationError` from `toSPARQL()`, and
+rejects with it when awaited; its `input`, `inputType` and `inputSubType` name
+the rejected node. A build-only database rejects with a plain `SparkqlError`.
+
+`instanceof` works for these classes, and for `HttpSparqlSession`, even when
+the error comes from a different copy of sparkql (the CommonJS and ESM builds,
+or two versions in one dependency tree). The `is(value, Class)` helper does the
+same check. Every entry point (`sparkql`, `sparkql/arq`, `sparkql/stardog`)
+exports them.
+
 ## Building Queries
 
 ### SELECT Queries

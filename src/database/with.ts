@@ -135,6 +135,11 @@ export class WithQueryBuilderBase<
     return this.updateBuilder;
   }
 
+  /** Runs the whole update request this operation belongs to. Errors carry that request's SPARQL. */
+  public override execute(): Promise<void> {
+    return this.$end().execute();
+  }
+
   protected makeQuery(): Promise<void> {
     return this.$end().execute();
   }

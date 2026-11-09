@@ -38,7 +38,7 @@ export class AskQueryBuilderBase<D extends AnySparqlDialect = SparqlDialect>
     );
   }
 
-  protected makeQuery(session: SparqlSession): Promise<boolean> {
-    return session.boolean(this.toSPARQL());
+  protected makeQuery(session: SparqlSession, sparql: string): Promise<boolean> {
+    return session.boolean(sparql);
   }
 }
