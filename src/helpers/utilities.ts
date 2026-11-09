@@ -1,9 +1,7 @@
+import { defaultTermFormats } from './term-formats.js';
 import * as AST from '@traqula/rules-sparql-1-1';
-import { createFormatRegistry, defineType, defineUnionType } from './generators.js';
+import { defineType, defineUnionType } from './generators.js';
 import {
-  BlankFormatMap,
-  NamedNodeFormatMap,
-  LiteralFormatMap,
   WildcardInput,
   TripleCollectionListInputBase,
   TripleCollectionBlankNodePropertiesInputBase,
@@ -91,29 +89,23 @@ export function isWildCardInputArray(value: unknown): value is [WildcardInput] {
   );
 }
 
-export const termIriRegistry = createFormatRegistry<NamedNodeFormatMap, AST.TermIri>();
-
-export const termLiteralRegistry = createFormatRegistry<LiteralFormatMap, AST.TermLiteral>();
-
-export const termBlankRegistry = createFormatRegistry<BlankFormatMap, AST.TermBlank>();
-
 export const termIri = defineType({
   is: isTermIri,
-  from: termIriRegistry.formatters,
+  from: defaultTermFormats.iri,
   assertMessage: 'Expected an iri term.',
   parseMessage: 'Unsupported iri term value provided.',
 });
 
 export const termLiteral = defineType({
   is: isTermLiteral,
-  from: termLiteralRegistry.formatters,
+  from: defaultTermFormats.literal,
   assertMessage: 'Expected a literal term.',
   parseMessage: 'Unsupported literal term value provided.',
 });
 
 export const termBlank = defineType({
   is: isTermBlank,
-  from: termBlankRegistry.formatters,
+  from: defaultTermFormats.blank,
   assertMessage: 'Expected a blank term.',
   parseMessage: 'Unsupported blank term value provided.',
 });
