@@ -1,5 +1,5 @@
-import { db, v, n } from '#test/index.js';
-import { triples, service, as, sum, asc, div } from '#src/index.js';
+import { as, asc, div, service, sum, triples } from '#src/index.js';
+import { db, n, v } from '#test/index.js';
 export default () =>
   db
     .select({

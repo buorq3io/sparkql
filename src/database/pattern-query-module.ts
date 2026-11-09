@@ -24,7 +24,7 @@ export abstract class PatternModuleQueryBuilder<
   C extends PatternQueryConfig,
   A,
   R,
-  D extends AnySparqlDialect
+  D extends AnySparqlDialect,
 > extends ModuleQueryBuilder<C, A, R, D> {
   private readonly body: QueryNormalizer<D>;
   protected constructor(

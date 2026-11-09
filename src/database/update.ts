@@ -1,7 +1,4 @@
-import type { AnySparqlDialect, SparqlDialect } from './dialect.js';
-import { WithQueryBuilderBase } from './with.js';
-import { SparqlQueryBuilderBase } from './sparql-query.js';
-import {
+import type {
   FactoryFunctions,
   GraphRefAllInput,
   GraphRefDefaultInput,
@@ -20,10 +17,13 @@ import {
   UpdateOperationInsertDataInput,
   UpdateOperationLoadInput,
 } from '../helpers/types.js';
+import type { AnySparqlDialect, SparqlDialect } from './dialect.js';
+import { SparqlQueryBuilderBase } from './sparql-query.js';
 import { TransferQueryBuilderBase } from './transfer.js';
+import { WithQueryBuilderBase } from './with.js';
 
 export class UpdateQueryBuilderBase<
-  D extends AnySparqlDialect = SparqlDialect
+  D extends AnySparqlDialect = SparqlDialect,
 > extends SparqlQueryBuilderBase<UpdateInput, void, D> {
   private context;
 

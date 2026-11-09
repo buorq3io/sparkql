@@ -1,4 +1,9 @@
-import { FactoryFunctions, QueryInput, Strictness, TermIriInput } from '../helpers/types.js';
+import {
+  type FactoryFunctions,
+  type QueryInput,
+  Strictness,
+  type TermIriInput,
+} from '../helpers/types.js';
 
 export type IriManagerConfig = Record<
   Exclude<string, '__'>,

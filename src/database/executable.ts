@@ -16,11 +16,13 @@ export abstract class ExecutableQuery<Result> implements PromiseLike<Result> {
         'Database URL should be defined as your SPARQL endpoint in order to make a request.'
       );
     }
-    return (this._promise ??= Promise.resolve().then(() =>
+    this._promise ??= Promise.resolve().then(() =>
       this.makeQuery(new SparqlClient({ endpointUrl: this.endpointUrl }))
-    ));
+    );
+    return this._promise;
   }
 
+  // biome-ignore lint/suspicious/noThenProperty: Queries intentionally implement PromiseLike for await.
   public then<TFulfilled = Result, TRejected = never>(
     onfulfilled?: ((value: Result) => TFulfilled | PromiseLike<TFulfilled>) | null,
     onrejected?: ((reason: any) => TRejected | PromiseLike<TRejected>) | null

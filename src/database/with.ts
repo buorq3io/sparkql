@@ -1,7 +1,4 @@
-import type { AnySparqlDialect, DialectPattern, SparqlDialect } from './dialect.js';
-import { UpdateQueryBuilderBase } from './update.js';
-import { SparqlQueryBuilderBase } from './sparql-query.js';
-import {
+import type {
   FactoryFunctions,
   PatternInput,
   QuadsInput,
@@ -9,16 +6,19 @@ import {
   UpdateInput,
   UpdateOperationModifyInput,
 } from '../helpers/types.js';
+import type { AnySparqlDialect, DialectPattern, SparqlDialect } from './dialect.js';
+import { SparqlQueryBuilderBase } from './sparql-query.js';
+import type { UpdateQueryBuilderBase } from './update.js';
 
 export type WithBuilderBaseWithout<
   T extends WithQueryBuilderBase<any, any>,
   TDynamic extends boolean,
-  TExcluded extends keyof T & string
+  TExcluded extends keyof T & string,
 > = TDynamic extends true ? T : Omit<T, TExcluded>;
 
 export class WithQueryBuilderBase<
     TDynamic extends boolean = false,
-    D extends AnySparqlDialect = SparqlDialect
+    D extends AnySparqlDialect = SparqlDialect,
   >
   extends SparqlQueryBuilderBase<UpdateInput, void, D>
   implements PromiseLike<void>

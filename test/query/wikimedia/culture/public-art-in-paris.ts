@@ -1,23 +1,23 @@
-import { db, v, n } from '#test/index.js';
 import {
-  triples,
-  predicates,
-  optional,
-  filter,
-  ne,
-  eq,
-  lang,
-  str,
-  replace,
-  group,
-  union,
-  bind,
-  sample,
-  groupConcatDistinct,
   as,
+  bind,
+  eq,
+  filter,
+  group,
+  groupConcatDistinct,
+  lang,
+  ne,
+  optional,
+  predicates,
+  replace,
+  sample,
   seq,
+  str,
+  triples,
+  union,
   zeroOrMore,
 } from '#src/index.js';
+import { db, n, v } from '#test/index.js';
 
 export default () => {
   const innerSubQuery = db

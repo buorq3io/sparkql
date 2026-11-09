@@ -14,7 +14,12 @@
     "clean": "rm -rf ./dist/",
     "test": "vitest",
     "semantic-release": "semantic-release",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "check": "biome check .",
+    "check:fix": "biome check --write ."
   },
   "repository": {
     "type": "git",
@@ -85,13 +90,13 @@
     "#test/*": "./test/*"
   },
   "devDependencies": {
-    "@types/node": "^18.0.0",
+    "@biomejs/biome": "2.6.6",
     "@traqula/parser-sparql-1-1": "^1.0.7",
+    "@types/node": "^18.0.0",
     "@types/sparql-http-client": "^3.0.5",
     "@vitest/coverage-v8": "^3.2.4",
     "dotenv": "^16.5.0",
     "json-diff-ts": "^4.3.0",
-    "prettier": "^2.2.1",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   },

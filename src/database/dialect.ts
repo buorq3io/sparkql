@@ -1,7 +1,7 @@
-import type { QueryFactories } from './query-module.js';
-import type * as AST from '@traqula/rules-sparql-1-1';
 import { Generator } from '@traqula/generator-sparql-1-1';
+import type * as AST from '@traqula/rules-sparql-1-1';
 import type { ExpressionInput, FactoryFunctions, PatternInput } from '../helpers/types.js';
+import type { QueryFactories } from './query-module.js';
 
 /** Custom patterns use distinct subtypes, just like Traqula's built-in nodes. */
 export interface ExtensionPattern {
@@ -14,19 +14,19 @@ type NodeSubtypes<T> = T extends { subType: infer S } ? S : never;
 type DeepDialectPatterns<T, P> = T extends readonly unknown[]
   ? { [K in keyof T]: WithDialectPatterns<T[K], P> }
   : T extends object
-  ? { [K in keyof T]: DeepDialectPatterns<T[K], P> }
-  : T;
+    ? { [K in keyof T]: DeepDialectPatterns<T[K], P> }
+    : T;
 
 /** Preserve concrete node shapes; widen only complete pattern unions in arrays. */
 export type WithDialectPatterns<T, P> = [P] extends [never]
   ? T
   : [AST.Pattern['subType']] extends [NodeSubtypes<T>]
-  ? P | DeepDialectPatterns<T, P>
-  : DeepDialectPatterns<T, P>;
+    ? P | DeepDialectPatterns<T, P>
+    : DeepDialectPatterns<T, P>;
 
 export interface PatternNormalizationContext<
   P extends ExtensionPattern,
-  A extends ExtensionPattern = never
+  A extends ExtensionPattern = never,
 > {
   readonly factory: FactoryFunctions;
   pattern(value: PatternInput<P>): WithDialectPatterns<AST.Pattern, A>;
@@ -36,7 +36,7 @@ export interface PatternNormalizationContext<
 /** A dialect couples accepted input nodes, normalization, and generation. */
 export interface SparqlDialect<
   P extends ExtensionPattern = never,
-  A extends ExtensionPattern = never
+  A extends ExtensionPattern = never,
 > {
   readonly patterns: {
     is(value: unknown): value is P;
@@ -56,17 +56,15 @@ export interface AnySparqlDialect {
   };
   readonly generator: { generate(query: any): string };
 }
-export type DialectPattern<D extends AnySparqlDialect> = D extends SparqlDialect<infer P, any>
-  ? P
-  : never;
-export type DialectAST<D extends AnySparqlDialect, T> = D extends SparqlDialect<any, infer A>
-  ? WithDialectPatterns<T, A>
-  : never;
+export type DialectPattern<D extends AnySparqlDialect> =
+  D extends SparqlDialect<infer P, any> ? P : never;
+export type DialectAST<D extends AnySparqlDialect, T> =
+  D extends SparqlDialect<any, infer A> ? WithDialectPatterns<T, A> : never;
 
 export function defineDialect<
   P extends ExtensionPattern,
   A extends ExtensionPattern,
-  Q extends QueryFactories
+  Q extends QueryFactories,
 >(
   dialect: SparqlDialect<P, A> & { readonly queries: Q }
 ): SparqlDialect<P, A> & { readonly queries: Q };

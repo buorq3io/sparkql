@@ -1,5 +1,5 @@
-import { db, v, n } from '#test/index.js';
-import { triples, predicates, filter, inArray, not, contains } from '#src/index.js';
+import { contains, filter, inArray, not, predicates, triples } from '#src/index.js';
+import { db, n, v } from '#test/index.js';
 
 export default () =>
   db

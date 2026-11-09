@@ -1,6 +1,4 @@
-import type { AnySparqlDialect, SparqlDialect } from './dialect.js';
-import { QueryBuilderBase } from './query.js';
-import {
+import type {
   FactoryFunctions,
   PatternBgpInput,
   QuadsInput,
@@ -8,6 +6,8 @@ import {
   SparqlClient,
 } from '../helpers/types.js';
 import { bgp } from '../structures/index.js';
+import type { AnySparqlDialect, SparqlDialect } from './dialect.js';
+import { QueryBuilderBase } from './query.js';
 
 export class ConstructQueryBuilderBase<D extends AnySparqlDialect = SparqlDialect>
   extends QueryBuilderBase<QueryConstructInput, QuadsInput[], false, D>

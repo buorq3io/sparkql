@@ -1,28 +1,27 @@
-import { describe, expect, expectTypeOf, test } from 'vitest';
 import { Generator } from '@traqula/generator-sparql-1-1';
-import * as AST from '@traqula/rules-sparql-1-1';
+import type * as AST from '@traqula/rules-sparql-1-1';
+import { describe, expect, expectTypeOf, test } from 'vitest';
+import {
+  type ArqAST,
+  SparqlDatabase as ArqDatabase,
+  type ArqInput,
+  arqDialect,
+  lateral as lateralPattern,
+  letBinding,
+} from '../src/arq/index.js';
 import {
   bgp,
-  group,
-  optional,
+  defineDialect,
   graph,
+  group,
   minus,
+  optional,
+  type QuerySelectInput,
+  SparqlDatabase,
   service,
   serviceSilent,
   union,
-  SparqlDatabase,
-  defineDialect,
-  type QuerySelectInput,
 } from '../src/index.js';
-
-import {
-  arqDialect,
-  SparqlDatabase as ArqDatabase,
-  letBinding,
-  lateral as lateralPattern,
-  type ArqInput,
-  type ArqAST,
-} from '../src/arq/index.js';
 
 const loc = { sourceLocationType: 'autoGenerate' } as const;
 const db = ArqDatabase.create();

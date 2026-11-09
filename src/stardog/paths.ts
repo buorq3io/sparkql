@@ -2,6 +2,15 @@ import { GeneratorBuilder } from '@traqula/core';
 import { sparql11GeneratorBuilder } from '@traqula/generator-sparql-1-1';
 import * as AST from '@traqula/rules-sparql-1-1';
 import { DataFactory } from 'rdf-data-factory';
+import type { SparqlDialect } from '../database/dialect.js';
+import { assertNonNegativeInteger } from '../database/pattern-query-module.js';
+import {
+  emptySelect,
+  ModuleQueryBuilder,
+  type QueryModule,
+  type QueryModuleContext,
+  requestQueryJson,
+} from '../database/query-module.js';
 import type {
   DefaultQueryReturnType,
   PathInput,
@@ -13,15 +22,6 @@ import type {
 } from '../helpers/types.js';
 import { isObjectLike, termIri, termVariable } from '../helpers/utilities.js';
 import { group } from '../structures/pattern.js';
-import type { SparqlDialect } from '../database/dialect.js';
-import {
-  emptySelect,
-  ModuleQueryBuilder,
-  requestQueryJson,
-  type QueryModule,
-  type QueryModuleContext,
-} from '../database/query-module.js';
-import { assertNonNegativeInteger } from '../database/pattern-query-module.js';
 
 export type PathBinding = Readonly<Record<string, DefaultQueryReturnType | undefined>>;
 export interface PathResult {
@@ -168,11 +168,11 @@ const pathsModule: QueryModule<PathsConfig, PathsQueryAST, PathResult[], SparqlD
       config.via.kind === 'pattern'
         ? { kind: 'pattern', pattern: normalizer.pattern(config.via.pattern) as AST.PatternGroup }
         : config.via.kind === 'variable'
-        ? {
-            kind: 'variable',
-            variable: termVariable.parseOrThrow(config.via.variable, context.factory),
-          }
-        : { kind: 'path', path: normalizer.path(config.via.path) };
+          ? {
+              kind: 'variable',
+              variable: termVariable.parseOrThrow(config.via.variable, context.factory),
+            }
+          : { kind: 'path', path: normalizer.path(config.via.path) };
     return {
       type: 'query',
       subType: 'paths',
@@ -208,13 +208,13 @@ type Hidden<S extends boolean, E extends boolean, V extends boolean> =
 export type PathsQuery<
   S extends boolean = false,
   E extends boolean = false,
-  V extends boolean = false
+  V extends boolean = false,
 > = Omit<PathsQueryBuilder<S, E, V>, Hidden<S, E, V>>;
 
 export class PathsQueryBuilder<
   S extends boolean = false,
   E extends boolean = false,
-  V extends boolean = false
+  V extends boolean = false,
 > extends ModuleQueryBuilder<PathsConfig, PathsQueryAST, PathResult[], SparqlDialect> {
   constructor(context: QueryModuleContext<SparqlDialect>) {
     super(

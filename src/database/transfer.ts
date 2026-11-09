@@ -1,14 +1,14 @@
-import type { AnySparqlDialect, SparqlDialect } from './dialect.js';
-import {
-  UpdateInput,
-  TermIriInput,
-  GraphRefSpecificInput,
-  UpdateOperationMoveInput,
-  UpdateOperationCopyInput,
-  UpdateOperationAddInput,
+import type {
   GraphRefDefaultInput,
+  GraphRefSpecificInput,
+  TermIriInput,
+  UpdateInput,
+  UpdateOperationAddInput,
+  UpdateOperationCopyInput,
+  UpdateOperationMoveInput,
 } from '../helpers/types.js';
-import { createGraphRefSpecific, graphRefDefault, UpdateQueryBuilderBase } from './update.js';
+import type { AnySparqlDialect, SparqlDialect } from './dialect.js';
+import { createGraphRefSpecific, graphRefDefault, type UpdateQueryBuilderBase } from './update.js';
 
 export class TransferQueryBuilderBase<D extends AnySparqlDialect = SparqlDialect> {
   private updateConfig: UpdateInput;

@@ -1,9 +1,10 @@
 import * as AST from '@traqula/rules-sparql-1-1';
-import type { ExpressionInput, PatternInput } from '../helpers/types.js';
 import { defineDialect } from '../database/dialect.js';
+import type { ExpressionInput, PatternInput } from '../helpers/types.js';
 import { arqGenerator } from './generator.js';
 import { arqQueries } from './queries.js';
-import type { ArqInput, ArqAST, LetInput, LateralInput, ArqPattern } from './types.js';
+import type { ArqAST, ArqInput, ArqPattern, LateralInput, LetInput } from './types.js';
+
 export * from './types.js';
 
 const loc = { sourceLocationType: 'autoGenerate' } as const;

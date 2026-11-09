@@ -1,6 +1,6 @@
+import type { FactoryFunctions, QueryAskInput, SparqlClient } from '../helpers/types.js';
 import type { AnySparqlDialect, SparqlDialect } from './dialect.js';
 import { QueryBuilderBase } from './query.js';
-import { FactoryFunctions, QueryAskInput, SparqlClient } from '../helpers/types.js';
 
 export class AskQueryBuilderBase<D extends AnySparqlDialect = SparqlDialect>
   extends QueryBuilderBase<QueryAskInput, boolean, false, D>

@@ -1,5 +1,5 @@
-import { db, v, n } from '#test/index.js';
-import { triples, predicates, service, count, max, as, gt, desc } from '#src/index.js';
+import { as, count, desc, gt, max, predicates, service, triples } from '#src/index.js';
+import { db, n, v } from '#test/index.js';
 
 // For explanation, see:
 // https://www.wikidata.org/wiki/Wikidata:SPARQL_query_service/queries/examples#Composers_and_their_most-used_tonality

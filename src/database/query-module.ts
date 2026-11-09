@@ -10,8 +10,8 @@ import type {
   SparqlClient,
 } from '../helpers/types.js';
 import type { AnySparqlDialect, DialectAST, DialectPattern } from './dialect.js';
-import { QueryBuilderBase } from './query.js';
 import { ExecutableQuery } from './executable.js';
+import { QueryBuilderBase } from './query.js';
 
 /** Shared normalization with the same semantics as the standard builders. */
 export class QueryNormalizer<D extends AnySparqlDialect> extends QueryBuilderBase<
@@ -76,7 +76,7 @@ export abstract class ModuleQueryBuilder<
   Config,
   Ast,
   Result,
-  D extends AnySparqlDialect
+  D extends AnySparqlDialect,
 > extends ExecutableQuery<Result> {
   protected constructor(
     protected readonly config: Config,

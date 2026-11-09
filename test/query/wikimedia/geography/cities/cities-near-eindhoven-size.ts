@@ -1,5 +1,5 @@
-import { db, v, n } from '#test/index.js';
-import { triples, service, filter, subs, abs, lt, predicates } from '#src/index.js';
+import { abs, filter, lt, predicates, service, subs, triples } from '#src/index.js';
+import { db, n, v } from '#test/index.js';
 
 export default () =>
   db

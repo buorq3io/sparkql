@@ -1,7 +1,7 @@
-import {
-  ExpressionInput,
+import type {
   ExpressionAggregateDefaultInput,
   ExpressionAggregateOnWildcardInput,
+  ExpressionInput,
 } from '../helpers/types.js';
 import { transformArray, transformNumber } from '../structures/index.js';
 import { createAggregateExpression, createWildCardInput, distinct } from './utils.js';

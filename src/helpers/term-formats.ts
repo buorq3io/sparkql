@@ -59,11 +59,8 @@ export type TermFormats = {
   blank?: readonly Formatter<any, AST.TermBlank>[];
 };
 
-export type FormatInput<F extends TermFormats, K extends keyof TermFormats> = NonNullable<
-  F[K]
-> extends readonly Formatter<infer I, any>[]
-  ? I
-  : never;
+export type FormatInput<F extends TermFormats, K extends keyof TermFormats> =
+  NonNullable<F[K]> extends readonly Formatter<infer I, any>[] ? I : never;
 
 export const defaultTermFormats = {
   iri: Object.freeze([urlFormatter]),

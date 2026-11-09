@@ -1,6 +1,6 @@
-import type { ExtensionPattern } from '../database/dialect.js';
 import type * as AST from '@traqula/rules-sparql-1-1';
 import type * as RdfJs from 'rdf-data-factory';
+import type { ExtensionPattern } from '../database/dialect.js';
 
 export type TermIriFullInput = AST.TermIriFull;
 export type TermIriInput = AST.TermIri | URL;
@@ -9,7 +9,7 @@ export type TermBlankInput = AST.TermBlank | [];
 
 export type TermVariableInput<
   T extends QueryReturnType = DefaultQueryReturnType,
-  K extends Presence = Presence.required
+  K extends Presence = Presence.required,
 > = AST.TermVariable & {
   presence?: K;
   transform?: TermVariableTransform<T>;
@@ -18,7 +18,7 @@ export type TermVariableInput<
 
 export type TermVariableAndBinding<
   T extends QueryReturnType = QueryReturnType,
-  K extends Presence = Presence.required
+  K extends Presence = Presence.required,
 > = PatternBindInput<T, K> | TermVariableInput<T, K>;
 
 export type TermInput = TermIriInput | TermLiteralInput | TermBlankInput | TermVariableInput;
@@ -45,7 +45,7 @@ type Override<T, U> = Omit<T, keyof U> & U;
 export type TripleNestingInput<
   S extends SubjectInput = SubjectInput,
   P extends PredicateInput = PredicateInput,
-  O extends ObjectInput = ObjectInput
+  O extends ObjectInput = ObjectInput,
 > = Override<
   AST.TripleNesting,
   {
@@ -151,7 +151,7 @@ export type PatternFilterInput = Override<
 
 export type PatternBindInput<
   T extends QueryReturnType = QueryReturnType,
-  K extends Presence = Presence.required
+  K extends Presence = Presence.required,
 > = Override<
   AST.PatternBind,
   {
@@ -316,7 +316,7 @@ export type QueryInput =
   | QueryDescribeInput
   | QueryConstructInput;
 
-export type ExpressionInput<_T extends any = any> =
+export type ExpressionInput<_T = any> =
   | TermIriInput
   | TermLiteralInput
   | TermVariableInput<_T>
@@ -334,12 +334,12 @@ export type QueryReturnType = DefaultQueryReturnType | any;
 
 export type TermVariableTransform<
   T extends QueryReturnType = QueryReturnType,
-  K extends any[] = []
+  K extends any[] = [],
 > = (self: DefaultQueryReturnType, ...other: K) => T;
 
 export type TermVariableOptionalTransform<
   T extends QueryReturnType = QueryReturnType,
-  K extends any[] = []
+  K extends any[] = [],
 > = (self: DefaultQueryReturnType | undefined, ...other: K) => T | undefined;
 
 export type TransformExpression<T> = {

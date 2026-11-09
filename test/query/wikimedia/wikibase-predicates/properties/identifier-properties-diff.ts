@@ -1,20 +1,20 @@
-import { db, v, n } from '#test/index.js';
 import {
-  triples,
-  union,
-  group,
+  as,
+  asc,
+  bind,
   filter,
+  group,
   notExists,
   optional,
-  as,
+  predicates,
   replace,
   sample,
   service,
-  asc,
-  bind,
-  predicates,
+  triples,
+  union,
   uri,
 } from '#src/index.js';
+import { db, n, v } from '#test/index.js';
 
 export default () =>
   db

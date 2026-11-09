@@ -29,14 +29,27 @@ const arqPattern: AST.SparqlGeneratorRule<'generatePattern', ArqPattern> = {
     };
   },
 };
-type StandardRules = typeof sparql11GeneratorBuilder extends GeneratorBuilder<AST.SparqlGeneratorContext, any, infer Rules> ? Rules : never;
+type StandardRules =
+  typeof sparql11GeneratorBuilder extends GeneratorBuilder<
+    AST.SparqlGeneratorContext,
+    any,
+    infer Rules
+  >
+    ? Rules
+    : never;
 type ArqRules = Omit<StandardRules, 'generatePattern' | 'queryOrUpdate'> & {
   generatePattern: AST.SparqlGeneratorRule<'generatePattern', ArqPattern>;
   queryOrUpdate: AST.SparqlGeneratorRule<'queryOrUpdate', ArqQuery>;
 };
-type ArqGeneratorBuilder = GeneratorBuilder<AST.SparqlGeneratorContext, keyof ArqRules & string, ArqRules>;
+type ArqGeneratorBuilder = GeneratorBuilder<
+  AST.SparqlGeneratorContext,
+  keyof ArqRules & string,
+  ArqRules
+>;
 
-export const arqGeneratorBuilder: ArqGeneratorBuilder = GeneratorBuilder.create(sparql11GeneratorBuilder)
+export const arqGeneratorBuilder: ArqGeneratorBuilder = GeneratorBuilder.create(
+  sparql11GeneratorBuilder
+)
   .patchRule(arqPattern)
   .typePatch<{ queryOrUpdate: [ArqQuery] }>();
 export const arqGenerator: ReturnType<ArqGeneratorBuilder['build']> = arqGeneratorBuilder.build();

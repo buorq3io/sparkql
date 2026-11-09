@@ -1,31 +1,31 @@
-import { db, v, n } from '#test/index.js';
 import {
-  triples,
-  service,
-  optional,
-  seq,
-  zeroOrMore,
-  sample,
-  as,
-  bind,
-  filter,
-  gte,
-  str,
-  count,
-  substr,
-  strlen,
-  floor,
-  mul,
-  div,
-  concat,
-  ternary,
-  eq,
   add,
-  subs,
-  createFunctionCallExpression,
+  as,
   asc,
+  bind,
+  concat,
+  count,
+  createFunctionCallExpression,
+  div,
+  eq,
+  filter,
+  floor,
+  gte,
+  mul,
+  optional,
   predicates,
+  sample,
+  seq,
+  service,
+  str,
+  strlen,
+  subs,
+  substr,
+  ternary,
+  triples,
+  zeroOrMore,
 } from '#src/index.js';
+import { db, n, v } from '#test/index.js';
 
 export default () =>
   db
@@ -63,11 +63,14 @@ export default () =>
           db
             .select({ mun: v.mun, loc: as(sample(v.loc), v.loc) })
             .where(
-              triples(v.mun, predicates(
-                [seq(n.wdt.P31, zeroOrMore(n.wdt.P279)), n.wd.Q15284],
-                [n.wdt.P131, n.wd.Q6308],
-                [n.wdt.P625, v.loc],
-              ))
+              triples(
+                v.mun,
+                predicates(
+                  [seq(n.wdt.P31, zeroOrMore(n.wdt.P279)), n.wd.Q15284],
+                  [n.wdt.P131, n.wd.Q6308],
+                  [n.wdt.P625, v.loc]
+                )
+              )
             )
             .groupBy(v.mun)
             .$asSubQuery(),
@@ -75,11 +78,14 @@ export default () =>
             db
               .select({ mun2: as(v.mun, v.mun2), loc2: as(sample(v.loc), v.loc2) })
               .where(
-                triples(v.mun, predicates(
-                  [seq(n.wdt.P31, zeroOrMore(n.wdt.P279)), n.wd.Q15284],
-                  [n.wdt.P131, n.wd.Q6308],
-                  [n.wdt.P625, v.loc],
-                ))
+                triples(
+                  v.mun,
+                  predicates(
+                    [seq(n.wdt.P31, zeroOrMore(n.wdt.P279)), n.wd.Q15284],
+                    [n.wdt.P131, n.wd.Q6308],
+                    [n.wdt.P625, v.loc]
+                  )
+                )
               )
               .groupBy(v.mun)
               .$asSubQuery()
@@ -88,11 +94,14 @@ export default () =>
             db
               .select({ mun3: as(v.mun, v.mun3), loc3: as(sample(v.loc), v.loc3) })
               .where(
-                triples(v.mun, predicates(
-                  [seq(n.wdt.P31, zeroOrMore(n.wdt.P279)), n.wd.Q15284],
-                  [n.wdt.P131, n.wd.Q6308],
-                  [n.wdt.P625, v.loc],
-                ))
+                triples(
+                  v.mun,
+                  predicates(
+                    [seq(n.wdt.P31, zeroOrMore(n.wdt.P279)), n.wd.Q15284],
+                    [n.wdt.P131, n.wd.Q6308],
+                    [n.wdt.P625, v.loc]
+                  )
+                )
               )
               .groupBy(v.mun)
               .$asSubQuery()

@@ -1,4 +1,4 @@
-import { FactoryFunctions, Strictness, TermVariableInput } from "../helpers/types.js";
+import { type FactoryFunctions, Strictness, type TermVariableInput } from '../helpers/types.js';
 
 export type VariableManagerConfig<T extends string> = Exclude<T, '__'>;
 

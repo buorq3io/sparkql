@@ -1,6 +1,6 @@
-import { createOperationExpression } from './utils.js';
+import type { ExpressionInput, ExpressionOperationInput } from '../helpers/types.js';
 import { transformBoolean, transformNumber } from '../structures/index.js';
-import { ExpressionInput, ExpressionOperationInput } from '../helpers/types.js';
+import { createOperationExpression } from './utils.js';
 
 export function eq(...args: [ExpressionInput, ExpressionInput]): ExpressionOperationInput<boolean> {
   return createOperationExpression('=', args, transformBoolean);

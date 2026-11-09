@@ -1,25 +1,25 @@
-import { db, v, n } from '#test/index.js';
 import {
-  triples,
-  service,
-  optional,
-  seq,
-  zeroOrMore,
-  sample,
   as,
-  bind,
-  filter,
-  str,
-  createFunctionCallExpression,
-  coalesce,
-  ternary,
-  gte,
-  div,
-  concat,
   asc,
+  bind,
+  coalesce,
+  concat,
+  createFunctionCallExpression,
+  div,
+  filter,
+  gte,
   lte,
+  optional,
   predicates,
+  sample,
+  seq,
+  service,
+  str,
+  ternary,
+  triples,
+  zeroOrMore,
 } from '#src/index.js';
+import { db, n, v } from '#test/index.js';
 
 export default () =>
   db

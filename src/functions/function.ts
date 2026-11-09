@@ -1,4 +1,4 @@
-import {
+import type {
   ExpressionInput,
   ExpressionOperationInput,
   ExpressionPatternOperationInput,
@@ -10,14 +10,14 @@ import {
 } from '../helpers/types.js';
 
 import {
-  transformIri,
-  transformBlank,
-  transformString,
-  transformNumber,
-  transformBoolean,
-  transformLiteral,
-  transformDate,
   group,
+  transformBlank,
+  transformBoolean,
+  transformDate,
+  transformIri,
+  transformLiteral,
+  transformNumber,
+  transformString,
 } from '../structures/index.js';
 import { createOperationExpression, createPatternOperationExpression } from './utils.js';
 

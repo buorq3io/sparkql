@@ -1,19 +1,19 @@
-import { db, v, n } from '#test/index.js';
 import {
-  triples,
-  seq,
-  predicates,
-  service,
+  as,
+  asc,
+  avg,
+  count,
   filter,
   gt,
-  count,
-  avg,
+  predicates,
   round,
-  as,
+  seq,
+  service,
   subs,
+  triples,
   year,
-  asc,
 } from '#src/index.js';
+import { db, n, v } from '#test/index.js';
 
 const innerSubQuery = db
   .select({

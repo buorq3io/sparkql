@@ -1,13 +1,13 @@
-import { OrderingInput, ExpressionInput } from '../helpers/types.js';
+import type { ExpressionInput, OrderingInput } from '../helpers/types.js';
 
 export function asc(expression: ExpressionInput): OrderingInput {
   return {
     descending: false,
     expression: expression,
     loc: {
-      sourceLocationType:'autoGenerate'
-    }
-  }
+      sourceLocationType: 'autoGenerate',
+    },
+  };
 }
 
 export function desc(expression: ExpressionInput): OrderingInput {
@@ -15,7 +15,7 @@ export function desc(expression: ExpressionInput): OrderingInput {
     descending: true,
     expression: expression,
     loc: {
-      sourceLocationType:'autoGenerate'
-    }
-  }
+      sourceLocationType: 'autoGenerate',
+    },
+  };
 }

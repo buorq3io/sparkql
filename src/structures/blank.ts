@@ -1,12 +1,12 @@
-import { FactoryFunctions, TermBlankInput } from "../helpers/types.js";
+import type { FactoryFunctions, TermBlankInput } from '../helpers/types.js';
 
 export type BlankProxy = Record<string, TermBlankInput | (() => TermBlankInput)>;
 
 export type BlankManager<K extends string> = {
   __: () => TermBlankInput;
 } & { [P in `${K}${number}`]: undefined } & {
-    [key: string]: TermBlankInput;
-  };
+  [key: string]: TermBlankInput;
+};
 
 export function createBlankManager<K extends string>(
   factoryFunctions: FactoryFunctions
@@ -14,9 +14,7 @@ export function createBlankManager<K extends string>(
   return createBlankProxy(factoryFunctions) as BlankManager<K>;
 }
 
-export function createBlankProxy(
-  factoryFunctions: FactoryFunctions
-): BlankProxy {
+export function createBlankProxy(factoryFunctions: FactoryFunctions): BlankProxy {
   const cache: BlankProxy = { __: () => factoryFunctions.blank() };
   return new Proxy(
     {},

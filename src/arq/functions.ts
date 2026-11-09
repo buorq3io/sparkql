@@ -1,10 +1,10 @@
+import { createFunctionCallExpression, createOperationExpression } from '../functions/utils.js';
 import type {
   ExpressionFunctionCallInput,
   ExpressionInput,
   ExpressionOperationInput,
   TermLiteralOutput,
 } from '../helpers/types.js';
-import { createFunctionCallExpression, createOperationExpression } from '../functions/utils.js';
 import { transformNumber } from '../structures/expression.js';
 
 /** ARQ numeric modulus. Evaluation, including errors, is performed by the endpoint. */

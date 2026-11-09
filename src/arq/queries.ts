@@ -1,19 +1,19 @@
 import { GeneratorBuilder } from '@traqula/core';
 import * as AST from '@traqula/rules-sparql-1-1';
 import type { DataFactory } from 'rdf-data-factory';
-import type { QuadsInput, TermLiteralInput, TermVariableInput } from '../helpers/types.js';
-import { isObjectLike, termLiteral, termVariable } from '../helpers/utilities.js';
 import type { DialectAST, SparqlDialect } from '../database/dialect.js';
-import {
-  emptySelect,
-  requestQueryJson,
-  type QueryModule,
-  type QueryModuleContext,
-} from '../database/query-module.js';
 import {
   PatternModuleQueryBuilder,
   type PatternQueryConfig,
 } from '../database/pattern-query-module.js';
+import {
+  emptySelect,
+  type QueryModule,
+  type QueryModuleContext,
+  requestQueryJson,
+} from '../database/query-module.js';
+import type { QuadsInput, TermLiteralInput, TermVariableInput } from '../helpers/types.js';
+import { isObjectLike, termLiteral, termVariable } from '../helpers/utilities.js';
 import { arqGeneratorBuilder } from './generator.js';
 import type { ArqAST, ArqInput } from './types.js';
 
@@ -27,10 +27,10 @@ type VariableKeys<P> = {
 type JsonConstant<T> = T extends number | bigint
   ? number
   : T extends boolean
-  ? boolean
-  : T extends string | Date | RegExp
-  ? string
-  : JsonScalar;
+    ? boolean
+    : T extends string | Date | RegExp
+      ? string
+      : JsonScalar;
 /** Unbound variables are omitted by ARQ; JavaScript result transforms do not apply. */
 export type JsonResult<P extends JsonProjection> = {
   [K in Exclude<keyof P, VariableKeys<P>>]: JsonConstant<P[K]>;
@@ -139,6 +139,7 @@ function jsonModule<P extends JsonProjection>(
         if (!isObjectLike(row) || Array.isArray(row))
           throw new Error('Expected an ARQ JSON object.');
         for (const [key, term] of Object.entries(ast.projection)) {
+          // biome-ignore lint/suspicious/noPrototypeBuiltins: Object.hasOwn requires ES2022; this package targets ES2020.
           if (!Object.prototype.hasOwnProperty.call(row, key)) {
             if (term.subType !== 'variable') throw new Error(`Missing JSON constant: ${key}`);
             continue;
@@ -153,10 +154,10 @@ function jsonModule<P extends JsonProjection>(
               typeof input === 'bigint'
                 ? 'number'
                 : input instanceof Date || input instanceof RegExp
-                ? 'string'
-                : ['string', 'number', 'boolean'].includes(typeof input)
-                ? typeof input
-                : undefined;
+                  ? 'string'
+                  : ['string', 'number', 'boolean'].includes(typeof input)
+                    ? typeof input
+                    : undefined;
             if (expected && typeof value !== expected)
               throw new Error(`Invalid JSON constant: ${key}`);
           }

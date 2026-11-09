@@ -1,6 +1,6 @@
 import type * as AST from '@traqula/rules-sparql-1-1';
-import type { ExpressionInput, PatternInput } from '../helpers/types.js';
 import type { ExtensionPattern, WithDialectPatterns } from '../database/dialect.js';
+import type { ExpressionInput, PatternInput } from '../helpers/types.js';
 
 export type LetInput = ExtensionPattern & {
   subType: 'let';

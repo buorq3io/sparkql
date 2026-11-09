@@ -1,8 +1,8 @@
-import * as AST from '@traqula/rules-sparql-1-1';
+import type * as AST from '@traqula/rules-sparql-1-1';
 import { tripleNesting } from '../structures/expression.js';
-import { Formatter } from './generators.js';
-import {
-    FactoryFunctions,
+import type { Formatter } from './generators.js';
+import type {
+  FactoryFunctions,
   GraphNodeInput,
   TripleCollectionBlankNodePropertiesInputBase,
   TripleCollectionBlankNodePropertiesInputSyntax,
@@ -41,7 +41,7 @@ export function formatTripleCollectionListInputSyntax(
 
   const id = factory.blank();
   let prev: AST.TermBlank | AST.TermIriFull = id;
-  for (let [index, node] of nodes.entries()) {
+  for (const [index, node] of nodes.entries()) {
     tripleNestings.push(
       tripleNesting(prev, factory.iri('http://www.w3.org/1999/02/22-rdf-syntax-ns#first'), node)
     );
@@ -87,7 +87,7 @@ export function formatTripleCollectionBlankNodePropertiesInputSyntax(
 ): TripleCollectionBlankNodePropertiesInputBase {
   const source = factory.blank();
 
-  if (isObjectLike(value[0]) && value[0].subType == 'predicatePairCollection') {
+  if (isObjectLike(value[0]) && value[0].subType === 'predicatePairCollection') {
     const items = value[0].values.flatMap(v => {
       if (isObjectLike(v[1]) && v[1].subType === 'objectCollection') {
         return v[1].values.map(o => {

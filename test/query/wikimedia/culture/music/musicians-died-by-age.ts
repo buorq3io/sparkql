@@ -1,23 +1,23 @@
-import { db, v, n } from '#test/index.js';
 import {
-  triples,
-  filter,
   and,
-  gt,
-  lt,
-  bind,
-  year,
-  month,
-  day,
-  eq,
-  or,
-  subs,
-  seq,
-  countDistinct,
   as,
   asc,
+  bind,
+  countDistinct,
+  day,
+  eq,
+  filter,
+  gt,
+  lt,
+  month,
+  or,
+  seq,
+  subs,
   ternary,
+  triples,
+  year,
 } from '#src/index.js';
+import { db, n, v } from '#test/index.js';
 
 export default () =>
   db

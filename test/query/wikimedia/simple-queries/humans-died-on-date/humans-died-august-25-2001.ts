@@ -1,15 +1,15 @@
-import { db, v, n } from '#test/index.js';
 import {
-  triples,
-  predicates,
-  service,
-  values,
-  inv,
-  bind,
-  replace,
-  ucase,
   asc,
+  bind,
+  inv,
+  predicates,
+  replace,
+  service,
+  triples,
+  ucase,
+  values,
 } from '#src/index.js';
+import { db, n, v } from '#test/index.js';
 
 export default () =>
   db

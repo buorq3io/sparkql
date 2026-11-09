@@ -1,18 +1,18 @@
-import { db, v, n } from '#test/index.js';
 import {
-  triples,
-  service,
-  filter,
-  eq,
-  bind,
-  seq,
-  zeroOrMore,
-  str,
-  concat,
-  strdt,
   asc,
+  bind,
+  concat,
+  eq,
+  filter,
   predicates,
+  seq,
+  service,
+  str,
+  strdt,
+  triples,
+  zeroOrMore,
 } from '#src/index.js';
+import { db, n, v } from '#test/index.js';
 
 export default () =>
   db

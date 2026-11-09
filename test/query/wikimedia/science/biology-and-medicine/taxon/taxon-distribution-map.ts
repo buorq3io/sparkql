@@ -1,17 +1,17 @@
-import { db, v, n } from '#test/index.js';
 import {
-  triples,
   bind,
+  concat,
+  createFunctionCallExpression,
+  predicates,
+  sha1,
   str,
   strafter,
-  sha1,
-  concat,
   substr,
-  zeroOrMore,
+  triples,
   values,
-  predicates,
-  createFunctionCallExpression,
+  zeroOrMore,
 } from '#src/index.js';
+import { db, n, v } from '#test/index.js';
 
 export default () =>
   db

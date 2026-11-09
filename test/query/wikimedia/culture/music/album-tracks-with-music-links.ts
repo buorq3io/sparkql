@@ -1,15 +1,15 @@
-import { db, v, n } from '#test/index.js';
 import {
-  triples,
-  service,
-  optional,
-  concat,
-  uri,
   as,
   asc,
-  predicates,
+  concat,
   createFunctionCallExpression,
+  optional,
+  predicates,
+  service,
+  triples,
+  uri,
 } from '#src/index.js';
+import { db, n, v } from '#test/index.js';
 export default () =>
   db
     .select({

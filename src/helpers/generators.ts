@@ -109,11 +109,11 @@ export function defineUnionType<Ds extends readonly DefinedType<any, any>[]>(opt
   const { members, assertMessage, parseMessage } = options;
 
   const is = (value: unknown): value is Output => {
-    return members.some((member) => member.is(value));
+    return members.some(member => member.is(value));
   };
 
   const accepts = (value: unknown): value is Input => {
-    return members.some((member) => member.accepts(value));
+    return members.some(member => member.accepts(value));
   };
 
   const assert = (value: unknown): asserts value is Output => {
@@ -172,17 +172,15 @@ export function oneOf<Ps extends readonly Parser<any>[]>(
   };
 }
 
-export function anyOf<Gs extends readonly Guard<any>[]>(
-  ...guards: Gs
-): Guard<Guarded<Gs[number]>> {
+export function anyOf<Gs extends readonly Guard<any>[]>(...guards: Gs): Guard<Guarded<Gs[number]>> {
   return (value: unknown): value is Guarded<Gs[number]> => {
-    return guards.some((guard) => guard(value));
+    return guards.some(guard => guard(value));
   };
 }
 
 export function assertWith<T>(
   guard: Guard<T>,
-  message: string,
+  message: string
 ): (value: unknown) => asserts value is T {
   return (value: unknown): asserts value is T => {
     if (!guard(value)) {
@@ -193,7 +191,7 @@ export function assertWith<T>(
 
 export function expect<T>(
   parser: Parser<T>,
-  message: string,
+  message: string
 ): (value: unknown, factoryFunctions: FactoryFunctions) => T {
   return (value: unknown, factoryFunctions: FactoryFunctions): T => {
     const result = parser(value, factoryFunctions);

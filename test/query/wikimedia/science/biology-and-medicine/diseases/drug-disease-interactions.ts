@@ -1,15 +1,15 @@
-import { db, v, n } from '#test/index.js';
 import {
-  triples,
-  predicates,
-  filter,
-  eq,
-  lang,
   bind,
-  ternary,
+  eq,
+  filter,
+  lang,
   oneOrMore,
+  predicates,
+  ternary,
+  triples,
   values,
 } from '#src/index.js';
+import { db, n, v } from '#test/index.js';
 
 export default () =>
   db

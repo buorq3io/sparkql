@@ -1,22 +1,22 @@
-import type { AnySparqlDialect, DialectPattern, SparqlDialect } from './dialect.js';
-import { values, group } from '../structures/pattern.js';
-import { SparqlQueryBuilderBase } from './sparql-query.js';
-import {
+import type {
   ExpressionInput,
   OrderingInput,
-  PatternInput,
   PatternGroupInput,
+  PatternInput,
   QueryInput,
   SolutionModifierGroupBindInput,
   TermIriInput,
   ValuePatternColumnsInput,
 } from '../helpers/types.js';
 import { isObjectLike } from '../helpers/utilities.js';
+import { group, values } from '../structures/pattern.js';
+import type { AnySparqlDialect, DialectPattern, SparqlDialect } from './dialect.js';
+import { SparqlQueryBuilderBase } from './sparql-query.js';
 
 export type QueryBuilderBaseWithout<
   T extends QueryBuilderBase<any, any, any, any>,
   TDynamic extends boolean,
-  TExcluded extends keyof T & string
+  TExcluded extends keyof T & string,
 > = TDynamic extends true ? T : Omit<T, TExcluded>;
 
 export type RootQueryBuilderBaseWithout<T extends QueryBuilderBase<any, any, any, any>> =
@@ -30,7 +30,7 @@ export abstract class QueryBuilderBase<
   TConfig extends QueryInput,
   KReturn,
   TDynamic extends boolean = false,
-  D extends AnySparqlDialect = SparqlDialect
+  D extends AnySparqlDialect = SparqlDialect,
 > extends SparqlQueryBuilderBase<TConfig, KReturn, D> {
   private fromBase(
     fromType: 'default' | 'named',
@@ -47,7 +47,7 @@ export abstract class QueryBuilderBase<
           ({
             clauseType: fromType,
             value: i,
-          } as const)
+          }) as const
       ),
     ];
 
@@ -153,7 +153,7 @@ export abstract class QueryBuilderBase<
       this.config.solutionModifiers.limitOffset = {
         type: 'solutionModifier',
         subType: 'limitOffset',
-        // @ts-ignore A workaround of a bug in the underlying library
+        // @ts-expect-error A workaround of a bug in the underlying library
         limit: String(limit),
         offset: this.config.solutionModifiers.limitOffset?.offset,
         loc: {
@@ -179,7 +179,7 @@ export abstract class QueryBuilderBase<
         type: 'solutionModifier',
         subType: 'limitOffset',
         limit: this.config.solutionModifiers.limitOffset?.limit,
-        // @ts-ignore A workaround of a bug in the underlying library
+        // @ts-expect-error A workaround of a bug in the underlying library
         offset: String(offset),
         loc: {
           sourceLocationType: 'autoGenerate',

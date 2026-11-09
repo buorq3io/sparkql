@@ -1,12 +1,11 @@
-import { join } from 'path';
-import { diff } from 'json-diff-ts';
 import { readdirSync, readFileSync } from 'fs';
+import { diff } from 'json-diff-ts';
+import { join } from 'path';
 import { beforeEach, describe, expect, test } from 'vitest';
-
+import type { SparqlQueryBuilderBase } from '#src/database/sparql-query.js';
+import type { SparqlQueryInput } from '#src/helpers/types.js';
 import { canonicalizeQuery } from '#test/helpers.js';
-import { blankNodePrefix, db, parser, factory } from '#test/index.js';
-import { SparqlQueryInput } from '#src/helpers/types.js';
-import { SparqlQueryBuilderBase } from '#src/database/sparql-query.js';
+import { blankNodePrefix, db, factory, parser } from '#test/index.js';
 
 const TEST_PATH = 'test/query/';
 const SPARQL_PATH = 'test/sparql/';

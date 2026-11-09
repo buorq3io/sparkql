@@ -1,11 +1,4 @@
-import { ExecutableQuery } from './executable.js';
 import type * as AST from '@traqula/rules-sparql-1-1';
-import {
-  sparql11Dialect,
-  type AnySparqlDialect,
-  type DialectAST,
-  type SparqlDialect,
-} from './dialect.js';
 import type {
   BasicGraphPatternInput,
   ContextDefinitionInput,
@@ -62,33 +55,40 @@ import type {
 import {
   isObjectLike,
   isWildCardInputArray,
+  term,
   termBlank,
-  termGraph,
   termExpression,
+  termGraph,
   termIri,
   termValues,
   termVariable,
-  term,
-  tripleCollectionListInputBase,
   tripleCollectionBlankNodePropertiesInputBase,
+  tripleCollectionListInputBase,
 } from '../helpers/utilities.js';
+import {
+  type AnySparqlDialect,
+  type DialectAST,
+  type SparqlDialect,
+  sparql11Dialect,
+} from './dialect.js';
+import { ExecutableQuery } from './executable.js';
 
 type ASTConfig<T extends SparqlQueryInput> = T extends UpdateInput
   ? AST.Update
   : T extends QuerySelectInput
-  ? AST.QuerySelect
-  : T extends QueryConstructInput
-  ? AST.QueryConstruct
-  : T extends QueryDescribeInput
-  ? AST.QueryDescribe
-  : T extends QueryAskInput
-  ? AST.QueryAsk
-  : never;
+    ? AST.QuerySelect
+    : T extends QueryConstructInput
+      ? AST.QueryConstruct
+      : T extends QueryDescribeInput
+        ? AST.QueryDescribe
+        : T extends QueryAskInput
+          ? AST.QueryAsk
+          : never;
 
 export abstract class SparqlQueryBuilderBase<
   Config extends SparqlQueryInput,
   Return,
-  D extends AnySparqlDialect = SparqlDialect
+  D extends AnySparqlDialect = SparqlDialect,
 > extends ExecutableQuery<Return> {
   protected readonly config: Config;
   protected readonly dialect: AnySparqlDialect;

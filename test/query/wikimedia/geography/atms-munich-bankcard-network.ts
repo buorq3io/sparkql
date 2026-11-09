@@ -1,16 +1,16 @@
-import { db, v, n } from '#test/index.js';
 import {
-  triples,
-  service,
-  minus,
-  union,
-  group,
-  filter,
   bind,
   createFunctionCallExpression,
-  strlang,
+  filter,
+  group,
+  minus,
   predicates,
+  service,
+  strlang,
+  triples,
+  union,
 } from '#src/index.js';
+import { db, n, v } from '#test/index.js';
 
 export default () =>
   db

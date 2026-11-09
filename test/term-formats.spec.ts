@@ -1,7 +1,7 @@
-import { describe, expect, expectTypeOf, test } from 'vitest';
 import type * as AST from '@traqula/rules-sparql-1-1';
-import { SparqlDatabase, triples } from '#src/index.js';
+import { describe, expect, expectTypeOf, test } from 'vitest';
 import type { Formatter } from '#src/index.js';
+import { SparqlDatabase, triples } from '#src/index.js';
 
 class Money {
   constructor(readonly amount: number) {}
@@ -45,7 +45,12 @@ describe('database input formats', () => {
     const pattern = triples(subject, predicate, value);
     expect(db.ask().where(pattern).toSPARQL()).toContain('"42"');
     expect(db.insertData(pattern).toSPARQL()).toContain('https://example.com/alice');
-    expect(db.ask().where(triples(blank, predicate, value)).toSPARQL()).toContain('_:account');
+    expect(
+      db
+        .ask()
+        .where(triples(blank, predicate, value))
+        .toSPARQL()
+    ).toContain('_:account');
   });
 
   test('custom inputs and runtime behavior stay local to an instance', () => {

@@ -1,17 +1,17 @@
-import type { AnySparqlDialect, SparqlDialect } from './dialect.js';
-import {
-  Presence,
-  SparqlClient,
-  FactoryFunctions,
-  QuerySelectInput,
-  TermVariableTransform,
-  TermVariableAndBinding,
-  DefaultQueryReturnType,
-  TermVariableOptionalTransform,
-} from '../helpers/types.js';
-import { QueryBuilderBase } from './query.js';
-import { group } from '../structures/pattern.js';
 import { createWildCardInput } from '../functions/utils.js';
+import {
+  type DefaultQueryReturnType,
+  type FactoryFunctions,
+  Presence,
+  type QuerySelectInput,
+  type SparqlClient,
+  type TermVariableAndBinding,
+  type TermVariableOptionalTransform,
+  type TermVariableTransform,
+} from '../helpers/types.js';
+import { group } from '../structures/pattern.js';
+import type { AnySparqlDialect, SparqlDialect } from './dialect.js';
+import { QueryBuilderBase } from './query.js';
 
 export type SelectedVariables = Record<string, TermVariableAndBinding<any, Presence>>;
 
@@ -46,7 +46,7 @@ export type InferredSelectResult<T extends SelectedVariables> = {
 
 export class SelectQueryBuilderBase<
     T extends Record<string, any>,
-    D extends AnySparqlDialect = SparqlDialect
+    D extends AnySparqlDialect = SparqlDialect,
   >
   extends QueryBuilderBase<QuerySelectInput, T[], false, D>
   implements PromiseLike<T[]>
@@ -113,6 +113,7 @@ export class SelectQueryBuilderBase<
     }
 
     for (const key in variables) {
+      // biome-ignore lint/suspicious/noPrototypeBuiltins: Object.hasOwn requires ES2022; this package targets ES2020.
       if (Object.prototype.hasOwnProperty.call(variables, key)) {
         const value = variables[key as keyof T] as TermVariableAndBinding<any, Presence>;
         if (value.type === 'term') {
@@ -149,11 +150,14 @@ export class SelectQueryBuilderBase<
 
     const items: T[] = [];
     for await (const binding of stream) {
-      const temp = Object.entries(this.lookup).reduce((acc, curr) => {
-        const func = this.lookupTransform[curr[0]] ?? ((self: any) => self);
-        acc[curr[1]] = func(binding[curr[0]]);
-        return acc;
-      }, {} as Record<string, any>);
+      const temp = Object.entries(this.lookup).reduce(
+        (acc, curr) => {
+          const func = this.lookupTransform[curr[0]] ?? ((self: any) => self);
+          acc[curr[1]] = func(binding[curr[0]]);
+          return acc;
+        },
+        {} as Record<string, any>
+      );
       items.push(temp as T);
     }
     return items;

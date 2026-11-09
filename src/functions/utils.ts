@@ -1,4 +1,4 @@
-import {
+import type {
   ExpressionAggregateDefaultInput,
   ExpressionAggregateInput,
   ExpressionAggregateOnWildcardInput,
@@ -109,7 +109,7 @@ export function createAggregateExpression<T extends QueryReturnType>(
 
 export function distinct<
   T extends QueryReturnType,
-  K extends ExpressionFunctionCallInput<T> | ExpressionAggregateInput<T>
+  K extends ExpressionFunctionCallInput<T> | ExpressionAggregateInput<T>,
 >(expression: K): K {
   return { ...expression, distinct: true };
 }

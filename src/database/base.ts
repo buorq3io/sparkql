@@ -1,45 +1,44 @@
-import {
-  emptySelect,
-  QueryNormalizer,
-  type WithQueryMethods,
-  type QueryModuleContext,
-} from './query-module.js';
-import { sparql11Dialect, type AnySparqlDialect, type SparqlDialect } from './dialect.js';
 import * as AST from '@traqula/rules-sparql-1-1';
-
+import type { Formatter } from '../helpers/generators.js';
+import type { FormatInput, TermFormats } from '../helpers/term-formats.js';
+import {
+  type FactoryFunctions,
+  type PatternBgpInput,
+  type QuadsInput,
+  type QueryInput,
+  Strictness,
+  type TermBlankInput,
+  type TermIriInput,
+  type TermLiteralInput,
+  type TermVariableInput,
+} from '../helpers/types.js';
+import { termBlank, termIri, termLiteral } from '../helpers/utilities.js';
 import {
   createBlankManager,
   createIriManager,
   createVariableManager,
-  IriManagerConfig,
+  type IriManagerConfig,
   transformIntoPrefixObject,
-  VariableManagerConfig,
+  type VariableManagerConfig,
 } from '../structures/index.js';
 import { AskQueryBuilderBase } from './ask.js';
-import { UpdateQueryBuilderBase } from './update.js';
-import {
-  SelectedVariables,
-  InferredSelectResult,
-  SelectQueryBuilderBase,
-  TypedSelectedVariables,
-} from './select.js';
-import { DescribeQueryBuilderBase } from './describe.js';
 import { ConstructQueryBuilderBase } from './construct.js';
+import { DescribeQueryBuilderBase } from './describe.js';
+import { type AnySparqlDialect, type SparqlDialect, sparql11Dialect } from './dialect.js';
+import type { RootQueryBuilderBaseWithout } from './query.js';
 import {
-  FactoryFunctions,
-  PatternBgpInput,
-  QuadsInput,
-  QueryInput,
-  Strictness,
-  TermIriInput,
-  TermLiteralInput,
-  TermBlankInput,
-  TermVariableInput,
-} from '../helpers/types.js';
-import { termIri, termLiteral, termBlank } from '../helpers/utilities.js';
-import { FormatInput, TermFormats } from '../helpers/term-formats.js';
-import { Formatter } from '../helpers/generators.js';
-import { RootQueryBuilderBaseWithout } from './query.js';
+  emptySelect,
+  type QueryModuleContext,
+  QueryNormalizer,
+  type WithQueryMethods,
+} from './query-module.js';
+import {
+  type InferredSelectResult,
+  type SelectedVariables,
+  SelectQueryBuilderBase,
+  type TypedSelectedVariables,
+} from './select.js';
+import { UpdateQueryBuilderBase } from './update.js';
 
 interface PrivateSparqlDatabaseOptions {
   context: QueryInput['context'];
@@ -52,7 +51,7 @@ interface PrivateSparqlDatabaseOptions {
 export interface SparqlDatabaseOptions<
   T extends IriManagerConfig,
   F extends TermFormats = {},
-  D extends AnySparqlDialect = SparqlDialect
+  D extends AnySparqlDialect = SparqlDialect,
 > {
   dialect?: D;
   formats?: F & TermFormats;
@@ -64,7 +63,7 @@ export class SparqlDatabase<
   T extends IriManagerConfig,
   R extends string = 'g_',
   F extends TermFormats = {},
-  D extends AnySparqlDialect = SparqlDialect
+  D extends AnySparqlDialect = SparqlDialect,
 > {
   private readonly dialect: D;
   private readonly formats: TermFormats;
@@ -119,7 +118,7 @@ export class SparqlDatabase<
     T extends IriManagerConfig,
     K extends string = 'g_',
     F extends TermFormats = {},
-    D extends AnySparqlDialect = SparqlDialect
+    D extends AnySparqlDialect = SparqlDialect,
   >(options?: SparqlDatabaseOptions<T, F, D>): WithQueryMethods<SparqlDatabase<T, K, F, D>, D> {
     return new SparqlDatabase<T, K, F, D>({
       dialect: options?.dialect,
@@ -167,7 +166,7 @@ export class SparqlDatabase<
               },
               key: k,
               value: this.iri(v),
-            } as const)
+            }) as const
         ),
       ],
     }) as WithQueryMethods<SparqlDatabase<T, R, F, D>, D>;
@@ -501,7 +500,7 @@ export class SparqlDatabase<
   createManagers<
     T extends string,
     K extends IriManagerConfig,
-    P extends Strictness = Strictness.loose
+    P extends Strictness = Strictness.loose,
   >(variableKeys: readonly VariableManagerConfig<T>[], nodeConfig: K, mode?: P) {
     const blanks = createBlankManager<R>(this.factoryFunctions);
     const nodes = createIriManager(nodeConfig, mode ?? Strictness.loose, this.factoryFunctions);

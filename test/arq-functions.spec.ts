@@ -1,22 +1,22 @@
-import { describe, expect, expectTypeOf, test } from 'vitest';
 import { Parser } from '@traqula/parser-sparql-1-1';
 import { DataFactory } from 'rdf-data-factory';
+import { describe, expect, expectTypeOf, test } from 'vitest';
 import {
-  SparqlDatabase,
-  mod,
-  idiv,
-  collation,
-  as,
   add,
+  as,
+  collation,
+  desc,
+  type ExpressionFunctionCallInput,
+  type ExpressionOperationInput,
   eq,
   filter,
-  desc,
-  letBinding,
+  idiv,
   lateral,
-  values,
-  type ExpressionOperationInput,
-  type ExpressionFunctionCallInput,
+  letBinding,
+  mod,
+  SparqlDatabase,
   type TermLiteralOutput,
+  values,
 } from '../src/arq/index.js';
 
 const db = SparqlDatabase.create();

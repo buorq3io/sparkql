@@ -30,8 +30,5 @@
     /* Environment Options */
     "target": "es2020"
   },
-  "include": [
-    "src/**/*.ts",
-    "test/**/*.ts",
-  ]
+  "include": ["src/**/*.ts", "test/**/*.ts"]
 }

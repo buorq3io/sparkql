@@ -1,22 +1,22 @@
-import { db, v, n } from '#test/index.js';
 import {
-  triples,
+  alt,
+  asc,
+  bind,
+  bound,
+  desc,
+  filter,
+  floor,
+  gte,
+  now,
+  optional,
   predicates,
   service,
-  optional,
-  filter,
-  bind,
-  alt,
-  zeroOrMore,
-  gte,
-  ternary,
-  bound,
-  now,
-  floor,
   subs,
-  desc,
-  asc,
+  ternary,
+  triples,
+  zeroOrMore,
 } from '#src/index.js';
+import { db, n, v } from '#test/index.js';
 
 export default () =>
   db

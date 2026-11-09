@@ -1,7 +1,7 @@
-import { prefixes } from '#test/prefixes.js';
-import { SparqlDatabase } from '#src/index.js';
-import * as AST from '@traqula/rules-sparql-1-1';
 import * as PARSE from '@traqula/parser-sparql-1-1';
+import * as AST from '@traqula/rules-sparql-1-1';
+import { SparqlDatabase } from '#src/index.js';
+import { prefixes } from '#test/prefixes.js';
 
 export const blankNodePrefix = 'g_';
 export const db = SparqlDatabase.create({
@@ -16,9 +16,9 @@ factory.termBlank = (label: string | undefined, loc: unknown) => {
   const result = termBlankOriginal(label, loc as any);
   // todo: raise error if the testing queries include blank term with reserved prefixes
   if (label && (label.startsWith('g_') || label.startsWith('e_'))) {
-    result.label = result.label.substring(2)
+    result.label = result.label.substring(2);
   }
-  return result
+  return result;
 };
 
 export const parser = new PARSE.Parser({

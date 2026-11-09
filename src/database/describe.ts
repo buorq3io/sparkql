@@ -1,12 +1,12 @@
-import type { AnySparqlDialect, SparqlDialect } from './dialect.js';
-import {
+import type {
+  FactoryFunctions,
   QuadsInput,
+  QueryDescribeInput,
   SparqlClient,
   TermIriInput,
-  FactoryFunctions,
   TermVariableInput,
-  QueryDescribeInput,
 } from '../helpers/types.js';
+import type { AnySparqlDialect, SparqlDialect } from './dialect.js';
 import { QueryBuilderBase } from './query.js';
 
 export class DescribeQueryBuilderBase<D extends AnySparqlDialect = SparqlDialect>

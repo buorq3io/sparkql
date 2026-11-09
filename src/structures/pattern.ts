@@ -1,5 +1,5 @@
 import type { ExtensionPattern } from '../database/dialect.js';
-import {
+import type {
   BasicGraphPatternInput,
   ExpressionInput,
   PatternBgpInput,
@@ -13,10 +13,10 @@ import {
   PatternServiceInput,
   PatternUnionInput,
   PatternValuesInput,
+  Presence,
   TermIriInput,
   TermVariableInput,
   ValuePatternColumnsInput,
-  Presence,
 } from '../helpers/types.js';
 
 export function bgp(...triples: BasicGraphPatternInput): PatternBgpInput {

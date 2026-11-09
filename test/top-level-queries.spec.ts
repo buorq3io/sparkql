@@ -2,25 +2,25 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { afterAll, beforeAll, describe, expect, expectTypeOf, test } from 'vitest';
 import {
   SparqlDatabase as ArqDatabase,
+  type ConstructedQuad,
+  type JsonScalar,
+  lateral,
+  letBinding,
   quads,
   triples,
-  letBinding,
-  lateral,
-  type JsonScalar,
-  type ConstructedQuad,
 } from '../src/arq/index.js';
-import { SparqlDatabase as StardogDatabase, type PathResult } from '../src/stardog/index.js';
 import {
-  SparqlDatabase,
   defineDialect,
-  sparql11Dialect,
+  group,
   ModuleQueryBuilder,
+  oneOrMore,
   type QueryModule,
   type QueryModuleContext,
+  SparqlDatabase,
   seq,
-  oneOrMore,
-  group,
+  sparql11Dialect,
 } from '../src/index.js';
+import { type PathResult, SparqlDatabase as StardogDatabase } from '../src/stardog/index.js';
 
 let endpoint: string;
 const requests: { query: string; accept: string | undefined }[] = [];
@@ -194,9 +194,14 @@ describe('top-level query modules', () => {
     expect(db.paths().start(start).end(end).via(db.variable('p')).getSPARQL().via.kind).toBe(
       'variable'
     );
-    expect(db.paths().start(start).end(end).via(triples(start, p, end)).getSPARQL().via.kind).toBe(
-      'pattern'
-    );
+    expect(
+      db
+        .paths()
+        .start(start)
+        .end(end)
+        .via(triples(start, p, end))
+        .getSPARQL().via.kind
+    ).toBe('pattern');
     expect(() => db.paths().limit(-1)).toThrow('non-negative');
     expect(() => db.paths().maxLength(Infinity)).toThrow('non-negative');
     // @ts-expect-error Incomplete queries cannot be generated.

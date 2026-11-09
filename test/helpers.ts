@@ -1,4 +1,4 @@
-import * as AST from '@traqula/rules-sparql-1-1';
+import type * as AST from '@traqula/rules-sparql-1-1';
 
 export function canonicalizeQuery(query: AST.SparqlQuery, blankNodePrefix: string): any {
   const newQuery = JSON.parse(JSON.stringify(query));
@@ -45,11 +45,7 @@ export function canonicalizeQuery(query: AST.SparqlQuery, blankNodePrefix: strin
     }
 
     // Expand prefixed named nodes to full IRIs
-    if (
-      n.type === 'term' &&
-      n.subType === 'namedNode' &&
-      typeof n.prefix === 'string'
-    ) {
+    if (n.type === 'term' && n.subType === 'namedNode' && typeof n.prefix === 'string') {
       const prefixIri = prefixMap.get(n.prefix);
       if (prefixIri !== undefined) {
         n.value = prefixIri + n.value;

@@ -1,5 +1,5 @@
-import { db, v, n } from '#test/index.js';
-import { triples, oneOrMore, filter, regex } from '#src/index.js';
+import { filter, oneOrMore, regex, triples } from '#src/index.js';
+import { db, n, v } from '#test/index.js';
 
 export default () =>
   db

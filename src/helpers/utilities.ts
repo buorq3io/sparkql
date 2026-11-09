@@ -1,15 +1,15 @@
-import { defaultTermFormats } from './term-formats.js';
-import * as AST from '@traqula/rules-sparql-1-1';
-import { defineType, defineUnionType } from './generators.js';
-import {
-  WildcardInput,
-  TripleCollectionListInputBase,
-  TripleCollectionBlankNodePropertiesInputBase,
-} from './types.js';
+import type * as AST from '@traqula/rules-sparql-1-1';
 import {
   createTripleCollectionBlankNodePropertiesInputSyntaxFormatter,
   createTripleCollectionListInputSyntaxFormatter,
 } from './formatters.js';
+import { defineType, defineUnionType } from './generators.js';
+import { defaultTermFormats } from './term-formats.js';
+import type {
+  TripleCollectionBlankNodePropertiesInputBase,
+  TripleCollectionListInputBase,
+  WildcardInput,
+} from './types.js';
 
 export function isObjectLike(value: unknown): value is Record<PropertyKey, unknown> {
   return typeof value === 'object' && value !== null;

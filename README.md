@@ -43,7 +43,10 @@ import { mod, idiv, collation, desc } from 'sparkql/arq';
 
 const remainder = mod(value, 3);
 const quotient = idiv(value, 3);
-const sorted = db.select().where().orderBy(desc(collation('fi', value)));
+const sorted = db
+  .select()
+  .where()
+  .orderBy(desc(collation('fi', value)));
 ```
 
 See the [dialect guide](docs/dialects.md) for configuration and custom extensions.
@@ -64,18 +67,18 @@ import { SparqlDatabase, triple } from 'sparkql';
 const prefixes = {
   foaf: {
     uri: 'http://xmlns.com/foaf/0.1/',
-      fields: []
+    fields: [],
   },
   rdf: {
     uri: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
-    fields: []
-  }
-}
+    fields: [],
+  },
+};
 
 // Create a database instance with prefixes
 const db = SparqlDatabase.create({
   prefixes: prefixes,
-  endpointUrl: 'https://your-sparql-endpoint.com/sparql'
+  endpointUrl: 'https://your-sparql-endpoint.com/sparql',
 });
 
 // Create variable and IRI managers
@@ -85,12 +88,9 @@ const [v, n] = db.create([], prefixes);
 const results = await db
   .select({
     name: v.name,
-    age: v.age
+    age: v.age,
   })
-  .where(
-    triple(v.person, n.foaf.name, v.name),
-    triple(v.person, n.foaf.age, v.age)
-  )
+  .where(triple(v.person, n.foaf.name, v.name), triple(v.person, n.foaf.age, v.age))
   .limit(10);
 
 console.log(results); // Type-safe results
@@ -106,12 +106,9 @@ import { triple, asc } from 'sparkql';
 const query = db
   .select({
     name: v.name,
-    email: v.email
+    email: v.email,
   })
-  .where(
-    triple(v.person, n.foaf.name, v.name),
-    triple(v.person, n.foaf.mbox, v.email)
-  )
+  .where(triple(v.person, n.foaf.name, v.name), triple(v.person, n.foaf.mbox, v.email))
   .orderBy(asc(v.name))
   .limit(100);
 
@@ -127,11 +124,7 @@ const results = await query;
 ```typescript
 import { triple } from 'sparkql';
 
-const exists = await db
-  .ask()
-  .where(
-    triple(v.s, n.rdf.type, n.foaf.Person)
-  );
+const exists = await db.ask().where(triple(v.s, n.rdf.type, n.foaf.Person));
 
 console.log(exists); // boolean
 ```
@@ -142,12 +135,8 @@ console.log(exists); // boolean
 import { triple } from 'sparkql';
 
 const triples = await db
-  .construct(
-    triple(v.person, n.rdf.type, n.foaf.Person)
-  )
-  .where(
-    triple(v.person, n.foaf.name, v.name)
-  );
+  .construct(triple(v.person, n.rdf.type, n.foaf.Person))
+  .where(triple(v.person, n.foaf.name, v.name));
 ```
 
 ### UPDATE Queries
@@ -155,11 +144,7 @@ const triples = await db
 ```typescript
 import { triple } from 'sparkql';
 
-await db
-  .update()
-  .insert(
-    triple(db.iri('ex:person1'), n.foaf.name, db.literal('John Doe'))
-  );
+await db.update().insert(triple(db.iri('ex:person1'), n.foaf.name, db.literal('John Doe')));
 ```
 
 ## Per-instance input types
@@ -177,10 +162,12 @@ class Money {
 
 const db = SparqlDatabase.create({
   formats: {
-    literal: [{
-      test: (value): value is Money => value instanceof Money,
-      format: (value: Money, factory) => factory.literal(String(value.amount)),
-    }],
+    literal: [
+      {
+        test: (value): value is Money => value instanceof Money,
+        format: (value: Money, factory) => factory.literal(String(value.amount)),
+      },
+    ],
   },
 });
 
@@ -188,7 +175,7 @@ const balance = db.literal(new Money(42));
 const pattern = triples(
   db.iri('https://example.com/alice'),
   db.iri('https://example.com/balance'),
-  balance,
+  balance
 );
 const query = db.ask().where(pattern);
 
@@ -224,19 +211,11 @@ import { triple, as, count, avg } from 'sparkql';
 const stats = await db
   .select({
     count: v.count,
-    avgAge: v.avgAge
+    avgAge: v.avgAge,
   })
-  .where(
-    ...triples(v.person, predicates(
-        [n.rdf.type, n.foaf.Person],
-        [n.foaf.age, v.age]
-    ))
-  )
+  .where(...triples(v.person, predicates([n.rdf.type, n.foaf.Person], [n.foaf.age, v.age])))
   .groupBy()
-  .having(
-    as(count(v.person), v.count),
-    as(avg(v.age), v.avgAge)
-  );
+  .having(as(count(v.person), v.count), as(avg(v.age), v.avgAge));
 ```
 
 ### Optional Patterns
@@ -247,14 +226,9 @@ import { triple, optional } from 'sparkql';
 const results = await db
   .select({
     name: v.name,
-    email: v.email
+    email: v.email,
   })
-  .where(
-    triple(v.person, n.foaf.name, v.name),
-    optional(
-      triple(v.person, n.foaf.mbox, v.email)
-    )
-  );
+  .where(triple(v.person, n.foaf.name, v.name), optional(triple(v.person, n.foaf.mbox, v.email)));
 ```
 
 ### Filters
@@ -265,7 +239,7 @@ import { triple, filter, gt } from 'sparkql';
 const filtered = await db
   .select({
     name: v.name,
-    age: v.age
+    age: v.age,
   })
   .where(
     triple(v.person, n.foaf.name, v.name),
@@ -281,3 +255,8 @@ _Will be updated as the library matures..._
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a pull request.
+
+## Development
+
+Run `pnpm check` to check lint and formatting with Biome. Use `pnpm check:fix` to apply safe fixes,
+`pnpm lint` to run only the linter, or `pnpm format` to format supported files.
