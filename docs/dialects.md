@@ -140,8 +140,12 @@ state through fluent query builders. Sparkql follows that separation, retaining
 its existing fluent builder restrictions and result inference rather than adding
 an HKT hierarchy for a fixed set of builder classes.
 
-- [Drizzle query builder](https://github.com/drizzle-team/drizzle-orm/blob/main/drizzle-orm/src/pg-core/query-builders/query-builder.ts)
-- [Drizzle select types](https://github.com/drizzle-team/drizzle-orm/blob/main/drizzle-orm/src/pg-core/query-builders/select.types.ts)
+These references use the pinned beta commit `5d71fc408add08bd207f4753f4554578ec9e0640`.
+The query builder passes its dialect to SELECT builders; `PgSelectKind` and
+`PgSelectWithout` carry selection state and omit previously used fluent methods.
+
+- [Drizzle query builder](https://github.com/drizzle-team/drizzle-orm/blob/5d71fc408add08bd207f4753f4554578ec9e0640/drizzle-orm/src/pg-core/query-builders/query-builder.ts#L109)
+- [Drizzle select types](https://github.com/drizzle-team/drizzle-orm/blob/5d71fc408add08bd207f4753f4554578ec9e0640/drizzle-orm/src/pg-core/query-builders/select.types.ts#L245)
 - [Traqula generator extension guide](https://comunica.github.io/traqula/documents/modifications_create-generator.html)
 
 - [ARQ LET assignment](https://jena.apache.org/documentation/query/assignment.html)
