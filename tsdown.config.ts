@@ -5,6 +5,7 @@ export default defineConfig({
     index: 'src/index.ts',
     arq: 'src/arq/index.ts',
     stardog: 'src/stardog/index.ts',
+    neptune: 'src/neptune/index.ts',
   },
   format: ['cjs', 'esm'],
   unbundle: true,

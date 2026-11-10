@@ -8,8 +8,8 @@ in a generated API reference (TypeDoc → `starlight-typedoc`) without changes.
 
 ## 1. What gets a comment
 
-Document every symbol a user can import from `sparkql`, `sparkql/arq` or
-`sparkql/stardog`, plus every public member of an exported class or interface.
+Document every symbol a user can import from `sparkql`, `sparkql/arq`,
+`sparkql/stardog` or `sparkql/neptune`, plus every public member of an exported class or interface.
 
 | Kind                                                                        | Required parts                                                                                |
 | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |

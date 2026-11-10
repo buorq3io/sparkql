@@ -19,7 +19,7 @@ pnpm add sparkql
 - **Pluggable execution** - Built-in HTTP client, or [bring your own client or session](#connecting)
 - **Path Expressions** - Property path support
 - **Functions** - Comprehensive SPARQL function support
-- **Custom dialects** - [Type-safe graph pattern extensions](docs/dialects.md), plus built-in LET/LATERAL, MOD/IDIV, and collation support through `sparkql/arq`
+- **Custom dialects** - [Type-safe graph pattern extensions](docs/dialects.md), plus built-in LET/LATERAL, MOD/IDIV, and collation support through `sparkql/arq`, and Neptune query hints through `sparkql/neptune`
 - **Raw SPARQL** - A [`sparql` template tag](docs/raw-sparql.md) for one-off fragments, with interpolated values escaped as RDF terms
 
 ## ARQ
@@ -51,6 +51,18 @@ const sorted = db
   .select()
   .where()
   .orderBy(desc(collation('fi', value)));
+```
+
+## Amazon Neptune
+
+Use the Neptune entry point to add typed [query hints](docs/dialects.md#amazon-neptune-query-hints):
+
+```typescript
+import { SparqlDatabase, queryHint, triples } from 'sparkql/neptune';
+
+const db = SparqlDatabase.create();
+const [s, p, o] = [db.variable('s'), db.variable('p'), db.variable('o')];
+const query = db.select().where(queryHint('Query', 'joinOrder', 'Ordered'), triples(s, p, o));
 ```
 
 See the [dialect guide](docs/dialects.md) for configuration and custom extensions.
@@ -274,7 +286,8 @@ the rejected node. A build-only database rejects with a plain `SparkqlError`.
 `instanceof` works for these classes, and for `HttpSparqlSession`, even when
 the error comes from a different copy of sparkql (the CommonJS and ESM builds,
 or two versions in one dependency tree). The `is(value, Class)` helper does the
-same check. Every entry point (`sparkql`, `sparkql/arq`, `sparkql/stardog`)
+same check. Every entry point (`sparkql`, `sparkql/arq`, `sparkql/stardog`,
+`sparkql/neptune`)
 exports them.
 
 ## Building Queries

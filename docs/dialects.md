@@ -78,6 +78,57 @@ returns an RDF literal if projected, with no JavaScript sorting or conversion.
 Locale handling and fallback follow the endpoint's JVM, as described in
 [Jena's collation documentation](https://jena.apache.org/documentation/query/collation.html).
 
+## Amazon Neptune query hints
+
+Import `sparkql/neptune` to add [Neptune SPARQL query hints](https://docs.aws.amazon.com/neptune/latest/userguide/sparql-query-hints.html).
+Its `SparqlDatabase.create()` configures `neptuneDialect`, which is also exported
+for the standard factory, and the entry point re-exports the standard helpers.
+
+`queryHint(scope, name, value)` adds the triple `hint:<scope> hint:<name> <value>`
+to the enclosing group. It is written with full IRIs, so no prefix declaration is
+needed. TypeScript checks each hint's scopes and values, and the helper checks
+them again at runtime for JavaScript callers:
+
+| Hint                                               | Scopes           | Value                                                       |
+| -------------------------------------------------- | ---------------- | ----------------------------------------------------------- |
+| `joinOrder`                                        | `Query`, `Group` | `'Ordered'`                                                 |
+| `evaluationStrategy`                               | `SubQuery`       | `'BottomUp'`                                                |
+| `queryTimeout`                                     | `Query`          | milliseconds, a non-negative integer                        |
+| `rangeSafe`                                        | `Query`, `Prior` | boolean                                                     |
+| `queryId`                                          | `Query`          | non-empty string                                            |
+| `useDFE`                                           | `Query`          | boolean                                                     |
+| `describeMode`                                     | `Query`          | `'ForwardOneStep'`, `'SymmetricOneStep'`, `'CBD'`, `'SCBD'` |
+| `describeIterationLimit`, `describeStatementLimit` | `Query`          | non-negative integer; `0` means no limit                    |
+
+Neptune reads a hint where it appears. Put `Query` hints in the main `WHERE`
+clause, `Group` hints in the group they affect, `SubQuery` hints inside the
+subquery, and `Prior` hints right after the pattern they apply to:
+
+```ts
+import { SparqlDatabase, queryHint, triples } from 'sparkql/neptune';
+
+const db = SparqlDatabase.create();
+const [s, p, o] = [db.variable('s'), db.variable('p'), db.variable('o')];
+
+const subquery = db
+  .select({ s })
+  .where(queryHint('SubQuery', 'evaluationStrategy', 'BottomUp'), triples(s, p, o))
+  .as();
+const query = db
+  .select()
+  .where(
+    queryHint('Query', 'queryTimeout', 5000),
+    subquery,
+    triples(s, p, o),
+    queryHint('Prior', 'rangeSafe', true)
+  );
+```
+
+Other databases reject hints in TypeScript and when the query is generated. On
+another store a hint would be an ordinary triple pattern that matches nothing,
+which would silently empty the results. Hints normalize to standard triple
+patterns, so the dialect reuses the standard generator.
+
 ## The dialect contract
 
 `defineDialect<Input, Output>()` couples three responsibilities:

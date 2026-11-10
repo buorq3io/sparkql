@@ -20,6 +20,7 @@ const options: ts.CompilerOptions = {
     sparkql: ['./src/index.ts'],
     'sparkql/arq': ['./src/arq/index.ts'],
     'sparkql/stardog': ['./src/stardog/index.ts'],
+    'sparkql/neptune': ['./src/neptune/index.ts'],
   },
 };
 

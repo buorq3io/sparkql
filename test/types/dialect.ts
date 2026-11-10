@@ -7,6 +7,11 @@ import {
   letBinding,
 } from '../../src/arq/index.js';
 import { group, optional, SparqlDatabase, union } from '../../src/index.js';
+import {
+  SparqlDatabase as NeptuneDatabase,
+  neptuneDialect,
+  queryHint,
+} from '../../src/neptune/index.js';
 import { SparqlDatabase as StardogDatabase } from '../../src/stardog/index.js';
 
 const standard = SparqlDatabase.create();
@@ -29,6 +34,25 @@ standard.select().where(letValue);
 standard.ask().where(optional(group(lateral(letValue))));
 // @ts-expect-error The Stardog dialect does not include ARQ patterns.
 stardog.select().where(letValue);
+// Neptune databases accept query hints at any depth; other databases reject them.
+const neptune = NeptuneDatabase.create();
+const hint = queryHint('Query', 'useDFE', true);
+neptune.select().where(hint, optional(group(queryHint('Group', 'joinOrder', 'Ordered'))));
+neptune.describe(variable).where(queryHint('Query', 'describeMode', 'CBD'));
+SparqlDatabase.create({ dialect: neptuneDialect }).ask().where(hint);
+// @ts-expect-error Query hints are a Neptune extension.
+standard.select().where(hint);
+// @ts-expect-error The ARQ dialect does not include Neptune hints.
+arq.select().where(optional(hint));
+// @ts-expect-error The Neptune dialect does not include ARQ patterns.
+neptune.select().where(letValue);
+// @ts-expect-error useDFE is a Query hint only.
+queryHint('Group', 'useDFE', true);
+// @ts-expect-error joinOrder only accepts "Ordered".
+queryHint('Query', 'joinOrder', 'Unordered');
+// @ts-expect-error queryTimeout takes milliseconds as a number.
+queryHint('Query', 'queryTimeout', '100');
+
 // @ts-expect-error `$dynamic()` lifts clause restrictions, not dialect checks.
 standard.select().$dynamic().where(letValue);
 
@@ -37,3 +61,7 @@ const arqQuery = arq.select({ value: variable }).where(letValue);
 const standardQuery = standard.select({ value: variable }).where();
 expectTypeOf<Awaited<typeof arqQuery>>().toEqualTypeOf<Awaited<typeof standardQuery>>();
 expectTypeOf(standard.select().getSPARQL()).toEqualTypeOf<AST.QuerySelect>();
+
+// Neptune hints change neither results nor the generated AST's standard shape.
+const neptuneQuery = neptune.select({ value: variable }).where(hint);
+expectTypeOf<Awaited<typeof neptuneQuery>>().toEqualTypeOf<Awaited<typeof standardQuery>>();
