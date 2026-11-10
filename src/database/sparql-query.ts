@@ -66,8 +66,15 @@ import {
   tripleCollectionListInputBase,
 } from '../helpers/utilities.js';
 import type { AnySparqlDialect, DialectAST, SparqlDialect } from './dialect.js';
-import { SparkqlNormalizationError } from './errors.js';
+import { SparkqlError, SparkqlNormalizationError } from './errors.js';
 import { ExecutableQuery } from './executable.js';
+import {
+  containsPlaceholder,
+  type PlaceholderCarrier,
+  PreparedQuery,
+  type placeholderTypes,
+  prepareTemplate,
+} from './prepared.js';
 import type { QueryModuleContext } from './query-module.js';
 
 type ASTConfig<T extends SparqlQueryInput> = T extends UpdateInput
@@ -103,16 +110,42 @@ export abstract class SparqlQueryBuilderBase<
     this.dialect = context.dialect;
   }
 
+  declare readonly [placeholderTypes]?: {};
+
+  protected preparationInput(): Config {
+    return this.config;
+  }
+
+  public prepare<T extends PlaceholderCarrier<object>>(
+    this: T
+  ): PreparedQuery<Return, NonNullable<T[typeof placeholderTypes]>>;
+  public prepare(): PreparedQuery<Return, object> {
+    const fill = prepareTemplate(this.preparationInput(), this.builderContext, config =>
+      this.dialect.generator.generate(this.normalizeConfig(config))
+    );
+    return new PreparedQuery(fill, sparql => this.executeSPARQL(sparql));
+  }
+
   public getSPARQL(): DialectAST<D, ASTConfig<Config>> {
-    if (this.config.type === 'query') {
-      return this.buildQuery(this.config) as unknown as DialectAST<D, ASTConfig<Config>>;
+    const config = this.preparationInput();
+    if (containsPlaceholder(config)) {
+      throw new SparkqlError({
+        message: 'Queries with placeholders must be prepared before execution.',
+      });
+    }
+    return this.normalizeConfig(config);
+  }
+
+  private normalizeConfig(config: Config): DialectAST<D, ASTConfig<Config>> {
+    if (config.type === 'query') {
+      return this.buildQuery(config) as unknown as DialectAST<D, ASTConfig<Config>>;
     }
 
-    if (this.config.type === 'update') {
-      return this.buildUpdate(this.config) as unknown as DialectAST<D, ASTConfig<Config>>;
+    if (config.type === 'update') {
+      return this.buildUpdate(config) as unknown as DialectAST<D, ASTConfig<Config>>;
     }
 
-    throw new SparkqlNormalizationError('query', this.config);
+    throw new SparkqlNormalizationError('query', config);
   }
 
   protected override get operationName(): string {
@@ -282,7 +315,9 @@ export abstract class SparqlQueryBuilderBase<
             },
           }
         : {}),
-      ...(modifiers.limitOffset ? { limitOffset: modifiers.limitOffset } : {}),
+      ...(modifiers.limitOffset
+        ? { limitOffset: modifiers.limitOffset as AST.SolutionModifierLimitOffset }
+        : {}),
     };
   }
 

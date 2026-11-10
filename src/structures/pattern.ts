@@ -1,5 +1,10 @@
 import type { ExtensionPattern } from '../database/dialect.js';
 import type {
+  MergePlaceholders,
+  PlaceholderCarrier,
+  PlaceholderValues,
+} from '../database/prepared.js';
+import type {
   BasicGraphPatternInput,
   ExpressionInput,
   PatternBgpInput,
@@ -19,6 +24,9 @@ import type {
   ValuePatternColumnsInput,
 } from '../helpers/types.js';
 
+export function bgp<const T extends BasicGraphPatternInput>(
+  ...triples: T
+): PatternBgpInput & PlaceholderCarrier<MergePlaceholders<T[number]>>;
 export function bgp(...triples: BasicGraphPatternInput): PatternBgpInput {
   return {
     type: 'pattern',
@@ -29,6 +37,15 @@ export function bgp(...triples: BasicGraphPatternInput): PatternBgpInput {
     triples: triples,
   };
 }
+
+export function optional<const Inputs extends PatternInput<any>[]>(
+  ...patterns: Inputs
+): Omit<PatternOptionalInput<never>, 'patterns'> & { patterns: Inputs } & PlaceholderCarrier<
+    MergePlaceholders<Inputs[number]>
+  >;
+export function optional<P extends ExtensionPattern = never>(
+  ...patterns: PatternInput<P>[]
+): PatternOptionalInput<P>;
 
 export function optional<P extends ExtensionPattern = never>(
   ...patterns: PatternInput<P>[]
@@ -43,6 +60,15 @@ export function optional<P extends ExtensionPattern = never>(
   };
 }
 
+export function union<const Inputs extends PatternGroupInput<any>[]>(
+  ...patterns: Inputs
+): Omit<PatternUnionInput<never>, 'patterns'> & { patterns: Inputs } & PlaceholderCarrier<
+    MergePlaceholders<Inputs[number]>
+  >;
+export function union<P extends ExtensionPattern = never>(
+  ...patterns: PatternGroupInput<P>[]
+): PatternUnionInput<P>;
+
 export function union<P extends ExtensionPattern = never>(
   ...patterns: PatternGroupInput<P>[]
 ): PatternUnionInput<P> {
@@ -55,6 +81,15 @@ export function union<P extends ExtensionPattern = never>(
     },
   };
 }
+
+export function group<const Inputs extends PatternInput<any>[]>(
+  ...patterns: Inputs
+): Omit<PatternGroupInput<never>, 'patterns'> & { patterns: Inputs } & PlaceholderCarrier<
+    MergePlaceholders<Inputs[number]>
+  >;
+export function group<P extends ExtensionPattern = never>(
+  ...patterns: PatternInput<P>[]
+): PatternGroupInput<P>;
 
 export function group<P extends ExtensionPattern = never>(
   ...patterns: PatternInput<P>[]
@@ -83,6 +118,15 @@ export function graph<P extends ExtensionPattern = never>(
     },
   };
 }
+
+export function minus<const Inputs extends PatternInput<any>[]>(
+  ...patterns: Inputs
+): Omit<PatternMinusInput<never>, 'patterns'> & { patterns: Inputs } & PlaceholderCarrier<
+    MergePlaceholders<Inputs[number]>
+  >;
+export function minus<P extends ExtensionPattern = never>(
+  ...patterns: PatternInput<P>[]
+): PatternMinusInput<P>;
 
 export function minus<P extends ExtensionPattern = never>(
   ...patterns: PatternInput<P>[]
@@ -128,6 +172,9 @@ export function serviceSilent<P extends ExtensionPattern = never>(
   return serviceBase(name, true, ...patterns);
 }
 
+export function filter<E extends ExpressionInput>(
+  expression: E
+): PatternFilterInput & PlaceholderCarrier<PlaceholderValues<E>>;
 export function filter(expression: ExpressionInput): PatternFilterInput {
   return {
     type: 'pattern',

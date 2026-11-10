@@ -16,6 +16,7 @@ import type {
   UpdateOperationLoadInput,
 } from '../helpers/types.js';
 import type { AnySparqlDialect, SparqlDialect } from './dialect.js';
+import type { MergePlaceholders, PlaceholderCarrier, placeholderTypes } from './prepared.js';
 import type { QueryModuleContext } from './query-module.js';
 import type { SparqlSession } from './session.js';
 import { SparqlQueryBuilderBase } from './sparql-query.js';
@@ -41,6 +42,12 @@ export class UpdateQueryBuilderBase<
     this.context = [...context.context];
   }
 
+  insertData<Self extends PlaceholderCarrier<object>, Q extends QuadsInput[]>(
+    this: Self,
+    ...quads: Q
+  ): this &
+    PlaceholderCarrier<NonNullable<Self[typeof placeholderTypes]> & MergePlaceholders<Q[number]>>;
+
   insertData(...quads: QuadsInput[]) {
     this.config.updates = [
       ...this.config.updates,
@@ -60,6 +67,12 @@ export class UpdateQueryBuilderBase<
     return this;
   }
 
+  deleteData<Self extends PlaceholderCarrier<object>, Q extends QuadsInput[]>(
+    this: Self,
+    ...quads: Q
+  ): this &
+    PlaceholderCarrier<NonNullable<Self[typeof placeholderTypes]> & MergePlaceholders<Q[number]>>;
+
   deleteData(...quads: QuadsInput[]) {
     this.config.updates = [
       ...this.config.updates,
@@ -78,6 +91,12 @@ export class UpdateQueryBuilderBase<
 
     return this;
   }
+
+  deleteWhere<Self extends PlaceholderCarrier<object>, Q extends QuadsInput[]>(
+    this: Self,
+    ...quads: Q
+  ): this &
+    PlaceholderCarrier<NonNullable<Self[typeof placeholderTypes]> & MergePlaceholders<Q[number]>>;
 
   deleteWhere(...quads: QuadsInput[]) {
     this.config.updates = [

@@ -32,6 +32,7 @@ import {
   type SparqlHttpClient,
 } from './http-session.js';
 import { DefaultLogger, type Logger } from './logger.js';
+import type { MergePlaceholders, PlaceholderCarrier } from './prepared.js';
 import type { RootQueryBuilderBaseWithout } from './query.js';
 import {
   emptySelect,
@@ -165,6 +166,7 @@ export class SparqlDatabase<
     const moduleContext: QueryModuleContext<D> = {
       context: this.initialContext,
       factory: this.factoryFunctions,
+      formats: this.formats,
       dialect: this.dialect,
       session: this.$session,
       queryInErrors: this.queryInErrors,
@@ -332,29 +334,33 @@ export class SparqlDatabase<
     return new DescribeQueryBuilderBase<D>(this.moduleContext, variables);
   }
 
-  construct(
-    ...templates: PatternBgpInput[]
-  ): RootQueryBuilderBaseWithout<ConstructQueryBuilderBase<D>> {
-    return new ConstructQueryBuilderBase<D>(this.moduleContext, templates);
+  construct<Q extends PatternBgpInput[]>(
+    ...templates: Q
+  ): RootQueryBuilderBaseWithout<ConstructQueryBuilderBase<D>> &
+    PlaceholderCarrier<MergePlaceholders<Q[number]>> {
+    return new ConstructQueryBuilderBase<D>(
+      this.moduleContext,
+      templates
+    ) as ConstructQueryBuilderBase<D> & PlaceholderCarrier<MergePlaceholders<Q[number]>>;
   }
 
-  insertData(...quads: QuadsInput[]) {
+  insertData<Q extends QuadsInput[]>(...quads: Q) {
     return this.update().insertData(...quads);
   }
 
-  deleteData(...quads: QuadsInput[]) {
+  deleteData<Q extends QuadsInput[]>(...quads: Q) {
     return this.update().deleteData(...quads);
   }
 
-  deleteWhere(...quads: QuadsInput[]) {
+  deleteWhere<Q extends QuadsInput[]>(...quads: Q) {
     return this.update().deleteWhere(...quads);
   }
 
-  insert(...quads: QuadsInput[]) {
+  insert<Q extends QuadsInput[]>(...quads: Q) {
     return this.update().insert(...quads);
   }
 
-  delete(...quads: QuadsInput[]) {
+  delete<Q extends QuadsInput[]>(...quads: Q) {
     return this.update().delete(...quads);
   }
 

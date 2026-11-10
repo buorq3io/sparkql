@@ -1,3 +1,4 @@
+import type { MergePlaceholders, PlaceholderCarrier } from '../database/prepared.js';
 import {
   type DefaultQueryReturnType,
   type ExpressionInput,
@@ -27,58 +28,51 @@ import { bgp, bind } from './pattern.js';
 
 const autoLoc = { sourceLocationType: 'autoGenerate' as const };
 
-export function tripleNesting(
-  subject: SubjectInput,
-  predicate: PredicateInput,
-  object: ObjectInput
-): TripleNestingInput {
+export function tripleNesting<
+  S extends SubjectInput,
+  P extends PredicateInput,
+  O extends ObjectInput,
+>(
+  subject: S,
+  predicate: P,
+  object: O
+): TripleNestingInput<S, P, O> & PlaceholderCarrier<MergePlaceholders<S | P | O>> {
   return {
     type: 'triple',
     loc: autoLoc,
     subject: subject,
     predicate: predicate,
     object: object,
-  };
+  } as TripleNestingInput<S, P, O> & PlaceholderCarrier<MergePlaceholders<S | P | O>>;
 }
 
-export function objects(...obj: ObjectInput[]): ObjectColletion {
+export function objects<const O extends ObjectInput[]>(
+  ...obj: O
+): ObjectColletion & PlaceholderCarrier<MergePlaceholders<O[number]>> {
   return {
     type: 'syntacticShortcut',
     subType: 'objectCollection',
     values: obj,
-  };
+  } as ObjectColletion & PlaceholderCarrier<MergePlaceholders<O[number]>>;
 }
 
-export function predicates(
-  ...obj: [PredicateInput, ObjectInput | ObjectColletion][]
-): PredicatePairCollection {
+export function predicates<const P extends [PredicateInput, ObjectInput | ObjectColletion][]>(
+  ...obj: P
+): PredicatePairCollection & PlaceholderCarrier<MergePlaceholders<P[number][number]>> {
   return {
     type: 'syntacticShortcut',
     subType: 'predicatePairCollection',
     values: obj,
-  };
+  } as PredicatePairCollection & PlaceholderCarrier<MergePlaceholders<P[number][number]>>;
 }
 
-export function triples(subject: TripleCollectionListInput): PatternBgpInput;
-
-export function triples(subject: TripleCollectionBlankNodePropertiesInput): PatternBgpInput;
-
-export function triples(
-  subject: SubjectInput,
-  predicates: PredicatePairCollection
-): PatternBgpInput;
-
-export function triples(
-  subject: SubjectInput,
-  predicate: PredicateInput,
-  objects: ObjectColletion
-): PatternBgpInput;
-
-export function triples(
-  subject: SubjectInput,
-  predicate: PredicateInput,
-  objects: ObjectInput
-): PatternBgpInput;
+export function triples<
+  const Args extends
+    | [TripleCollectionListInput]
+    | [TripleCollectionBlankNodePropertiesInput]
+    | [SubjectInput, PredicatePairCollection]
+    | [SubjectInput, PredicateInput, ObjectColletion | ObjectInput],
+>(...args: Args): PatternBgpInput & PlaceholderCarrier<MergePlaceholders<Args[number]>>;
 
 export function triples(
   subject: SubjectInput,

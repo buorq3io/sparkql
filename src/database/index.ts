@@ -6,5 +6,6 @@ export * from './http-session.js';
 export type { Logger, LogWriter, QueryLogMeta } from './logger.js';
 export { ConsoleLogWriter, DefaultLogger, NoopLogger } from './logger.js';
 export * from './pattern-query-module.js';
+export { Placeholder, PreparedQuery, sparql } from './prepared.js';
 export * from './query-module.js';
 export * from './session.js';
