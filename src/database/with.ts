@@ -7,6 +7,7 @@ import type {
 } from '../helpers/types.js';
 import type { AnySparqlDialect, DialectPattern, SparqlDialect } from './dialect.js';
 import type { MergePlaceholders, PlaceholderCarrier, placeholderTypes } from './prepared.js';
+import type { DynamicQuery } from './query.js';
 import type { QueryModuleContext } from './query-module.js';
 import { SparqlQueryBuilderBase } from './sparql-query.js';
 import type { UpdateQueryBuilderBase } from './update.js';
@@ -16,7 +17,7 @@ export type WithBuilderBaseWithout<
   T extends WithQueryBuilderBase<any, any>,
   TDynamic extends boolean,
   TExcluded extends keyof T & string,
-> = TDynamic extends true ? T : Omit<T, TExcluded>;
+> = TDynamic extends true ? T : [T] extends [DynamicQuery] ? T : Omit<T, TExcluded>;
 
 /** The update request a WITH/INSERT/DELETE operation is appended to. */
 export interface WithParent<D extends AnySparqlDialect = SparqlDialect> {
@@ -304,21 +305,21 @@ export class WithQueryBuilderBase<
   }
 
   /**
-   * Lifts clause restrictions on the returned builder.
+   * Lifts clause-order restrictions for the rest of the chain.
    *
-   * Repeated `insert`, `delete`, `using` and `where` calls append their arguments. Only the
-   * builder returned here is unrestricted: a method chained onto it narrows the type again,
-   * so keep the result in a variable and call methods on it, as below.
+   * Helpers can add clauses in any order and more than once. Repeated `insert`, `delete`,
+   * `using`, `usingNamed` and `where` calls append their arguments.
    *
    * @example
    * Assemble the templates in several calls, e.g. from configuration.
    *
    * ```ts
    * const people = db.iri('http://example.org/graphs/people');
-   * const update = db.with(people).$dynamic();
-   * update.insert(triples(v.person, n.schema.name, v.name));
-   * update.insert(triples(v.person, n.schema.email, v.mbox));
-   * update.where(triples(v.person, n.foaf.name, v.name), triples(v.person, n.foaf.mbox, v.mbox));
+   * db.with(people)
+   *   .$dynamic()
+   *   .insert(triples(v.person, n.schema.name, v.name))
+   *   .insert(triples(v.person, n.schema.email, v.mbox))
+   *   .where(triples(v.person, n.foaf.name, v.name), triples(v.person, n.foaf.mbox, v.mbox));
    * ```
    *
    * ```sparql
@@ -334,11 +335,10 @@ export class WithQueryBuilderBase<
    */
   $dynamic<Self extends PlaceholderCarrier<object>>(
     this: Self
-  ): WithBuilderBaseWithout<this, true, never> &
-    PlaceholderCarrier<NonNullable<Self[typeof placeholderTypes]>>;
+  ): this & DynamicQuery & PlaceholderCarrier<NonNullable<Self[typeof placeholderTypes]>>;
 
-  $dynamic(): WithBuilderBaseWithout<this, true, any> {
-    return this;
+  $dynamic(): this & DynamicQuery {
+    return this as this & DynamicQuery;
   }
 
   /**
