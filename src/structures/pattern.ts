@@ -1,4 +1,5 @@
 import type { ExtensionPattern } from '../database/dialect.js';
+import { SparkqlError } from '../database/errors.js';
 import type {
   MergePlaceholders,
   PlaceholderCarrier,
@@ -558,10 +559,11 @@ export function bind<T, K extends Presence>(
  * Adds inline `VALUES` bindings.
  *
  * Object keys name variables and arrays supply their column values. Values at the same
- * index form a row; `undefined` becomes `UNDEF`. The first column's length sets the number
- * of rows: extra values in longer columns are dropped.
+ * index form a row; `undefined` becomes `UNDEF`. Every column must have the same length,
+ * one entry per row; use `undefined` to leave a value unbound.
  *
  * @param values - Variable names mapped to arrays of values.
+ * @throws {@link SparkqlError} When the columns do not all have the same length.
  *
  * @example
  * Supply Ada and Grace as inline names.
@@ -580,6 +582,13 @@ export function bind<T, K extends Presence>(
  * ```
  */
 export function values(values: ValuePatternColumnsInput): PatternValuesInput {
+  const columns = Object.entries(values);
+  if (new Set(columns.map(([, column]) => column.length)).size > 1) {
+    const lengths = columns.map(([name, column]) => `${name}: ${column.length}`).join(', ');
+    throw new SparkqlError({
+      message: `VALUES columns must all have the same length (${lengths}).`,
+    });
+  }
   return {
     type: 'pattern',
     subType: 'values',

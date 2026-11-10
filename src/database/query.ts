@@ -462,9 +462,11 @@ export abstract class QueryBuilderBase<
    * Adds a trailing `VALUES` clause.
    *
    * After this call `values`, `limit`, `offset`, `orderBy`, `having`, `groupBy`,
-   * `where`, `from` and `fromNamed` are unavailable.
+   * `where`, `from` and `fromNamed` are unavailable. Every column must have the same length;
+   * `undefined` becomes `UNDEF`.
    *
    * @param columns - Variables and their column values.
+   * @throws {@link SparkqlError} When the columns do not all have the same length.
    *
    * @example
    * Restrict the results to the name Ada.

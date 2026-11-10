@@ -354,9 +354,11 @@ export abstract class PatternModuleQueryBuilder<
   /**
    * Adds a trailing `VALUES` clause that restricts the solutions to the given bindings.
    *
-   * Must come last: after it, no other clause method is available on the chain.
+   * Must come last: after it, no other clause method is available on the chain. Every column
+   * must have the same length; `undefined` becomes `UNDEF`.
    *
    * @param columns - Values for each variable, keyed by variable name.
+   * @throws {@link SparkqlError} When the columns do not all have the same length.
    *
    * @example
    * Return the ages of Ada and Grace only.
