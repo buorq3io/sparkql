@@ -38,6 +38,12 @@ expectTypeOf<Row['number']>().toEqualTypeOf<number>();
 expectTypeOf<Row['date']>().toEqualTypeOf<Date | undefined>();
 expectTypeOf<Row['total']>().toEqualTypeOf<number>();
 
+// A variable from `db.variable()` selects like one from a manager.
+const direct = db.select({ term: db.variable('term'), number: castNumber(db.variable('n')) });
+expectTypeOf<Awaited<typeof direct>>().toEqualTypeOf<
+  { term: DefaultQueryReturnType; number: number }[]
+>();
+
 // The result type survives the fluent chain.
 const chained = db
   .selectDistinct({ name: castString(v.name) })

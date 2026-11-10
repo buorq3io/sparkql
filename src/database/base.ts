@@ -538,7 +538,8 @@ export class SparqlDatabase<
     return new UpdateQueryBuilderBase<D>(this.moduleContext);
   }
 
-  variable(value: string): AST.TermVariable {
+  /** A variable term; selected bare, it yields RDF/JS terms like a manager's `v.name`. */
+  variable(value: string): TermVariableInput {
     return this.factory.termVariable(value, { sourceLocationType: 'autoGenerate' });
   }
 
