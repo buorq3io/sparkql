@@ -17,6 +17,7 @@ import { QueryBuilderBase } from './query.js';
 import type { QueryModuleContext } from './query-module.js';
 import type { SparqlSession } from './session.js';
 
+/** Variables and bindings selected by a query. */
 export type SelectedVariables = Record<string, TermVariableAndBinding<any, Presence>>;
 
 type RequiredKeys<T> = {
@@ -27,6 +28,7 @@ type OptionalKeys<T> = keyof {
   [Key in keyof T as Omit<T, Key> extends T ? Key : never]: T[Key];
 };
 
+/** Selection compatible with a result row type. */
 export type TypedSelectedVariables<T extends Record<string, any>> = {
   [K in RequiredKeys<T>]-?: undefined extends T[K]
     ?
@@ -39,9 +41,12 @@ export type TypedSelectedVariables<T extends Record<string, any>> = {
     | TermVariableAndBinding<T[K], Presence>;
 };
 
+/** @internal Extracts the value type of a selected variable. */
 export type ExtractDataType<V> = V extends TermVariableAndBinding<infer T, any> ? T : never;
+/** @internal Extracts the presence of a selected variable. */
 export type ExtractPresenceType<V> = V extends TermVariableAndBinding<any, infer P> ? P : never;
 
+/** Result row inferred from selected variables, including optional values. */
 export type InferredSelectResult<T extends SelectedVariables> = {
   [K in keyof T]: ExtractPresenceType<T[K]> extends Presence.optional
     ? ExtractDataType<T[K]> | undefined
@@ -56,8 +61,15 @@ export type SubqueryFields<T extends Record<string, any>> = {
   >;
 };
 
+/** Group pattern exposing the fields projected by a subquery. */
 export type TypedSubquery<T extends Record<string, any>> = PatternGroupInput & SubqueryFields<T>;
 
+/**
+ * Builds an executable `SELECT` query.
+ *
+ * Each await or execution sends a new request. Variables wrapped in `maybe(...)` have type
+ * `T | undefined` in the result; `optional(...)` patterns alone do not change the type.
+ */
 export class SelectQueryBuilderBase<
     T extends Record<string, any>,
     D extends AnySparqlDialect = SparqlDialect,
@@ -162,9 +174,32 @@ export class SelectQueryBuilderBase<
   }
 
   /**
-   * Exposes projected variables on a group containing this SELECT.
-   * SPARQL variable names remain global: equal names join; use distinct names
-   * when independent bindings are intended. Pattern member names are reserved.
+   * Wraps this `SELECT` as a subquery group and exposes its projected variables on it.
+   *
+   * Each result key becomes a property holding the projected variable, so an outer query can
+   * select `sub.name`. SPARQL variable names remain global: equal names join; use distinct
+   * names when independent bindings are intended.
+   *
+   * @throws {@link SparkqlError} When a result key collides with a member of the group
+   * pattern (such as `type` or `patterns`) or is `then`.
+   *
+   * @example
+   * Select from a subquery.
+   *
+   * ```ts
+   * const sub = db.select({ name: v.name }).where(triples(v.person, n.foaf.name, v.name)).as();
+   * db.select({ name: sub.name }).where(sub);
+   * ```
+   *
+   * ```sparql
+   * SELECT ?name WHERE {
+   *   {
+   *     SELECT ?name WHERE {
+   *       ?person foaf:name ?name .
+   *     }
+   *   }
+   * }
+   * ```
    */
   as<Self extends PlaceholderCarrier<object>>(
     this: Self
@@ -179,13 +214,29 @@ export class SelectQueryBuilderBase<
     return Object.assign(pattern, this.getSelectedFields());
   }
 
-  /** Variable references only: projected BIND expressions are not repeated. */
+  /**
+   * Returns the projected variables, keyed by result field.
+   *
+   * Each value is a copy of the variable term. A projected `BIND` such as
+   * `as(strlen(v.name), v.length)` is returned as its target variable, not its expression.
+   *
+   * @example
+   * Read the projected fields of a query.
+   *
+   * ```ts
+   * const fields = db
+   *   .select({ name: v.name })
+   *   .where(triples(v.person, n.foaf.name, v.name))
+   *   .getSelectedFields(); // { name: TermVariableInput }
+   * ```
+   */
   getSelectedFields(): SubqueryFields<T> {
     return Object.fromEntries(
       Object.entries(this.selectedFields).map(([key, value]) => [key, { ...value }])
     ) as SubqueryFields<T>;
   }
 
+  /** @internal Wraps the query as a group pattern. */
   $asSubQuery() {
     return group(this.config);
   }

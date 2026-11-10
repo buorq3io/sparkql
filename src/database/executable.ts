@@ -12,6 +12,7 @@ const MISSING_SESSION_MESSAGE =
 export interface ExecutionContext {
   /** Transport for execution. Absent on build-only databases. */
   readonly session?: SparqlSession;
+  /** Logger used for session requests, when enabled. */
   readonly logger?: Logger;
   /** Dialect query factory name, used in log metadata. */
   readonly operationName?: string;
@@ -34,7 +35,24 @@ export abstract class ExecutableQuery<Result> implements PromiseLike<Result> {
     this.queryInErrors = context.queryInErrors ?? false;
   }
 
-  /** Appends one sanitized SPARQL comment line before the query. */
+  /**
+   * Appends a sanitized SPARQL comment line before the query.
+   *
+   * @param input - Text or key-value metadata to encode.
+   *
+   * @example
+   * Attach a source label to an ASK query.
+   *
+   * ```ts
+   * db.ask().comment({ source: 'people' });
+   * ```
+   *
+   * ```sparql
+   * #source='people'
+   * ASK WHERE {
+   * }
+   * ```
+   */
   public comment(input: CommentInput): this {
     const text = encodeComment(input);
     if (text) this.commentLines.push(text);
@@ -55,7 +73,36 @@ export abstract class ExecutableQuery<Result> implements PromiseLike<Result> {
     return this.moduleName;
   }
 
+  /**
+   * Returns the query's AST without executing it; use `toSPARQL()` for the text.
+   *
+   * @example
+   * Inspect a builder's AST without sending a request.
+   *
+   * ```ts
+   * const ast = db
+   *   .select({ name: v.name })
+   *   .where(triples(v.person, n.foaf.name, v.name))
+   *   .getSPARQL();
+   * ```
+   */
   public abstract getSPARQL(): unknown;
+  /**
+   * Returns the generated SPARQL without executing it.
+   *
+   * @example
+   * Inspect a builder without sending a request.
+   *
+   * ```ts
+   * db.select({ name: v.name }).where(triples(v.person, n.foaf.name, v.name)).toSPARQL();
+   * ```
+   *
+   * ```sparql
+   * SELECT ?name WHERE {
+   *   ?person foaf:name ?name .
+   * }
+   * ```
+   */
   public abstract toSPARQL(): string;
   /** Runs the generated `sparql` through `session` and decodes the result. */
   protected abstract makeQuery(session: SparqlSession, sparql: string): Promise<Result>;
@@ -68,6 +115,19 @@ export abstract class ExecutableQuery<Result> implements PromiseLike<Result> {
    * generating the SPARQL throws (e.g. `SparkqlNormalizationError`), and with a
    * `SparkqlQueryError` for any failure after that: in the session or while
    * decoding the result.
+   *
+   * @example
+   * Execute an ASK query through the session.
+   *
+   * ```ts
+   * const query = db.ask();
+   * const result = await query.execute(); // true or false
+   * ```
+   *
+   * ```sparql
+   * ASK WHERE {
+   * }
+   * ```
    */
   public async execute(): Promise<Result> {
     if (!this.session) throw new SparkqlError({ message: MISSING_SESSION_MESSAGE });
@@ -93,6 +153,26 @@ export abstract class ExecutableQuery<Result> implements PromiseLike<Result> {
     }
   }
 
+  /**
+   * Executes the query and chains callbacks to its result.
+   *
+   * Every call and every await sends a new request; results are not cached.
+   *
+   * @param onfulfilled - Callback for a successful result.
+   * @param onrejected - Callback for a rejection.
+   *
+   * @example
+   * Handle the boolean result of an ASK query.
+   *
+   * ```ts
+   * const result = await db.ask().then(value => value); // true or false
+   * ```
+   *
+   * ```sparql
+   * ASK WHERE {
+   * }
+   * ```
+   */
   // biome-ignore lint/suspicious/noThenProperty: Queries intentionally implement PromiseLike for await.
   public then<TFulfilled = Result, TRejected = never>(
     onfulfilled?: ((value: Result) => TFulfilled | PromiseLike<TFulfilled>) | null,

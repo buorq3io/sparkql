@@ -1,5 +1,6 @@
 import type { SparqlQuadsOptions, SparqlRawOptions, SparqlSession } from './session.js';
 
+/** Metadata supplied with a logged request. */
 export interface QueryLogMeta {
   /** Standard query form (e.g. `select`, `update`) or dialect query factory name. */
   readonly operation: string;
@@ -9,26 +10,94 @@ export interface QueryLogMeta {
 
 /** Integration point for application logging. SPARQL values are inlined in the string. */
 export interface Logger {
+  /**
+   * Records a request before it is sent.
+   *
+   * Throwing prevents the request. The SPARQL can contain inlined values.
+   *
+   * @param sparql - Generated SPARQL.
+   * @param meta - Operation and optional target URL.
+   *
+   * @example
+   * Supply a logger.
+   *
+   * ```ts
+   * const logger: Logger = { logQuery: (sparql, meta) => console.log(sparql, meta) };
+   * ```
+   */
   logQuery(sparql: string, meta: QueryLogMeta): void;
 }
 
+/** Destination for formatted log messages. */
 export interface LogWriter {
+  /**
+   * Writes a formatted message.
+   *
+   * @param message - The message to write.
+   *
+   * @example
+   * Supply a writer.
+   *
+   * ```ts
+   * const writer: LogWriter = { write: message => console.log(message) };
+   * ```
+   */
   write(message: string): void;
 }
 
+/** Writes log messages to the console. */
 export class ConsoleLogWriter implements LogWriter {
+  /**
+   * Writes a message to the console.
+   *
+   * @param message - The message to write.
+   *
+   * @example
+   * Write a message.
+   *
+   * ```ts
+   * new ConsoleLogWriter().write('Query');
+   * ```
+   */
   write(message: string): void {
     console.log(message);
   }
 }
 
+/** Formats requests and writes them to a log writer. */
 export class DefaultLogger implements Logger {
+  /** Destination for formatted messages. */
   readonly writer: LogWriter;
 
+  /**
+   * Creates a logger with a console writer by default.
+   *
+   * @param config - Custom destination for formatted messages.
+   *
+   * @example
+   * Create a logger.
+   *
+   * ```ts
+   * const logger = new DefaultLogger();
+   * ```
+   */
   constructor(config?: { writer: LogWriter }) {
     this.writer = config?.writer ?? new ConsoleLogWriter();
   }
 
+  /**
+   * Formats and writes a request with its operation and optional URL.
+   *
+   * @param sparql - Generated SPARQL.
+   * @param meta - Operation and optional target URL.
+   *
+   * @example
+   * Log a request.
+   *
+   * ```ts
+   * new DefaultLogger().logQuery('ASK {}', { operation: 'ask', targetUrl: undefined });
+   * ```
+   */
   logQuery(sparql: string, meta: QueryLogMeta): void {
     this.writer.write(
       `Query (${meta.operation}${meta.targetUrl ? ` @ ${meta.targetUrl}` : ''}): ${sparql}`
@@ -36,7 +105,18 @@ export class DefaultLogger implements Logger {
   }
 }
 
+/** Discards logged requests. */
 export class NoopLogger implements Logger {
+  /**
+   * Discards a request.
+   *
+   * @example
+   * Use a logger that discards requests.
+   *
+   * ```ts
+   * new NoopLogger().logQuery();
+   * ```
+   */
   logQuery(): void {}
 }
 

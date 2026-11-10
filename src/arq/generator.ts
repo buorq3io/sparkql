@@ -47,9 +47,11 @@ type ArqGeneratorBuilder = GeneratorBuilder<
   ArqRules
 >;
 
+/** @internal Generator builder for ARQ patterns. */
 export const arqGeneratorBuilder: ArqGeneratorBuilder = GeneratorBuilder.create(
   sparkqlGeneratorBuilder
 )
   .patchRule(arqPattern)
   .typePatch<{ queryOrUpdate: [ArqQuery] }>();
+/** @internal Generator for ARQ patterns. */
 export const arqGenerator: ReturnType<ArqGeneratorBuilder['build']> = arqGeneratorBuilder.build();

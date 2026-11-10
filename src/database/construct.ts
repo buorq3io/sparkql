@@ -5,6 +5,7 @@ import { QueryBuilderBase } from './query.js';
 import type { QueryModuleContext } from './query-module.js';
 import type { SparqlSession } from './session.js';
 
+/** Builds an executable `CONSTRUCT` query returning RDF/JS quads. Each await executes a new request. */
 export class ConstructQueryBuilderBase<D extends AnySparqlDialect = SparqlDialect>
   extends QueryBuilderBase<QueryConstructInput, QuadsInput[], false, D>
   implements PromiseLike<QuadsInput[]>

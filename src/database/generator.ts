@@ -149,7 +149,10 @@ export const safeBlankNodeRule: AST.SparqlGeneratorRule<'blankNode', AST.TermBla
   },
 };
 
-/** Raw expressions print in parentheses, so operator precedence never leaks. */
+/**
+ * Generator rule that prints raw `sparql` expressions in parentheses, so operator precedence
+ * never leaks.
+ */
 export const rawExpressionRule: AST.SparqlGeneratorRule<'expression', AST.Expression> = {
   name: 'expression',
   gImpl: helpers => {
@@ -164,8 +167,10 @@ export const rawExpressionRule: AST.SparqlGeneratorRule<'expression', AST.Expres
 };
 
 /**
- * Raw patterns print as group content. A dot is added when the output ends
- * open (not with `.` or `}`), so following triples stay separate.
+ * Generator rule that prints raw `sparql` patterns as group content.
+ *
+ * A dot is added when the output ends open (not with `.` or `}`), so following triples stay
+ * separate.
  */
 export const rawPatternRule: AST.SparqlGeneratorRule<'generatePattern', AST.Pattern> = {
   name: 'generatePattern',
@@ -181,9 +186,11 @@ export const rawPatternRule: AST.SparqlGeneratorRule<'generatePattern', AST.Patt
 };
 
 /**
- * Traqula's SPARQL 1.1 generator with support for the raw `sparql` nodes. RDF
- * terms print escaped or are refused, so no value can break out of its term.
- * Dialect generators copy this builder (never mutate it) before patching rules.
+ * Traqula's SPARQL 1.1 generator builder with support for raw `sparql` nodes.
+ *
+ * RDF terms print escaped or are refused, so no value can break out of its term. Dialect
+ * generators copy this builder with `GeneratorBuilder.create(...)` before patching rules;
+ * never mutate it.
  */
 export const sparkqlGeneratorBuilder: typeof sparql11GeneratorBuilder = GeneratorBuilder.create(
   sparql11GeneratorBuilder
@@ -197,7 +204,31 @@ export const sparkqlGeneratorBuilder: typeof sparql11GeneratorBuilder = Generato
 
 const generator = sparkqlGeneratorBuilder.build();
 
-/** Generates a query or update from a normalized sparkql AST. */
+/**
+ * Prints a normalized SPARQL 1.1 query or update as SPARQL text.
+ *
+ * Unlike `toSPARQL()`, it does not add `.comment()` lines, and it does not print dialect
+ * extension patterns. Custom query modules use it as their `generate` step.
+ *
+ * @param query - Normalized query or update, such as the result of a builder's `getSPARQL()`.
+ *
+ * @example
+ * Print the AST of a built query.
+ *
+ * ```ts
+ * const ast = db
+ *   .select({ name: v.name })
+ *   .where(triples(v.person, n.foaf.name, v.name))
+ *   .getSPARQL();
+ * const text = generateSparql(ast);
+ * ```
+ *
+ * ```sparql
+ * SELECT ?name WHERE {
+ *   ?person foaf:name ?name .
+ * }
+ * ```
+ */
 export function generateSparql(query: AST.SparqlQuery): string {
   return generator.queryOrUpdate(query, AST.completeGeneratorContext({})).trim();
 }

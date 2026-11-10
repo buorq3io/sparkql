@@ -18,7 +18,11 @@ export type SparqlClient = StreamClient;
 export interface SparqlConnectionOptions {
   /** SPARQL query endpoint. */
   endpointUrl?: string;
-  /** SPARQL update endpoint. Defaults to `endpointUrl`. */
+  /**
+   * SPARQL update endpoint.
+   *
+   * @defaultValue `endpointUrl`
+   */
   updateUrl?: string;
   /** Headers sent with every request. */
   headers?: HeadersInit;
@@ -47,6 +51,22 @@ export class HttpSparqlSession<C extends SparqlHttpClient = SparqlHttpClient>
   private resolved: C | Promise<C> | undefined;
   private readonly connection: SparqlConnectionOptions | undefined;
 
+  /**
+   * Creates an HTTP session from a client or connection options.
+   *
+   * A connection must supply at least one endpoint URL. Query methods require
+   * `endpointUrl`; the client is created lazily.
+   *
+   * @param config - A client to reuse or connection options.
+   * @throws {@link Error} When neither endpoint URL is provided.
+   *
+   * @example
+   * Configure a session.
+   *
+   * ```ts
+   * const session = new HttpSparqlSession({ connection: 'https://example.org/sparql' });
+   * ```
+   */
   constructor(config: { client: C } | { connection: string | SparqlConnectionOptions }) {
     if ('client' in config) {
       this.resolved = config.client;
@@ -79,6 +99,19 @@ export class HttpSparqlSession<C extends SparqlHttpClient = SparqlHttpClient>
     return this.resolved;
   }
 
+  /**
+   * Returns the configured request URL.
+   *
+   * @param kind - The request kind.
+   *
+   * @example
+   * Find the endpoint URL for a query request.
+   *
+   * ```ts
+   * const session = new HttpSparqlSession({ connection: 'https://example.org/sparql' });
+   * void session.getRequestUrl('query');
+   * ```
+   */
   getRequestUrl(kind: 'query' | 'update'): string | undefined {
     if (this.connection) {
       return kind === 'update'
@@ -90,16 +123,56 @@ export class HttpSparqlSession<C extends SparqlHttpClient = SparqlHttpClient>
     return kind === 'update' ? client.updateUrl : client.endpointUrl;
   }
 
+  /**
+   * Runs a query and collects its solution bindings.
+   *
+   * @param sparql - The SPARQL query.
+   *
+   * @example
+   * Request result bindings from the endpoint.
+   *
+   * ```ts
+   * const session = new HttpSparqlSession({ connection: 'https://example.org/sparql' });
+   * void session.bindings('SELECT * WHERE {}');
+   * ```
+   */
   async bindings(sparql: string): Promise<SparqlBindings[]> {
     const client = await this.queryClient();
     return collect<SparqlBindings>(client.query.select(sparql));
   }
 
+  /**
+   * Runs a query and returns its boolean result.
+   *
+   * @param sparql - The SPARQL query.
+   *
+   * @example
+   * Request a boolean answer from the endpoint.
+   *
+   * ```ts
+   * const session = new HttpSparqlSession({ connection: 'https://example.org/sparql' });
+   * void session.boolean('ASK {}');
+   * ```
+   */
   async boolean(sparql: string): Promise<boolean> {
     const client = await this.queryClient();
     return client.query.ask(sparql);
   }
 
+  /**
+   * Runs a query and collects its RDF quads.
+   *
+   * @param sparql - The SPARQL query.
+   * @param options - The requested graph format.
+   *
+   * @example
+   * Request constructed quads from the endpoint.
+   *
+   * ```ts
+   * const session = new HttpSparqlSession({ connection: 'https://example.org/sparql' });
+   * void session.quads('CONSTRUCT WHERE {}');
+   * ```
+   */
   async quads(sparql: string, options?: SparqlQuadsOptions): Promise<SparqlQuad[]> {
     const client = await this.queryClient();
     return collect<SparqlQuad>(
@@ -113,11 +186,38 @@ export class HttpSparqlSession<C extends SparqlHttpClient = SparqlHttpClient>
     );
   }
 
+  /**
+   * Runs a SPARQL Update request.
+   *
+   * @param sparql - The SPARQL update.
+   *
+   * @example
+   * Clear the default graph through the endpoint.
+   *
+   * ```ts
+   * const session = new HttpSparqlSession({ connection: 'https://example.org/sparql' });
+   * void session.update('CLEAR DEFAULT');
+   * ```
+   */
   async update(sparql: string): Promise<void> {
     const client = await this.client;
     await client.query.update(sparql);
   }
 
+  /**
+   * Returns the undecoded response to a direct POST.
+   *
+   * @param sparql - The SPARQL query.
+   * @param options - The requested response format.
+   *
+   * @example
+   * Request a raw boolean response as JSON.
+   *
+   * ```ts
+   * const session = new HttpSparqlSession({ connection: 'https://example.org/sparql' });
+   * void session.raw('ASK {}', { accept: 'application/json' });
+   * ```
+   */
   async raw(sparql: string, options: SparqlRawOptions): Promise<Response> {
     const client = (await this.queryClient()) as RawClient;
     return client.postDirect(sparql, { headers: { accept: options.accept } });
