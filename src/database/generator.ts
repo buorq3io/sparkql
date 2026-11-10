@@ -185,8 +185,28 @@ export const rawPatternRule: AST.SparqlGeneratorRule<'generatePattern', AST.Patt
   },
 };
 
+// Prints an RDF list as `( a b ... )` with every item separated. Traqula's rule prints the
+// items back to back and relies on each term to space itself; literals do, but IRIs and
+// variables do not, which produced `( foaf:Adafoaf:Grace )`.
+const collectionPathRule: AST.SparqlGeneratorRule<'collectionPath', AST.TripleCollectionList> = {
+  name: 'collectionPath',
+  gImpl:
+    ({ SUBRULE, PRINT_WORD }) =>
+    (ast, { astFactory: F }) => {
+      F.printFilter(ast, () => PRINT_WORD('('));
+      // Even triples are `rdf:first` (the items); odd ones are `rdf:rest` links.
+      for (const [index, triple] of ast.triples.entries()) {
+        if (index % 2 !== 0) continue;
+        F.printFilter(ast, () => PRINT_WORD(''));
+        SUBRULE(AST.gram.graphNodePath, triple.object);
+      }
+      F.printFilter(ast, () => PRINT_WORD(')'));
+    },
+};
+
 /**
- * Traqula's SPARQL 1.1 generator builder with support for raw `sparql` nodes.
+ * Traqula's SPARQL 1.1 generator builder with support for raw `sparql` nodes, and with RDF
+ * list items always separated by a space.
  *
  * RDF terms print escaped or are refused, so no value can break out of its term. Dialect
  * generators copy this builder with `GeneratorBuilder.create(...)` before patching rules;
@@ -200,7 +220,8 @@ export const sparkqlGeneratorBuilder: typeof sparql11GeneratorBuilder = Generato
   .patchRule(safeIriFullRule)
   .patchRule(safePrefixedNameRule)
   .patchRule(safeLiteralRule)
-  .patchRule(safeBlankNodeRule);
+  .patchRule(safeBlankNodeRule)
+  .patchRule(collectionPathRule);
 
 const generator = sparkqlGeneratorBuilder.build();
 
