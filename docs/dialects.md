@@ -101,9 +101,12 @@ dialect.
 
 ## Connecting a Traqula generator
 
-Copy the standard builder with
-`GeneratorBuilder.create(sparql11GeneratorBuilder)` before patching rules.
-Traqula builders are mutable; patching the shared exported builder changes other
+Copy sparkql's standard builder with
+`GeneratorBuilder.create(sparkqlGeneratorBuilder)` before patching rules.
+`sparkqlGeneratorBuilder` (exported from `sparkql`) is Traqula's
+`sparql11GeneratorBuilder` plus the rules that print [raw `sparql` nodes](raw-sparql.md).
+A generator built straight from Traqula's builder cannot print them. Traqula
+builders are mutable; patching the shared exported builder changes other
 users of it. Patch the pattern dispatch rule to handle your custom nodes and
 retain its original implementation for standard nodes. New rules can be added
 with `addRule()` and invoked from that dispatch rule.
@@ -132,6 +135,10 @@ register [top-level query modules](query-modules.md), each with its own builder,
 AST and result decoder. The built-in ARQ modules add JSON and quad construction;
 the Stardog entry point adds PATHS. Custom expression node kinds and update
 operation kinds require separate extension interfaces.
+
+For a one-off fragment that no dialect covers, use the
+[raw `sparql` template tag](raw-sparql.md) instead of writing a dialect. Dialects
+remain the recommended route for reusable vendor features.
 
 ## Design references
 

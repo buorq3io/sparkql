@@ -76,6 +76,14 @@ import {
   prepareTemplate,
 } from './prepared.js';
 import type { QueryModuleContext } from './query-module.js';
+import type {
+  RawASTValue,
+  RawExpression,
+  RawExpressionInput,
+  RawPattern,
+  RawPatternInput,
+  RawValue,
+} from './raw.js';
 
 type ASTConfig<T extends SparqlQueryInput> = T extends UpdateInput
   ? AST.Update
@@ -477,6 +485,8 @@ export abstract class SparqlQueryBuilderBase<
             ...expression,
             args: this.sanitizePatternBasic(expression.args),
           };
+        case 'raw':
+          return this.sanitizeRaw(expression) as unknown as AST.Expression;
         case 'aggregate':
           if (isWildCardInputArray(expression.expression)) {
             return {
@@ -740,6 +750,8 @@ export abstract class SparqlQueryBuilderBase<
     }
 
     switch (pattern.subType) {
+      case 'raw':
+        return this.sanitizeRaw(pattern) as unknown as AST.Pattern;
       case 'bgp':
         return this.sanitizeBgpPattern(pattern);
       case 'group':
@@ -763,6 +775,53 @@ export abstract class SparqlQueryBuilderBase<
       default:
         throw new SparkqlNormalizationError('pattern', pattern);
     }
+  }
+
+  private sanitizeRaw(node: RawExpressionInput): RawExpression;
+  private sanitizeRaw(node: RawPatternInput): RawPattern;
+  private sanitizeRaw(node: RawExpressionInput | RawPatternInput): RawExpression | RawPattern {
+    const { strings, values } = node;
+    if (
+      !Array.isArray(strings) ||
+      !Array.isArray(values) ||
+      strings.length !== values.length + 1 ||
+      !strings.every(text => typeof text === 'string')
+    ) {
+      throw new SparkqlNormalizationError(node.type, node);
+    }
+    return {
+      type: node.type,
+      subType: 'raw',
+      loc: node.loc,
+      strings: [...strings],
+      values: values.map(value => this.sanitizeRawValue(value)),
+    } as RawExpression | RawPattern;
+  }
+
+  /** Interpolated values become AST nodes; none of them is spliced as text. */
+  private sanitizeRawValue(value: RawValue): RawASTValue {
+    if (Array.isArray(value)) {
+      throw new SparkqlError({
+        message: 'Arrays cannot be interpolated into sparql templates; use sparql.join().',
+      });
+    }
+    if (isObjectLike(value) && (value.type === 'pattern' || value.type === 'query')) {
+      return this.sanitizePattern(value as PatternInput);
+    }
+    // Database term formats apply first, as they do for db.iri()/db.literal().
+    const formats = this.builderContext.formats;
+    for (const kind of ['iri', 'literal', 'blank'] as const) {
+      for (const formatter of formats?.[kind] ?? []) {
+        if (formatter.test(value)) return formatter.format(value, this.factoryFunctions);
+      }
+    }
+    if (isObjectLike(value) && value.type === 'expression') {
+      return this.sanitizeExpression(value as ExpressionInput);
+    }
+    if (term.accepts(value)) {
+      return term.parseOrThrow(value, this.factoryFunctions);
+    }
+    throw new SparkqlNormalizationError('expression', value);
   }
 
   protected sanitizeQuads(quads: QuadsInput): AST.Quads {
