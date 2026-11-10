@@ -1,5 +1,5 @@
-import { anyOf, oneOf } from './generators.js';
-import { termBlank, termIri, termLiteral, termVariable } from './utilities.js';
+import { anyOf } from './generators.js';
+import { termBlank, termExpression, termIri, termLiteral, termVariable } from './utilities.js';
 
 /**
  * Tests for an IRI, blank node or literal input, including values with a built-in input
@@ -39,22 +39,21 @@ export const acceptsTermExpressionInput = anyOf(
 );
 
 /**
- * Parses a variable input to a variable term.
+ * Parses a variable, IRI or literal input to a term, the terms that can stand as an expression.
  *
- * It is built from the `parseOrThrow` parsers of variables, IRIs and literals, but the
- * variable parser throws `Unsupported variable term value provided.` for any other input
- * before the IRI and literal parsers run. Only variables parse; use
- * {@link termExpression}`.parseOrThrow` to parse all three kinds.
+ * The variable, IRI and literal parsers are tried in that order and the first that accepts
+ * the value wins, so values with a built-in input format, such as strings, numbers and `URL`
+ * objects, are converted. Same as {@link termExpression}`.parseOrThrow`.
+ *
+ * @throws `Error` When no parser accepts the value, such as for a blank node or a plain object.
  *
  * @example
- * Parse a variable.
+ * Parse a variable and an IRI. Terms are returned unchanged; other inputs, such as `'Ada'`,
+ * are built with the factories passed as the second argument.
  *
  * ```ts
  * parseOrThrowTermExpressionInput(v.name, {} as FactoryFunctions); // the ?name term
+ * parseOrThrowTermExpressionInput(n.foaf.name, {} as FactoryFunctions); // the foaf:name term
  * ```
  */
-export const parseOrThrowTermExpressionInput = oneOf(
-  termVariable.parseOrThrow,
-  termIri.parseOrThrow,
-  termLiteral.parseOrThrow
-);
+export const parseOrThrowTermExpressionInput = termExpression.parseOrThrow;
