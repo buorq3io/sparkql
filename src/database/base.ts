@@ -1,5 +1,6 @@
 import * as AST from '@traqula/rules-sparql-1-1';
 import {
+  type CodecRow,
   codecFormatters,
   type TermCodecs,
   TermCodecTable,
@@ -91,7 +92,8 @@ export interface SparqlDatabaseOptions<
    * How result terms decode by datatype, e.g. `defaultCodecs({ integer: 'number', decimal: 'number' })`.
    * Applies to projected SELECT variables without an explicit transform
    * (`castX`, `as`, typed functions). Without it, those return RDF/JS terms.
-   * Codecs change runtime values only: such variables are still typed as RDF/JS terms.
+   * Such variables are typed as the RDF/JS term or any value a decoder of the table returns,
+   * since the datatype of each bound term is only known at runtime (see {@link CodecRow}).
    * Codec encoders extend `formats.literal`.
    */
   codecs?: X & TermCodecs;
@@ -158,6 +160,7 @@ export class SparqlDatabase<
   F extends TermFormats = {},
   D extends AnySparqlDialect = SparqlDialect,
   C extends AnySparqlClient = AnySparqlClient,
+  X extends TermCodecs = {},
 > {
   private readonly dialect: D;
   private readonly formats: TermFormats;
@@ -256,7 +259,7 @@ export class SparqlDatabase<
     X extends TermCodecs = {},
   >(
     options: SparqlDatabaseOptions<T, F, D, X> & { client: C }
-  ): WithQueryMethods<SparqlDatabase<T, K, WithCodecFormats<F, X>, D, C>, D>;
+  ): WithQueryMethods<SparqlDatabase<T, K, WithCodecFormats<F, X>, D, C, X>, D>;
   /**
    * Creates a database.
    *
@@ -279,7 +282,7 @@ export class SparqlDatabase<
     X extends TermCodecs = {},
   >(
     options?: SparqlDatabaseOptions<T, F, D, X>
-  ): WithQueryMethods<SparqlDatabase<T, K, WithCodecFormats<F, X>, D, DefaultSparqlClient>, D>;
+  ): WithQueryMethods<SparqlDatabase<T, K, WithCodecFormats<F, X>, D, DefaultSparqlClient, X>, D>;
   static create<
     T extends IriManagerConfig,
     K extends string = 'g_',
@@ -288,7 +291,7 @@ export class SparqlDatabase<
     X extends TermCodecs = {},
   >(
     options?: SparqlDatabaseOptions<T, F, D, X>
-  ): WithQueryMethods<SparqlDatabase<T, K, WithCodecFormats<F, X>, D>, D> {
+  ): WithQueryMethods<SparqlDatabase<T, K, WithCodecFormats<F, X>, D, AnySparqlClient, X>, D> {
     const codecs = new TermCodecTable(options?.codecs);
     return new SparqlDatabase<T, K, WithCodecFormats<F, X>, D>({
       dialect: options?.dialect,
@@ -301,7 +304,10 @@ export class SparqlDatabase<
       logger: options?.logger === true ? new DefaultLogger() : options?.logger || undefined,
       queryInErrors: options?.queryInErrors,
       context: transformIntoPrefixObject(options?.managerConfig ?? {}),
-    }) as WithQueryMethods<SparqlDatabase<T, K, WithCodecFormats<F, X>, D>, D>;
+    }) as unknown as WithQueryMethods<
+      SparqlDatabase<T, K, WithCodecFormats<F, X>, D, AnySparqlClient, X>,
+      D
+    >;
   }
 
   /**
@@ -458,9 +464,9 @@ export class SparqlDatabase<
    *
    * Add graph patterns with `where`, then modifiers such as `orderBy` and `limit`; the
    * modifiers and `values` are unavailable on the chain until `where` is called.
-   * Each await executes a request. Bare variables are typed and returned as RDF/JS terms
-   * ({@link DefaultQueryReturnType}); configured codecs decode matching datatypes at runtime
-   * without changing that static type. Omit the projection for `SELECT *`: each row then holds
+   * Each await executes a request. Bare variables are returned as RDF/JS terms
+   * ({@link DefaultQueryReturnType}). With `codecs` configured, they are decoded by datatype and
+   * typed as the term or any value a decoder returns (`CodecRow`). Omit the projection for `SELECT *`: each row then holds
    * every variable the solution binds, keyed by name, decoded like a bare variable.
    *
    * @param variables - Projection mapping, or omit for all variables.
@@ -481,7 +487,7 @@ export class SparqlDatabase<
    */
   select<U extends SelectedVariables>(
     variables?: U
-  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<InferredSelectResult<U>, D>>;
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<CodecRow<InferredSelectResult<U>, X>, D>>;
 
   /**
    * Builds a `SELECT` query.
@@ -507,9 +513,7 @@ export class SparqlDatabase<
     variables?: TypedSelectedVariables<U>
   ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U, D>>;
 
-  select<U extends Record<string, any>>(
-    variables?: TypedSelectedVariables<U>
-  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U, D>> {
+  select<U extends Record<string, any>>(variables?: TypedSelectedVariables<U>): unknown {
     return new SelectQueryBuilderBase<U, D>(this.moduleContext, { variables });
   }
 
@@ -518,9 +522,9 @@ export class SparqlDatabase<
    *
    * Add graph patterns with `where`, then modifiers such as `orderBy` and `limit`; the
    * modifiers and `values` are unavailable on the chain until `where` is called.
-   * Each await executes a request. Bare variables are typed and returned as RDF/JS terms
-   * (`DefaultQueryReturnType`); configured codecs decode matching datatypes at runtime
-   * without changing that static type. Omit the projection for `SELECT *`: each row then holds
+   * Each await executes a request. Bare variables are returned as RDF/JS terms
+   * (`DefaultQueryReturnType`). With `codecs` configured, they are decoded by datatype and
+   * typed as the term or any value a decoder returns (`CodecRow`). Omit the projection for `SELECT *`: each row then holds
    * every variable the solution binds, keyed by name, decoded like a bare variable.
    *
    * @param variables - Projection mapping, or omit for all variables.
@@ -543,7 +547,7 @@ export class SparqlDatabase<
    */
   selectDistinct<U extends SelectedVariables>(
     variables?: U
-  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<InferredSelectResult<U>, D>>;
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<CodecRow<InferredSelectResult<U>, X>, D>>;
 
   /**
    * Builds a `SELECT DISTINCT` query.
@@ -569,9 +573,7 @@ export class SparqlDatabase<
     variables?: TypedSelectedVariables<U>
   ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U, D>>;
 
-  selectDistinct<U extends Record<string, any>>(
-    variables?: TypedSelectedVariables<U>
-  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U, D>> {
+  selectDistinct<U extends Record<string, any>>(variables?: TypedSelectedVariables<U>): unknown {
     return new SelectQueryBuilderBase<U, D>(this.moduleContext, { variables, distinct: true });
   }
 
@@ -580,9 +582,9 @@ export class SparqlDatabase<
    *
    * Add graph patterns with `where`, then modifiers such as `orderBy` and `limit`; the
    * modifiers and `values` are unavailable on the chain until `where` is called.
-   * Each await executes a request. Bare variables are typed and returned as RDF/JS terms
-   * (`DefaultQueryReturnType`); configured codecs decode matching datatypes at runtime
-   * without changing that static type. Omit the projection for `SELECT *`: each row then holds
+   * Each await executes a request. Bare variables are returned as RDF/JS terms
+   * (`DefaultQueryReturnType`). With `codecs` configured, they are decoded by datatype and
+   * typed as the term or any value a decoder returns (`CodecRow`). Omit the projection for `SELECT *`: each row then holds
    * every variable the solution binds, keyed by name, decoded like a bare variable.
    *
    * @param variables - Projection mapping, or omit for all variables.
@@ -605,7 +607,7 @@ export class SparqlDatabase<
    */
   selectReduced<U extends SelectedVariables>(
     variables?: U
-  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<InferredSelectResult<U>, D>>;
+  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<CodecRow<InferredSelectResult<U>, X>, D>>;
 
   /**
    * Builds a `SELECT REDUCED` query.
@@ -631,9 +633,7 @@ export class SparqlDatabase<
     variables?: TypedSelectedVariables<U>
   ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U, D>>;
 
-  selectReduced<U extends Record<string, any>>(
-    variables?: TypedSelectedVariables<U>
-  ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U, D>> {
+  selectReduced<U extends Record<string, any>>(variables?: TypedSelectedVariables<U>): unknown {
     return new SelectQueryBuilderBase<U, D>(this.moduleContext, { variables, reduced: true });
   }
 

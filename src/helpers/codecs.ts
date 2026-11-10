@@ -110,6 +110,48 @@ type DecoderOutput<Fn, Fallback> = [Fn] extends [never]
     ? O
     : Fallback;
 
+/**
+ * Every value the decoders of a codec table can produce; `never` for a table without decoders.
+ *
+ * @typeParam C - The codec table.
+ */
+export type CodecOutput<C extends TermCodecs> = {
+  [K in keyof C]-?: NonNullable<C[K]> extends {
+    readonly decode?: (term: any) => infer O;
+  }
+    ? O
+    : never;
+}[keyof C];
+
+/**
+ * A SELECT row type as a database with the codec table `C` returns it.
+ *
+ * A field typed as a raw RDF/JS term ({@link DefaultQueryReturnType}) is a projected variable
+ * without a cast. Codecs decode it by the datatype of each bound term, which is only known at
+ * runtime, so the field becomes the raw term or any value a decoder of `C` returns. Other
+ * fields, and every field when `C` has no decoders, keep their type.
+ *
+ * @typeParam Row - The row type inferred from the projection.
+ * @typeParam C - The database's codec table.
+ *
+ * @example
+ * Type a row the way a database configured with these codecs returns it.
+ *
+ * ```ts
+ * const codecs = defaultCodecs({ integer: 'number', decimal: 'number' });
+ * type Row = CodecRow<{ age: DefaultQueryReturnType }, typeof codecs>;
+ * // { age: DefaultQueryReturnType | string | number | boolean | Date | LangString }
+ * ```
+ */
+export type CodecRow<Row, C extends TermCodecs> = [CodecOutput<C>] extends [never]
+  ? Row
+  : { [K in keyof Row]: CodecField<Row[K], CodecOutput<C>> };
+type CodecField<V, O> = [Exclude<V, undefined>] extends [DefaultQueryReturnType]
+  ? [DefaultQueryReturnType] extends [Exclude<V, undefined>]
+    ? V | O
+    : V
+  : V;
+
 /** @internal Database `formats` with `literal` widened to the inputs of the codec encoders. */
 export type WithCodecFormats<F extends TermFormats, C extends TermCodecs> = [
   CodecInput<C>,
