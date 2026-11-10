@@ -66,8 +66,22 @@ const blankNodeToken = anchored(AST.lex.terminals.blankNodeLabel.PATTERN);
 const languageToken = anchored(AST.lex.terminals.langTag.PATTERN);
 
 /**
- * Percent-encodes every character IRIREF forbids, including backslashes, so a
- * value can never end the `<…>` term. Valid IRIs print unchanged.
+ * Percent-encodes every character an IRI reference (`IRIREF`) forbids, so a value can never
+ * end its `<…>` term.
+ *
+ * Covers spaces, ASCII control characters, `<>"{}|^` and backticks, and backslashes. A valid
+ * IRI comes back unchanged. The generator applies it to every full IRI it prints.
+ *
+ * @param value - The IRI text to print.
+ *
+ * @example
+ * Make an IRI built from user input safe to print.
+ *
+ * ```ts
+ * escapeIri('https://example.org/people/Ada Lovelace>');
+ * // 'https://example.org/people/Ada%20Lovelace%3E'
+ * escapeIri('https://example.org/people/ada'); // unchanged
+ * ```
  */
 export function escapeIri(value: string): string {
   // biome-ignore lint/suspicious/noControlCharactersInRegex: IRIREF excludes ASCII controls.
