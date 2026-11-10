@@ -1,14 +1,18 @@
 import { createWildCardInput } from '../functions/utils.js';
 import {
   type DefaultQueryReturnType,
+  type PatternGroupInput,
   Presence,
   type QuerySelectInput,
   type TermVariableAndBinding,
+  type TermVariableInput,
   type TermVariableOptionalTransform,
   type TermVariableTransform,
 } from '../helpers/types.js';
 import { group } from '../structures/pattern.js';
 import type { AnySparqlDialect, SparqlDialect } from './dialect.js';
+import { SparkqlError } from './errors.js';
+import type { PlaceholderCarrier, placeholderTypes } from './prepared.js';
 import { QueryBuilderBase } from './query.js';
 import type { QueryModuleContext } from './query-module.js';
 import type { SparqlSession } from './session.js';
@@ -44,6 +48,16 @@ export type InferredSelectResult<T extends SelectedVariables> = {
     : ExtractDataType<T[K]>;
 };
 
+/** Projected variables retain their decoder and whether they can be unbound. */
+export type SubqueryFields<T extends Record<string, any>> = {
+  [K in keyof T]-?: TermVariableInput<
+    Exclude<T[K], undefined>,
+    undefined extends T[K] ? Presence.optional : Presence.required
+  >;
+};
+
+export type TypedSubquery<T extends Record<string, any>> = PatternGroupInput & SubqueryFields<T>;
+
 export class SelectQueryBuilderBase<
     T extends Record<string, any>,
     D extends AnySparqlDialect = SparqlDialect,
@@ -51,6 +65,7 @@ export class SelectQueryBuilderBase<
   extends QueryBuilderBase<QuerySelectInput, T[], false, D>
   implements PromiseLike<T[]>
 {
+  private readonly selectedFields: SubqueryFields<T>;
   private lookup: Record<string, string> = {};
   private lookupTransform: Record<
     string,
@@ -99,6 +114,13 @@ export class SelectQueryBuilderBase<
       context
     );
 
+    this.selectedFields = Object.fromEntries(
+      Object.entries(variables ?? {}).map(([key, value]) => {
+        const selected = value as TermVariableAndBinding<any, Presence>;
+        return [key, { ...(selected.type === 'pattern' ? selected.variable : selected) }];
+      })
+    ) as SubqueryFields<T>;
+
     function createMaybeTransform<T extends DefaultQueryReturnType, K extends any[]>(
       t: TermVariableTransform<T, K>
     ): TermVariableOptionalTransform<T, K> {
@@ -137,6 +159,31 @@ export class SelectQueryBuilderBase<
         }
       }
     }
+  }
+
+  /**
+   * Exposes projected variables on a group containing this SELECT.
+   * SPARQL variable names remain global: equal names join; use distinct names
+   * when independent bindings are intended. Pattern member names are reserved.
+   */
+  as<Self extends PlaceholderCarrier<object>>(
+    this: Self
+  ): TypedSubquery<T> & PlaceholderCarrier<NonNullable<Self[typeof placeholderTypes]>>;
+  as(): TypedSubquery<T> {
+    const pattern = group(this.config);
+    for (const key of Object.keys(this.selectedFields)) {
+      if (key in pattern || key === 'then') {
+        throw new SparkqlError({ message: `Subquery field conflicts with pattern member: ${key}` });
+      }
+    }
+    return Object.assign(pattern, this.getSelectedFields());
+  }
+
+  /** Variable references only: projected BIND expressions are not repeated. */
+  getSelectedFields(): SubqueryFields<T> {
+    return Object.fromEntries(
+      Object.entries(this.selectedFields).map(([key, value]) => [key, { ...value }])
+    ) as SubqueryFields<T>;
   }
 
   $asSubQuery() {

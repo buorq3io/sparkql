@@ -13,6 +13,7 @@ import { stardogDialect } from './dialect.js';
 
 export * from '../index.js';
 export * from './dialect.js';
+export * from './hints.js';
 export * from './paths.js';
 
 export type StardogDatabaseOptions<

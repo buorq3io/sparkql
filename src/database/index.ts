@@ -1,4 +1,6 @@
 export * from './base.js';
+export type { CommentInput } from './comment.js';
+export * from './count.js';
 export * from './dialect.js';
 export * from './entity.js';
 export * from './errors.js';
@@ -18,4 +20,5 @@ export type {
   SparqlRawExpression,
 } from './raw.js';
 export { sparql } from './raw.js';
+export type { SubqueryFields, TypedSubquery } from './select.js';
 export * from './session.js';
