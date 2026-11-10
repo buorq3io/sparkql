@@ -13,6 +13,8 @@
     "build": "tsdown",
     "clean": "rm -rf ./dist/",
     "test": "vitest",
+    "test:types": "tsc -p test/types",
+    "test:exports": "vitest run test/exports.spec.ts",
     "test:package": "pnpm build && node scripts/check-package.mjs",
     "semantic-release": "semantic-release",
     "typecheck": "tsc --noEmit",

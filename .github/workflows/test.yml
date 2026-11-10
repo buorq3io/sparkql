@@ -42,5 +42,8 @@ jobs:
       - name: Check types
         run: pnpm run typecheck
 
+      - name: Run type tests
+        run: pnpm run test:types
+
       - name: Check the packed package
         run: pnpm run test:package
