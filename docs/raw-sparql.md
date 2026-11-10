@@ -38,6 +38,12 @@ through the same normalization as the rest of the builder:
 | Builder patterns (`triples(...)`, `group(...)`, dialect patterns)        | The generated pattern                                               |
 | A `sparql.placeholder()`                                                 | A value bound when a [prepared query](prepared-queries.md) executes |
 
+Terms are printed so that no value can end its own term. Characters an IRI
+forbids, including `>`, are percent-encoded; a prefixed name's local part is
+backslash-escaped where needed. A language tag or blank node label that is not
+valid SPARQL throws a `SparkqlError` instead of being printed. The builder uses
+the same rules everywhere, not only inside `sparql` templates.
+
 So `${userInput}` can contain quotes, newlines or `}` and still produces exactly
 one string literal. The database's custom [term formats](../README.md#per-instance-input-types)
 are applied at runtime too. In TypeScript, pass a custom input through

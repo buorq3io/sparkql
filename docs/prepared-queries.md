@@ -37,8 +37,10 @@ Values can appear in triple subjects and objects, expressions, VALUES columns,
 and LIMIT/OFFSET. They are RDF values, never raw SPARQL. Strings become literals,
 URLs become IRIs, and database-specific `TermFormats` run on the supplied value
 at execution time. Explicit AST terms, language literals and typed literals are
-also supported. Forbidden IRI characters, including `>`, are percent-encoded;
-other literal escaping uses Traqula's term generator. Variables are not accepted
+also supported. Bound values print exactly as the builder prints the same term:
+forbidden IRI characters, including `>`, are percent-encoded, and invalid
+language tags or blank node labels throw. Prefixed IRIs are expanded against the
+database's prefixes. Variables are not accepted
 as bound RDF values. LIMIT and OFFSET require non-negative safe integer numbers.
 
 The first type argument names the placeholder and the second specifies its value

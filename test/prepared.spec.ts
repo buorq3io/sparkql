@@ -231,6 +231,31 @@ describe('prepared queries', () => {
     expect(db.ask().where().prepare().toSPARQL()).toBe(db.ask().where().toSPARQL());
   });
 
+  test('escapes IRIs, literals and blank nodes exactly like fresh generation', () => {
+    const db = SparqlDatabase.create();
+    const s = db.variable('s');
+    const p = db.iri('https://example.com/p');
+    const term = sparql.placeholder('term');
+    const prepared = db
+      .ask()
+      .where(triples(s, p, term))
+      .prepare();
+    for (const value of [
+      db.iri('https://e.org/a> } INSERT DATA { <x> <y> <z> } #'),
+      db.literal('bonjour', 'fr'),
+      db.blank('b1'),
+    ]) {
+      const text = prepared.toSPARQL({ term: value });
+      expect(text).toBe(
+        db
+          .ask()
+          .where(triples(s, p, value))
+          .toSPARQL()
+      );
+      expect(() => new Parser().parse(text)).not.toThrow();
+    }
+  });
+
   test('uses the existing logger and wraps errors with the filled query', async () => {
     const { session } = fixture();
     const logQuery = vi.fn();

@@ -1,6 +1,7 @@
 import { GeneratorBuilder } from '@traqula/core';
 import { sparql11GeneratorBuilder } from '@traqula/generator-sparql-1-1';
 import * as AST from '@traqula/rules-sparql-1-1';
+import { SparkqlError } from './errors.js';
 import { isRawExpression, isRawPattern, type RawASTValue, type RawExpression } from './raw.js';
 
 type Helpers = Parameters<AST.SparqlGeneratorRule<'expression', AST.Expression>['gImpl']>[0];
@@ -49,6 +50,104 @@ function ending(node: Raw): 'closed' | 'open' | 'empty' {
 
 const standardExpression = sparql11GeneratorBuilder.getRule('expression');
 const standardPattern = sparql11GeneratorBuilder.getRule('generatePattern');
+const standardLiteral = sparql11GeneratorBuilder.getRule('rdfLiteral');
+const standardBlankNode = sparql11GeneratorBuilder.getRule('blankNode');
+
+function anchored(pattern: unknown): RegExp {
+  if (!(pattern instanceof RegExp)) {
+    throw new Error('Traqula must expose regular expressions for RDF term tokens.');
+  }
+  return new RegExp(`^(?:${pattern.source})$`, 'u');
+}
+
+const prefixedNameToken = anchored(AST.lex.terminals.pNameLn.PATTERN);
+const prefixToken = anchored(AST.lex.terminals.pNameNs.PATTERN);
+const blankNodeToken = anchored(AST.lex.terminals.blankNodeLabel.PATTERN);
+const languageToken = anchored(AST.lex.terminals.langTag.PATTERN);
+
+/**
+ * Percent-encodes every character IRIREF forbids, including backslashes, so a
+ * value can never end the `<…>` term. Valid IRIs print unchanged.
+ */
+export function escapeIri(value: string): string {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: IRIREF excludes ASCII controls.
+  return value.replace(/[\u0000-\u0020<>"{}|^`\\]/gu, char => encodeURIComponent(char));
+}
+
+/** PN_LOCAL_ESC punctuation, which a local name may contain behind a backslash. */
+const localEscapes = new Set("!#$%&'()*+,./;=?@\\~-");
+
+/**
+ * Escapes a prefixed name's local part when it is not already a valid PN_LOCAL:
+ * PN_LOCAL_ESC punctuation gets a backslash, characters an IRI forbids are
+ * percent-encoded, and existing `%XX` escapes are kept.
+ */
+function escapeLocalName(prefix: string, local: string): string {
+  if (local === '' ? prefixToken.test(`${prefix}:`) : prefixedNameToken.test(`${prefix}:${local}`))
+    return local;
+  const escaped = local.replace(
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: IRIs exclude ASCII controls.
+    /%[\dA-Fa-f]{2}|[!#$%&'()*+,./;=?@\\~-]|[\u0000-\u0020<>"{}|^`]/gu,
+    match => {
+      if (match.length === 3) return match;
+      return localEscapes.has(match) ? `\\${match}` : encodeURIComponent(match);
+    }
+  );
+  if (!prefixedNameToken.test(`${prefix}:${escaped}`)) {
+    throw new SparkqlError({ message: `Invalid prefixed name "${prefix}:${local}".` });
+  }
+  return escaped;
+}
+
+/** IRIs print with forbidden characters percent-encoded, so values cannot end the term. */
+export const safeIriFullRule: AST.SparqlGeneratorRule<'iriFull', AST.TermIriFull> = {
+  name: 'iriFull',
+  gImpl:
+    ({ PRINT }) =>
+    (ast, { astFactory: F }) => {
+      F.printFilter(ast, () => PRINT('<', escapeIri(ast.value), '>'));
+    },
+};
+
+/** Prefixed names print with their local part escaped, and invalid prefixes are refused. */
+export const safePrefixedNameRule: AST.SparqlGeneratorRule<'prefixedName', AST.TermIriPrefixed> = {
+  name: 'prefixedName',
+  gImpl:
+    ({ PRINT }) =>
+    (ast, { astFactory: F }) => {
+      const local = escapeLocalName(ast.prefix, ast.value);
+      F.printFilter(ast, () => PRINT(ast.prefix, ':', local));
+    },
+};
+
+/** Language tags must be valid LANGTAGs, since they print without quoting. */
+export const safeLiteralRule: AST.SparqlGeneratorRule<'rdfLiteral', AST.TermLiteral> = {
+  name: 'rdfLiteral',
+  gImpl: helpers => {
+    const fallback = standardLiteral.gImpl(helpers);
+    return (ast, context) => {
+      const language = ast.langOrIri;
+      if (typeof language === 'string' && !languageToken.test(`@${language}`)) {
+        throw new SparkqlError({ message: `Invalid literal language tag "${language}".` });
+      }
+      fallback(ast, context);
+    };
+  },
+};
+
+/** Blank node labels must be valid BLANK_NODE_LABELs, since they print without quoting. */
+export const safeBlankNodeRule: AST.SparqlGeneratorRule<'blankNode', AST.TermBlank> = {
+  name: 'blankNode',
+  gImpl: helpers => {
+    const fallback = standardBlankNode.gImpl(helpers);
+    return (ast, context) => {
+      if (!blankNodeToken.test(`_:${ast.label.replace(/^e_/u, '')}`)) {
+        throw new SparkqlError({ message: `Invalid blank node label "${ast.label}".` });
+      }
+      fallback(ast, context);
+    };
+  },
+};
 
 /** Raw expressions print in parentheses, so operator precedence never leaks. */
 export const rawExpressionRule: AST.SparqlGeneratorRule<'expression', AST.Expression> = {
@@ -82,14 +181,19 @@ export const rawPatternRule: AST.SparqlGeneratorRule<'generatePattern', AST.Patt
 };
 
 /**
- * Traqula's SPARQL 1.1 generator with support for the raw `sparql` nodes.
+ * Traqula's SPARQL 1.1 generator with support for the raw `sparql` nodes. RDF
+ * terms print escaped or are refused, so no value can break out of its term.
  * Dialect generators copy this builder (never mutate it) before patching rules.
  */
 export const sparkqlGeneratorBuilder: typeof sparql11GeneratorBuilder = GeneratorBuilder.create(
   sparql11GeneratorBuilder
 )
   .patchRule(rawExpressionRule)
-  .patchRule(rawPatternRule);
+  .patchRule(rawPatternRule)
+  .patchRule(safeIriFullRule)
+  .patchRule(safePrefixedNameRule)
+  .patchRule(safeLiteralRule)
+  .patchRule(safeBlankNodeRule);
 
 const generator = sparkqlGeneratorBuilder.build();
 

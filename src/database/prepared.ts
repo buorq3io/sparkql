@@ -1,7 +1,8 @@
-import { sparql11GeneratorBuilder } from '@traqula/generator-sparql-1-1';
-import { completeGeneratorContext, lex, type Term, type TermIri } from '@traqula/rules-sparql-1-1';
+import { completeGeneratorContext, type Term, type TermIri } from '@traqula/rules-sparql-1-1';
 import { isObjectLike, term } from '../helpers/utilities.js';
+import { entityKind, is } from './entity.js';
 import { SparkqlError } from './errors.js';
+import { sparkqlGeneratorBuilder } from './generator.js';
 import type { QueryModuleContext } from './query-module.js';
 
 /** Type-only metadata carried by composed inputs and fluent builders. */
@@ -23,6 +24,12 @@ export type MergePlaceholders<T> = (
 
 /** A named value, formatted only after execute() supplies its actual value. */
 export class Placeholder<Name extends string = string, Value = unknown> {
+  static readonly [entityKind]: string = 'Placeholder';
+
+  static [Symbol.hasInstance](value: unknown): boolean {
+    return is(value, this);
+  }
+
   declare protected value: Value;
   constructor(readonly name: Name) {}
 }
@@ -46,30 +53,20 @@ export class PreparedQuery<Result, Values extends object = {}> {
 }
 
 const loc = { sourceLocationType: 'autoGenerate' } as const;
-const termGenerator = sparql11GeneratorBuilder.build();
+// The shared generator escapes IRIs and refuses invalid language tags and blank
+// node labels, so prepared values print exactly as the builder would print them.
+const termGenerator = sparkqlGeneratorBuilder.build();
 const termContext = completeGeneratorContext({});
-const blankNodeToken = lex.terminals.blankNodeLabel.PATTERN;
-if (!(blankNodeToken instanceof RegExp)) {
-  throw new Error('Traqula must expose a regular expression for blank node labels.');
-}
-const blankNodeLabel = new RegExp(`^(?:${blankNodeToken.source})$`);
-
-// Traqula prints IRI values verbatim. Escape every character forbidden in IRIREF,
-// including backslashes, so a supplied value can never terminate the RDF term.
-function escapeIri(value: string): string {
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: IRIREF excludes ASCII controls.
-  return value.replace(/[\u0000-\u0020<>"{}|^`\\]/gu, char => encodeURIComponent(char));
-}
 
 function safeIri(iri: TermIri, context: QueryModuleContext): TermIri {
-  if (!('prefix' in iri)) return { ...iri, value: escapeIri(iri.value), loc };
+  if (!('prefix' in iri)) return { ...iri, loc };
   const prefix = context.context.find(
     entry => entry.subType === 'prefix' && entry.key === iri.prefix
   );
   if (!prefix)
     throw new SparkqlError({ message: `Unknown placeholder IRI prefix "${iri.prefix}".` });
   const base = prefix.value instanceof URL ? String(prefix.value) : prefix.value.value;
-  return context.factory.iri(escapeIri(base + iri.value));
+  return context.factory.iri(base + iri.value);
 }
 
 function serialize(value: unknown, context: QueryModuleContext): string {
@@ -91,9 +88,6 @@ function serialize(value: unknown, context: QueryModuleContext): string {
       break;
     case 'literal': {
       const language = parsed.langOrIri;
-      if (typeof language === 'string' && !/^[a-z]+(?:-[a-z0-9]+)*$/i.test(language)) {
-        throw new SparkqlError({ message: 'Invalid placeholder literal language tag.' });
-      }
       safe = {
         ...parsed,
         loc,
@@ -102,9 +96,6 @@ function serialize(value: unknown, context: QueryModuleContext): string {
       break;
     }
     case 'blankNode':
-      if (!blankNodeLabel.test(`_:${parsed.label}`)) {
-        throw new SparkqlError({ message: 'Invalid placeholder blank node identifier.' });
-      }
       safe = { ...parsed, loc };
       break;
     default:

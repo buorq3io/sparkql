@@ -141,6 +141,38 @@ describe('raw sparql template tag', () => {
     expect(literals(parser.parse(text))).toEqual([value, value, value]);
   });
 
+  test('interpolated IRIs, prefixed names, language tags and blank labels cannot inject SPARQL', () => {
+    const db = SparqlDatabase.create().prefix({ ex: 'http://example.org/' });
+    const s = db.variable('s');
+    const attack = '> . } INSERT DATA { <http://evil.org/s> <http://evil.org/p> 1 } #';
+    const iriText = db
+      .select()
+      .where(sparql.pattern`${s} ${s} ${db.iri(`http://example.org/a${attack}`)} .`)
+      .toSPARQL();
+    expect(iriText).not.toContain('INSERT DATA {');
+    expect(parser.parse(iriText)).toMatchObject({ type: 'query' });
+
+    const prefixedText = db
+      .select()
+      .where(sparql.pattern`${s} ${s} ${db.iri(`a${attack}`, 'ex')} .`)
+      .toSPARQL();
+    expect(prefixedText).not.toContain('INSERT DATA {');
+    expect(parser.parse(prefixedText)).toMatchObject({ type: 'query' });
+
+    expect(() =>
+      db
+        .select()
+        .where(sparql.pattern`${s} ${s} ${db.literal('x', `en ${attack}`)} .`)
+        .toSPARQL()
+    ).toThrow('language tag');
+    expect(() =>
+      db
+        .select()
+        .where(sparql.pattern`${s} ${s} ${db.blank(`b ${attack}`)} .`)
+        .toSPARQL()
+    ).toThrow('blank node');
+  });
+
   test('only sparql.raw() and template text are emitted verbatim', () => {
     const db = SparqlDatabase.create();
     const text = db
