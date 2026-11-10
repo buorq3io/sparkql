@@ -108,12 +108,13 @@ export function letBinding(expression: ExpressionInput, variable: AST.TermVariab
  * ```sparql
  * SELECT ?person ?name WHERE {
  *   ?person foaf:knows ?friend .
- *   LATERAL { {
- *     SELECT ?name WHERE {
- *       ?person foaf:name ?name .
+ *   LATERAL {
+ *     {
+ *       SELECT ?name WHERE {
+ *         ?person foaf:name ?name .
+ *       }
+ *       LIMIT 1
  *     }
- *     LIMIT 1
- *   }
  *   }
  * }
  * ```

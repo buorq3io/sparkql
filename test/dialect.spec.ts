@@ -20,6 +20,7 @@ import {
   SparqlDatabase,
   service,
   serviceSilent,
+  triples,
   union,
 } from '../src/index.js';
 
@@ -76,6 +77,31 @@ describe('database dialects', () => {
       }
     }
     throw new Error('Extension nodes were lost during normalization');
+  });
+
+  test('formats LATERAL groups and subqueries like OPTIONAL', () => {
+    const db = ArqDatabase.create();
+    const [person, name] = [db.variable('person'), db.variable('name')];
+    const p = db.iri('http://example.org/p');
+    const sub = db
+      .select({ name })
+      .where(triples(person, p, name))
+      .limit(1)
+      .as();
+    expect(db.select({ name }).where(lateralPattern(sub)).toSPARQL()).toBe(
+      [
+        'SELECT ?name WHERE {',
+        '  LATERAL {',
+        '    {',
+        '      SELECT ?name WHERE {',
+        '        ?person <http://example.org/p> ?name .',
+        '      }',
+        '      LIMIT 1',
+        '    }',
+        '  }',
+        '}',
+      ].join('\n')
+    );
   });
 
   test('preserves dialect across context changes, query kinds, and update chains', () => {

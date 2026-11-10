@@ -17,10 +17,12 @@ const arqPattern: AST.SparqlGeneratorRule<'generatePattern', ArqPattern> = {
         helpers.SUBRULE(AST.gram.expression, node.expression);
         helpers.PRINT(')');
       } else if (node.type === 'pattern' && node.subType === 'lateral') {
+        // Print the group like OPTIONAL does, so nesting and indentation match.
         helpers.PRINT_WORD('LATERAL');
-        helpers.PRINT('{');
-        for (const child of node.patterns) helpers.SUBRULE(arqPattern, child);
-        helpers.PRINT('}');
+        helpers.SUBRULE(
+          AST.gram.groupGraphPattern,
+          context.astFactory.patternGroup(node.patterns as unknown as AST.Pattern[], node.loc)
+        );
       } else {
         // Traqula's existing rule signatures still describe the standard AST.
         // Nested calls dispatch to the patched generatePattern implementation.

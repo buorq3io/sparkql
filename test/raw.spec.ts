@@ -118,7 +118,7 @@ describe('raw sparql template tag', () => {
         sparql.pattern`OPTIONAL { ${letBinding(sparql`${value} * 2`, db.variable('twice'))} }`
       )
       .toSPARQL();
-    expect(text).toContain('LATERAL {?s ?p ?value .');
+    expect(text).toContain('  LATERAL {\n    ?s ?p ?value .\n  }');
     expect(text).toContain('OPTIONAL { LET (?twice := ( ?value * 2 ) ) }');
   });
 
