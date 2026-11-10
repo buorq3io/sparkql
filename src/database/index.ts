@@ -18,4 +18,9 @@ export type {
   SparqlRawExpression,
 } from './raw.js';
 export { sparql } from './raw.js';
+export type {
+  InferredSelectResult,
+  SelectedVariables,
+  TypedSelectedVariables,
+} from './select.js';
 export * from './session.js';

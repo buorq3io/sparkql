@@ -1,5 +1,4 @@
 import { expectTypeOf } from 'vitest';
-import type { InferredSelectResult, TypedSelectedVariables } from '../../src/database/select.js';
 import {
   as,
   castDate,
@@ -7,11 +6,13 @@ import {
   castString,
   count,
   type DefaultQueryReturnType,
+  type InferredSelectResult,
   maybe,
   type Presence,
   SparqlDatabase,
   type TermVariableAndBinding,
   type TermVariableInput,
+  type TypedSelectedVariables,
 } from '../../src/index.js';
 
 const db = SparqlDatabase.create();

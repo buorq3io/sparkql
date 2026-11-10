@@ -1,11 +1,12 @@
 import { expectTypeOf } from 'vitest';
 import type { RootQueryBuilderBaseWithout } from '../../src/database/query.js';
-import type {
-  InferredSelectResult,
-  SelectedVariables,
-  SelectQueryBuilderBase,
-} from '../../src/database/select.js';
-import { SparqlDatabase, triples } from '../../src/index.js';
+import type { SelectQueryBuilderBase } from '../../src/database/select.js';
+import {
+  type InferredSelectResult,
+  type SelectedVariables,
+  SparqlDatabase,
+  triples,
+} from '../../src/index.js';
 
 const db = SparqlDatabase.create();
 const [v] = db.createManagers([], {});
