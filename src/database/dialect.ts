@@ -1,5 +1,6 @@
 import type * as AST from '@traqula/rules-sparql-1-1';
 import type { ExpressionInput, FactoryFunctions, PatternInput } from '../helpers/types.js';
+import { SparkqlError } from './errors.js';
 import { generateSparql } from './generator.js';
 import type { QueryFactories } from './query-module.js';
 
@@ -189,7 +190,9 @@ export const sparql11Dialect: SparqlDialect = {
   patterns: {
     is: (_value): _value is never => false,
     normalize: () => {
-      throw new Error('The SPARQL 1.1 dialect does not support custom patterns.');
+      throw new SparkqlError({
+        message: 'The SPARQL 1.1 dialect does not support custom patterns.',
+      });
     },
   },
   generator: { generate: generateSparql },

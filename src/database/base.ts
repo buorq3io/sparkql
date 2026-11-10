@@ -39,6 +39,7 @@ import {
   sparql11Dialect,
 } from './dialect.js';
 import { is } from './entity.js';
+import { SparkqlError } from './errors.js';
 import {
   HttpSparqlSession,
   type SparqlConnectionOptions,
@@ -133,12 +134,15 @@ function resolveSession(
   const legacy = endpointUrl !== undefined || updateUrl !== undefined;
   const given = [connection !== undefined, client !== undefined, session !== undefined, legacy];
   if (given.filter(Boolean).length > 1)
-    throw new Error(
-      'Pass only one of `connection`, `client`, `session` or the deprecated `endpointUrl`/`updateUrl`.'
-    );
+    throw new SparkqlError({
+      message:
+        'Pass only one of `connection`, `client`, `session` or the deprecated `endpointUrl`/`updateUrl`.',
+    });
   if (session !== undefined) {
     if (!isSparqlSession(session))
-      throw new Error('`session` must implement bindings, boolean, quads, update and raw.');
+      throw new SparkqlError({
+        message: '`session` must implement bindings, boolean, quads, update and raw.',
+      });
     return session;
   }
   if (client !== undefined) return new HttpSparqlSession({ client });
@@ -208,7 +212,9 @@ export class SparqlDatabase<
     this.moduleContext = moduleContext;
     for (const [name, factory] of Object.entries(this.dialect.queries ?? {})) {
       if (name === 'then' || name in this)
-        throw new Error(`Query module name conflicts with database member: ${name}`);
+        throw new SparkqlError({
+          message: `Query module name conflicts with database member: ${name}`,
+        });
       Object.defineProperty(this, name, {
         value: factory({ ...moduleContext, operationName: name }),
         enumerable: true,

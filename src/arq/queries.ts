@@ -1,6 +1,7 @@
 import { GeneratorBuilder } from '@traqula/core';
 import * as AST from '@traqula/rules-sparql-1-1';
 import type { DialectAST, SparqlDialect } from '../database/dialect.js';
+import { SparkqlError } from '../database/errors.js';
 import {
   PatternModuleQueryBuilder,
   type PatternQueryConfig,
@@ -141,7 +142,7 @@ function jsonModule<P extends JsonProjection>(
   return {
     normalize: (config, context) => {
       if (!Object.keys(config.projection).length)
-        throw new Error('JSON requires at least one projected member.');
+        throw new SparkqlError({ message: 'JSON requires at least one projected member.' });
       const projection = Object.fromEntries(
         Object.entries(config.projection).map(([key, value]) => [
           key,
@@ -161,19 +162,20 @@ function jsonModule<P extends JsonProjection>(
     generate: ast => generator.arqJsonQuery(ast, AST.completeGeneratorContext({})).trim(),
     execute: async (sparql, session, ast) => {
       const data = await requestQueryJson(session, sparql, 'application/json');
-      if (!Array.isArray(data)) throw new Error('Expected an ARQ JSON array.');
+      if (!Array.isArray(data)) throw new SparkqlError({ message: 'Expected an ARQ JSON array.' });
       for (const row of data) {
         if (!isObjectLike(row) || Array.isArray(row))
-          throw new Error('Expected an ARQ JSON object.');
+          throw new SparkqlError({ message: 'Expected an ARQ JSON object.' });
         for (const [key, term] of Object.entries(ast.projection)) {
           // biome-ignore lint/suspicious/noPrototypeBuiltins: Object.hasOwn requires ES2022; this package targets ES2020.
           if (!Object.prototype.hasOwnProperty.call(row, key)) {
-            if (term.subType !== 'variable') throw new Error(`Missing JSON constant: ${key}`);
+            if (term.subType !== 'variable')
+              throw new SparkqlError({ message: `Missing JSON constant: ${key}` });
             continue;
           }
           const value: unknown = row[key];
           if (value !== null && !['string', 'number', 'boolean'].includes(typeof value)) {
-            throw new Error(`Invalid JSON scalar: ${key}`);
+            throw new SparkqlError({ message: `Invalid JSON scalar: ${key}` });
           }
           if (term.subType !== 'variable') {
             const input = projection[key];
@@ -186,7 +188,7 @@ function jsonModule<P extends JsonProjection>(
                     ? typeof input
                     : undefined;
             if (expected && typeof value !== expected)
-              throw new Error(`Invalid JSON constant: ${key}`);
+              throw new SparkqlError({ message: `Invalid JSON constant: ${key}` });
           }
         }
       }

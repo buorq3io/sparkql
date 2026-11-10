@@ -2,6 +2,7 @@ import { GeneratorBuilder } from '@traqula/core';
 import * as AST from '@traqula/rules-sparql-1-1';
 import { DataFactory } from 'rdf-data-factory';
 import type { SparqlDialect } from '../database/dialect.js';
+import { SparkqlError } from '../database/errors.js';
 import { sparkqlGeneratorBuilder } from '../database/generator.js';
 import { assertNonNegativeInteger } from '../database/pattern-query-module.js';
 import {
@@ -126,7 +127,7 @@ const rdf = new DataFactory();
 
 function decodeTerm(value: unknown): DefaultQueryReturnType {
   if (!isObjectLike(value) || typeof value.value !== 'string')
-    throw new Error('Invalid PATHS RDF term.');
+    throw new SparkqlError({ message: 'Invalid PATHS RDF term.' });
   if (value.type === 'uri') return rdf.namedNode(value.value);
   if (value.type === 'bnode') return rdf.blankNode(value.value);
   if (value.type === 'literal' || value.type === 'typed-literal') {
@@ -136,11 +137,11 @@ function decodeTerm(value: unknown): DefaultQueryReturnType {
       (language !== undefined && typeof language !== 'string') ||
       (datatype !== undefined && typeof datatype !== 'string')
     ) {
-      throw new Error('Invalid PATHS literal metadata.');
+      throw new SparkqlError({ message: 'Invalid PATHS literal metadata.' });
     }
     return rdf.literal(value.value, language || (datatype ? rdf.namedNode(datatype) : undefined));
   }
-  throw new Error('Unsupported PATHS RDF term type.');
+  throw new SparkqlError({ message: 'Unsupported PATHS RDF term type.' });
 }
 
 /**
@@ -171,12 +172,13 @@ function decodeTerm(value: unknown): DefaultQueryReturnType {
  */
 export function decodePaths(data: unknown): PathResult[] {
   if (!isObjectLike(data) || !isObjectLike(data.results) || !Array.isArray(data.results.bindings)) {
-    throw new Error('Expected a PATHS SPARQL JSON result set.');
+    throw new SparkqlError({ message: 'Expected a PATHS SPARQL JSON result set.' });
   }
   const paths: PathResult[] = [];
   let edges: PathBinding[] = [];
   for (const row of data.results.bindings) {
-    if (!isObjectLike(row) || Array.isArray(row)) throw new Error('Invalid PATHS binding set.');
+    if (!isObjectLike(row) || Array.isArray(row))
+      throw new SparkqlError({ message: 'Invalid PATHS binding set.' });
     if (!Object.keys(row).length) {
       if (edges.length) {
         paths.push({ edges });
@@ -194,7 +196,7 @@ export function decodePaths(data: unknown): PathResult[] {
 const pathsModule: QueryModule<PathsConfig, PathsQueryAST, PathResult[], SparqlDialect> = {
   normalize: (config, context) => {
     if (!config.start || !config.end || !config.via)
-      throw new Error('PATHS requires START, END, and VIA.');
+      throw new SparkqlError({ message: 'PATHS requires START, END, and VIA.' });
     const normalizer = context.normalizer(config.body);
     const body = normalizer.getSPARQL();
     const endpoint = (input: EndpointInput): EndpointAST => ({
@@ -448,7 +450,7 @@ export class PathsQueryBuilder<
   via(...patterns: [PatternInput, ...PatternInput[]]): PathsQuery<S, E, true>;
   via(...values: (PathInput | TermVariableInput | PatternInput)[]): PathsQuery<S, E, true> {
     const value = values[0];
-    if (!value) throw new Error('VIA requires a path or graph pattern.');
+    if (!value) throw new SparkqlError({ message: 'VIA requires a path or graph pattern.' });
     if (values.length === 1 && termVariable.is(value))
       this.config.via = { kind: 'variable', variable: value };
     else if (

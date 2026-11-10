@@ -1,3 +1,4 @@
+import { SparkqlError } from '../database/errors.js';
 import type { FactoryFunctions } from './types.js';
 
 type Guard<T> = (value: unknown) => value is T;
@@ -123,7 +124,7 @@ export function defineType<
 
   const assert = (value: unknown): asserts value is T => {
     if (!is(value)) {
-      throw new Error(options.assertMessage);
+      throw new SparkqlError({ message: options.assertMessage });
     }
   };
 
@@ -152,7 +153,7 @@ export function defineType<
       return result;
     }
 
-    throw new Error(options.parseMessage);
+    throw new SparkqlError({ message: options.parseMessage });
   };
 
   return {
@@ -208,7 +209,7 @@ export function defineUnionType<Ds extends readonly DefinedType<any, any>[]>(opt
 
   const assert = (value: unknown): asserts value is Output => {
     if (!is(value)) {
-      throw new Error(assertMessage);
+      throw new SparkqlError({ message: assertMessage });
     }
   };
 
@@ -234,7 +235,7 @@ export function defineUnionType<Ds extends readonly DefinedType<any, any>[]>(opt
       return result;
     }
 
-    throw new Error(parseMessage);
+    throw new SparkqlError({ message: parseMessage });
   };
 
   return {
@@ -320,7 +321,7 @@ export function assertWith<T>(
 ): (value: unknown) => asserts value is T {
   return (value: unknown): asserts value is T => {
     if (!guard(value)) {
-      throw new Error(message);
+      throw new SparkqlError({ message: message });
     }
   };
 }
@@ -350,6 +351,6 @@ export function expect<T>(
       return result;
     }
 
-    throw new Error(message);
+    throw new SparkqlError({ message: message });
   };
 }

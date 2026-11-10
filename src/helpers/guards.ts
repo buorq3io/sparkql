@@ -45,7 +45,7 @@ export const acceptsTermExpressionInput = anyOf(
  * the value wins, so values with a built-in input format, such as strings, numbers and `URL`
  * objects, are converted. Same as {@link termExpression}`.parseOrThrow`.
  *
- * @throws `Error` When no parser accepts the value, such as for a blank node or a plain object.
+ * @throws {@link SparkqlError} When no parser accepts the value, such as for a blank node or a plain object.
  *
  * @example
  * Parse a variable and an IRI. Terms are returned unchanged; other inputs, such as `'Ada'`,

@@ -1,4 +1,5 @@
 import type * as AST from '@traqula/rules-sparql-1-1';
+import { SparkqlError } from '../database/errors.js';
 import type { Formatter } from './generators.js';
 import type { FormatInput, TermFormats } from './term-formats.js';
 import type { DefaultQueryReturnType, TermIriOutput, TermLiteralOutput } from './types.js';
@@ -226,7 +227,7 @@ export class TermCodecTable {
    * Indexes the decoders of a codec table.
    *
    * @param codecs - Codecs keyed by datatype IRI or by the `iri`/`blank` pseudo-keys.
-   * @throws {@link Error} When the `iri` or `blank` codec has an `encode` hook; configure those
+   * @throws {@link SparkqlError} When the `iri` or `blank` codec has an `encode` hook; configure those
    * inputs with `formats.iri` and `formats.blank`.
    *
    * @example
@@ -241,9 +242,9 @@ export class TermCodecTable {
     for (const [key, codec] of Object.entries(codecs)) {
       if (codec?.decode) this.decoders.set(key, codec.decode);
       if (codec?.encode && (key === 'iri' || key === 'blank'))
-        throw new Error(
-          `codecs.${key} cannot encode; configure input for ${key}s with formats.${key}.`
-        );
+        throw new SparkqlError({
+          message: `codecs.${key} cannot encode; configure input for ${key}s with formats.${key}.`,
+        });
     }
   }
 

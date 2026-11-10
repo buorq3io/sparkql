@@ -8,6 +8,7 @@ import type {
   ValuePatternColumnsInput,
 } from '../helpers/types.js';
 import type { AnySparqlDialect, DialectPattern } from './dialect.js';
+import { SparkqlError } from './errors.js';
 import {
   ModuleQueryBuilder,
   type QueryModule,
@@ -414,8 +415,7 @@ export abstract class PatternModuleQueryBuilder<
  *
  * @param value - Value to validate.
  * @param clause - Clause name, used in the error message.
- * @throws When `value` is negative, fractional, or not a safe integer. The error is a plain
- * `Error`, not a `SparkqlError`.
+ * @throws {@link SparkqlError} When `value` is negative, fractional, or not a safe integer.
  *
  * @example
  * Validate the page size of a custom query form before storing it.
@@ -429,5 +429,5 @@ export abstract class PatternModuleQueryBuilder<
  */
 export function assertNonNegativeInteger(value: number, clause: string): void {
   if (!Number.isSafeInteger(value) || value < 0)
-    throw new Error(`${clause} requires a non-negative safe integer.`);
+    throw new SparkqlError({ message: `${clause} requires a non-negative safe integer.` });
 }

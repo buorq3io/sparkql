@@ -1,6 +1,7 @@
 import { Readable } from 'node:stream';
 import type { ParsingClient, StreamClient } from 'sparql-http-client';
 import { entityKind, is } from './entity.js';
+import { SparkqlError } from './errors.js';
 import type {
   SparqlBindings,
   SparqlQuad,
@@ -58,7 +59,7 @@ export class HttpSparqlSession<C extends SparqlHttpClient = SparqlHttpClient>
    * `endpointUrl`; the client is created lazily.
    *
    * @param config - A client to reuse or connection options.
-   * @throws {@link Error} When neither endpoint URL is provided.
+   * @throws {@link SparkqlError} When neither endpoint URL is provided.
    *
    * @example
    * Configure a session.
@@ -77,7 +78,7 @@ export class HttpSparqlSession<C extends SparqlHttpClient = SparqlHttpClient>
         ? { endpointUrl: config.connection }
         : { ...config.connection };
     if (!connection.endpointUrl && !connection.updateUrl)
-      throw new Error('A connection requires `endpointUrl` or `updateUrl`.');
+      throw new SparkqlError({ message: 'A connection requires `endpointUrl` or `updateUrl`.' });
     this.connection = connection;
   }
 
@@ -225,9 +226,10 @@ export class HttpSparqlSession<C extends SparqlHttpClient = SparqlHttpClient>
 
   private async queryClient(): Promise<C> {
     if (this.connection && !this.connection.endpointUrl)
-      throw new Error(
-        'This connection has no `endpointUrl` to send queries to; only `updateUrl` is set.'
-      );
+      throw new SparkqlError({
+        message:
+          'This connection has no `endpointUrl` to send queries to; only `updateUrl` is set.',
+      });
     return this.client;
   }
 }

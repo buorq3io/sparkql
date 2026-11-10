@@ -1,3 +1,4 @@
+import { SparkqlError } from '../database/errors.js';
 import type { MergePlaceholders, PlaceholderCarrier } from '../database/prepared.js';
 import type { TermCodec } from '../helpers/codecs.js';
 import {
@@ -625,7 +626,7 @@ export function castWith<O, R2, P extends Presence>(
   variable: TermVariableAndBinding<R2, P>
 ): TermVariableAndBinding<O, P> {
   const decode = codec.decode;
-  if (!decode) throw new Error('castWith needs a codec with a decoder.');
+  if (!decode) throw new SparkqlError({ message: 'castWith needs a codec with a decoder.' });
   return applyTransform(variable, self => decode(self));
 }
 
