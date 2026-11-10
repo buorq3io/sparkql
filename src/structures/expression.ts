@@ -549,10 +549,11 @@ export function as<R1 extends QueryReturnType>(
 /**
  * Applies a result transform to a variable or binding.
  *
- * A variable is copied with the transform set. For a binding (`as(...)`), the transform is
- * set only when its expression has a `transform` property, and otherwise silently dropped;
- * it is written onto the binding's existing expression and variable objects, so the
- * original binding changes too.
+ * Returns a copy and leaves the input unchanged. A variable is copied with the transform
+ * set. A binding (`as(...)`) is copied with a new variable carrying the transform, which is
+ * what decodes the selected value, whatever its expression is. When the expression is an
+ * expression node (a function, operator, aggregate or raw `sparql` expression), it is copied
+ * with the transform too.
  *
  * @param variable - Variable or binding to transform.
  * @param transform - Function that converts a result term.
@@ -568,16 +569,18 @@ export function applyTransform<R1, R2 extends QueryReturnType, P extends Presenc
   variable: TermVariableAndBinding<R1, P>,
   transform: TermVariableTransform<R2>
 ): TermVariableAndBinding<R2, P> {
-  const newTerm = { ...variable } as TermVariableAndBinding<R2, P>;
-  if (newTerm.type === 'pattern') {
-    if (typeof newTerm.expression === 'object' && 'transform' in newTerm.expression) {
-      newTerm.expression.transform = transform;
-      newTerm.variable.transform = transform;
-    }
-  } else {
-    newTerm.transform = transform;
+  if (variable.type === 'pattern') {
+    const expression = variable.expression;
+    return {
+      ...variable,
+      expression:
+        isObjectLike(expression) && expression.type === 'expression'
+          ? { ...expression, transform }
+          : expression,
+      variable: { ...variable.variable, transform },
+    } as TermVariableAndBinding<R2, P>;
   }
-  return newTerm;
+  return { ...variable, transform } as TermVariableAndBinding<R2, P>;
 }
 
 /**
