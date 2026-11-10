@@ -1,14 +1,14 @@
-import type { PatternBgpInput, QuadsInput, QueryConstructInput } from '../helpers/types.js';
+import type { PatternBgpInput, QueryConstructInput } from '../helpers/types.js';
 import { bgp } from '../structures/index.js';
 import type { AnySparqlDialect, SparqlDialect } from './dialect.js';
 import { QueryBuilderBase } from './query.js';
 import type { QueryModuleContext } from './query-module.js';
-import type { SparqlSession } from './session.js';
+import type { SparqlQuad, SparqlSession } from './session.js';
 
 /** Builds an executable `CONSTRUCT` query returning RDF/JS quads. Each await executes a new request. */
 export class ConstructQueryBuilderBase<D extends AnySparqlDialect = SparqlDialect>
-  extends QueryBuilderBase<QueryConstructInput, QuadsInput[], false, D>
-  implements PromiseLike<QuadsInput[]>
+  extends QueryBuilderBase<QueryConstructInput, SparqlQuad[], false, D>
+  implements PromiseLike<SparqlQuad[]>
 {
   constructor(context: QueryModuleContext<D>, template: PatternBgpInput[]) {
     super(
@@ -41,8 +41,7 @@ export class ConstructQueryBuilderBase<D extends AnySparqlDialect = SparqlDialec
     );
   }
 
-  protected async makeQuery(session: SparqlSession, sparql: string): Promise<QuadsInput[]> {
-    // The declared result type predates sessions; the values are RDF/JS quads.
-    return (await session.quads(sparql)) as unknown as QuadsInput[];
+  protected async makeQuery(session: SparqlSession, sparql: string): Promise<SparqlQuad[]> {
+    return session.quads(sparql);
   }
 }

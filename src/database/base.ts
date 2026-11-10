@@ -59,7 +59,7 @@ import {
   SelectQueryBuilderBase,
   type TypedSelectedVariables,
 } from './select.js';
-import { isSparqlSession, type SparqlSession } from './session.js';
+import { isSparqlSession, type SparqlQuad, type SparqlSession } from './session.js';
 import { UpdateQueryBuilderBase } from './update.js';
 
 interface PrivateSparqlDatabaseOptions {
@@ -656,9 +656,8 @@ export class SparqlDatabase<
   /**
    * Builds a `DESCRIBE` query.
    *
-   * Add graph patterns with `where` and query modifiers. Each await executes a request. The
-   * result is declared as `QuadsInput[]`, but at runtime it holds the RDF/JS quads the
-   * session returns.
+   * Add graph patterns with `where` and query modifiers. Each await executes a request and
+   * resolves to the RDF/JS quads ({@link SparqlQuad}) the session returns.
    *
    * @param variables - Resources or variables to describe.
    *
@@ -684,9 +683,8 @@ export class SparqlDatabase<
   /**
    * Builds a `CONSTRUCT` query.
    *
-   * Add graph patterns with `where` and query modifiers. Each await executes a request. The
-   * result is declared as `QuadsInput[]`, but at runtime it holds the RDF/JS quads the
-   * session returns.
+   * Add graph patterns with `where` and query modifiers. Each await executes a request and
+   * resolves to the RDF/JS quads ({@link SparqlQuad}) the session returns.
    *
    * @param templates - Triple templates for the result graph.
    *

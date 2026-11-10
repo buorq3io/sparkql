@@ -348,7 +348,11 @@ const [v, n] = db.createManagers([], prefixes);
 const constructed = await db
   .construct(triples(v.person, n.rdf.type, n.foaf.Person))
   .where(triples(v.person, n.foaf.name, v.name));
+console.log(constructed); // SparqlQuad[]: RDF/JS quads from the session
 ```
+
+`construct()` and `describe()` resolve to the RDF/JS quads (`SparqlQuad[]`) the
+session returns.
 
 ### UPDATE Queries
 
