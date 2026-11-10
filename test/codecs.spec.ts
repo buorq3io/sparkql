@@ -120,6 +120,28 @@ describe('datatype codecs', () => {
     expect(result).toEqual({ ...row, missing: undefined });
   });
 
+  test('decode every bound variable of a SELECT * row', async () => {
+    const db = SparqlDatabase.create({
+      session: session([row]),
+      codecs: defaultCodecs({ integer: 'number', decimal: 'number' }),
+    });
+    const [result] = await db.select().where();
+    expect(result).toEqual({
+      count: 42,
+      int: 7,
+      price: 3.5,
+      ratio: Number.POSITIVE_INFINITY,
+      ok: true,
+      day: new Date('2020-01-02T00:00:00Z'),
+      at: new Date('2020-01-02T03:04:05Z'),
+      label: { value: 'chat', language: 'fr' },
+      name: 'Ada',
+      page: row.page,
+      node: row.node,
+      other: row.other,
+    });
+  });
+
   test('survive base() and prefix(), and work in ARQ and Stardog databases', async () => {
     const codecs = defaultCodecs({ integer: 'number', decimal: 'number' });
     // The three database types are not one callable union; the checks below are runtime ones.

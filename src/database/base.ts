@@ -454,8 +454,8 @@ export class SparqlDatabase<
    * modifiers and `values` are unavailable on the chain until `where` is called.
    * Each await executes a request. Bare variables are typed and returned as RDF/JS terms
    * ({@link DefaultQueryReturnType}); configured codecs decode matching datatypes at runtime
-   * without changing that static type. Omit the projection for `SELECT *`: rows are then
-   * built only from projected keys, so each row is an empty object.
+   * without changing that static type. Omit the projection for `SELECT *`: each row then holds
+   * every variable the solution binds, keyed by name, decoded like a bare variable.
    *
    * @param variables - Projection mapping, or omit for all variables.
    *
@@ -514,8 +514,8 @@ export class SparqlDatabase<
    * modifiers and `values` are unavailable on the chain until `where` is called.
    * Each await executes a request. Bare variables are typed and returned as RDF/JS terms
    * (`DefaultQueryReturnType`); configured codecs decode matching datatypes at runtime
-   * without changing that static type. Omit the projection for `SELECT *`: rows are then
-   * built only from projected keys, so each row is an empty object.
+   * without changing that static type. Omit the projection for `SELECT *`: each row then holds
+   * every variable the solution binds, keyed by name, decoded like a bare variable.
    *
    * @param variables - Projection mapping, or omit for all variables.
    *
@@ -576,8 +576,8 @@ export class SparqlDatabase<
    * modifiers and `values` are unavailable on the chain until `where` is called.
    * Each await executes a request. Bare variables are typed and returned as RDF/JS terms
    * (`DefaultQueryReturnType`); configured codecs decode matching datatypes at runtime
-   * without changing that static type. Omit the projection for `SELECT *`: rows are then
-   * built only from projected keys, so each row is an empty object.
+   * without changing that static type. Omit the projection for `SELECT *`: each row then holds
+   * every variable the solution binds, keyed by name, decoded like a bare variable.
    *
    * @param variables - Projection mapping, or omit for all variables.
    *

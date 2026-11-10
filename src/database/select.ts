@@ -78,6 +78,8 @@ export class SelectQueryBuilderBase<
   implements PromiseLike<T[]>
 {
   private readonly selectedFields: SubqueryFields<T>;
+  /** `SELECT *`: rows hold every bound variable instead of the projected keys. */
+  private readonly wildcard: boolean;
   private lookup: Record<string, string> = {};
   private lookupTransform: Record<
     string,
@@ -126,6 +128,7 @@ export class SelectQueryBuilderBase<
       context
     );
 
+    this.wildcard = !variables;
     this.selectedFields = Object.fromEntries(
       Object.entries(variables ?? {}).map(([key, value]) => {
         const selected = value as TermVariableAndBinding<any, Presence>;
@@ -250,6 +253,15 @@ export class SelectQueryBuilderBase<
         ? (term: DefaultQueryReturnType | undefined) => (term ? codecs.decode(term) : term)
         : (term: DefaultQueryReturnType | undefined) => term;
     for (const binding of await session.bindings(sparql)) {
+      if (this.wildcard) {
+        // SELECT *: the solution's bound variables, keyed by name, decoded like bare variables.
+        items.push(
+          Object.fromEntries(
+            Object.entries(binding).map(([name, term]) => [name, decode(term)])
+          ) as T
+        );
+        continue;
+      }
       const temp = Object.entries(this.lookup).reduce(
         (acc, curr) => {
           const term = binding[curr[0]];

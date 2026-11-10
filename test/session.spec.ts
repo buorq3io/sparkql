@@ -115,6 +115,26 @@ describe('custom sessions', () => {
     expect(calls[0].sparql).toContain('PREFIX ex:');
   });
 
+  test('SELECT * returns every bound variable of each solution', async () => {
+    const { session } = fakeSession();
+    const db = SparqlDatabase.create({ session });
+    const pattern = triples(db.variable('s'), db.iri(ex('p')), db.variable('name'));
+    for (const query of [
+      db.select().where(pattern),
+      db.selectDistinct().where(pattern),
+      db.selectReduced().where(pattern),
+    ]) {
+      const rows = await query;
+      // Unbound variables are absent, as in the session's bindings.
+      expect(rows).toEqual([
+        { name: rdf.literal('Ada'), age: rdf.literal('36') },
+        { name: rdf.literal('Alan') },
+      ]);
+      expect(Object.keys(rows[1])).toEqual(['name']);
+      expect(rows[0].name?.value).toBe('Ada');
+    }
+  });
+
   test('sends a request on every await', async () => {
     const { session, calls } = fakeSession();
     const db = SparqlDatabase.create({ session });
