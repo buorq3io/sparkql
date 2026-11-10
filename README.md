@@ -617,3 +617,9 @@ Run `pnpm check` to check lint and formatting with Biome. Use `pnpm check:fix` t
 
 `pnpm test --run test/docs.spec.ts` typechecks every TypeScript example in `README.md` and
 `docs/*.md` against the current source, offline. Keep each fenced example self-contained.
+
+`pnpm test:types` compiles the type tests in `test/types/` (one file per feature, checked with
+`expectTypeOf(...).toEqualTypeOf<...>()` and `// @ts-expect-error`; never executed).
+`pnpm test:exports` fails when a barrel exports one name from two places, such as two `export *`
+sources or a local export that shadows one; intended overrides are listed in `test/exports.spec.ts`.
+Both also run in CI, and `test:exports` is part of `pnpm test`.

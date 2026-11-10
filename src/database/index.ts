@@ -20,5 +20,11 @@ export type {
   SparqlRawExpression,
 } from './raw.js';
 export { sparql } from './raw.js';
-export type { SubqueryFields, TypedSubquery } from './select.js';
+export type {
+  InferredSelectResult,
+  SelectedVariables,
+  SubqueryFields,
+  TypedSelectedVariables,
+  TypedSubquery,
+} from './select.js';
 export * from './session.js';

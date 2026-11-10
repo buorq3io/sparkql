@@ -20,11 +20,18 @@ import {
 } from './prepared.js';
 import { SparqlQueryBuilderBase } from './sparql-query.js';
 
+export declare const dynamicQuery: unique symbol;
+/**
+ * Type-only marker added by `$dynamic()`. Clause restrictions do not apply to a
+ * marked query, and every clause method keeps the marker on its result.
+ */
+export type DynamicQuery = { readonly [dynamicQuery]: true };
+
 export type QueryBuilderBaseWithout<
   T,
   TDynamic extends boolean,
   TExcluded extends keyof T & string,
-> = TDynamic extends true ? T : Omit<T, TExcluded>;
+> = TDynamic extends true ? T : [T] extends [DynamicQuery] ? T : Omit<T, TExcluded>;
 
 export type RootQueryBuilderBaseWithout<T extends QueryBuilderBase<any, any, any, any>> =
   QueryBuilderBaseWithout<
@@ -305,12 +312,15 @@ export abstract class QueryBuilderBase<
     return this;
   }
 
+  /**
+   * Lifts the clause-order restrictions for the rest of the chain, so helpers
+   * can add clauses to a query in any order and more than once.
+   */
   $dynamic<Self extends PlaceholderCarrier<object>>(
     this: Self
-  ): QueryBuilderBaseWithout<this, true, never> &
-    PlaceholderCarrier<NonNullable<Self[typeof placeholderTypes]>>;
+  ): this & DynamicQuery & PlaceholderCarrier<NonNullable<Self[typeof placeholderTypes]>>;
 
-  $dynamic(): QueryBuilderBaseWithout<this, true, any> {
-    return this;
+  $dynamic(): this & DynamicQuery {
+    return this as this & DynamicQuery;
   }
 }
