@@ -1,4 +1,5 @@
 export * from './base.js';
+export * from './count.js';
 export * from './dialect.js';
 export * from './entity.js';
 export * from './errors.js';

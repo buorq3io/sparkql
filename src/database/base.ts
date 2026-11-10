@@ -10,6 +10,7 @@ import type { FormatInput, TermFormats } from '../helpers/term-formats.js';
 import {
   type FactoryFunctions,
   type PatternBgpInput,
+  type PatternInput,
   type QuadsInput,
   type QueryInput,
   Strictness,
@@ -29,8 +30,14 @@ import {
 } from '../structures/index.js';
 import { AskQueryBuilderBase } from './ask.js';
 import { ConstructQueryBuilderBase } from './construct.js';
+import { type CountOptions, CountQueryBuilder } from './count.js';
 import { DescribeQueryBuilderBase } from './describe.js';
-import { type AnySparqlDialect, type SparqlDialect, sparql11Dialect } from './dialect.js';
+import {
+  type AnySparqlDialect,
+  type DialectPattern,
+  type SparqlDialect,
+  sparql11Dialect,
+} from './dialect.js';
 import { is } from './entity.js';
 import {
   HttpSparqlSession,
@@ -310,6 +317,24 @@ export class SparqlDatabase<
         ),
       ],
     }) as unknown as this;
+  }
+
+  /** Count solutions, optionally counting distinct bindings of a variable. */
+  $count<P extends PatternInput<DialectPattern<D>>[]>(
+    ...inputs: [...P, CountOptions]
+  ): CountQueryBuilder<D> & PlaceholderCarrier<MergePlaceholders<P[number]>>;
+  $count<P extends PatternInput<DialectPattern<D>>[]>(
+    ...patterns: P
+  ): CountQueryBuilder<D> & PlaceholderCarrier<MergePlaceholders<P[number]>>;
+  $count(...inputs: (PatternInput<DialectPattern<D>> | CountOptions)[]): CountQueryBuilder<D> {
+    const last = inputs[inputs.length - 1];
+    const options =
+      last && 'distinct' in last && !('type' in last) ? (inputs.pop() as CountOptions) : undefined;
+    return new CountQueryBuilder(
+      this.moduleContext,
+      inputs as PatternInput<DialectPattern<D>>[],
+      options
+    );
   }
 
   select<U extends SelectedVariables>(
