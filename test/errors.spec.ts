@@ -248,6 +248,22 @@ describe('multiple library instances', () => {
     expect(new Error('plain') instanceof own.core.SparkqlError).toBe(false);
   });
 
+  test('placeholders from another instance stay placeholders', async () => {
+    const [own, foreign] = await Promise.all([ownPromise, foreignPromise]);
+    const placeholder = foreign.core.sparql.placeholder<'value', string>('value');
+    expect(placeholder instanceof own.core.Placeholder).toBe(true);
+    const db = own.core.SparqlDatabase.create();
+    const prepared = db
+      .ask()
+      .where(own.core.triples(db.variable('s'), db.iri(ex('p')), placeholder))
+      .limit(foreign.core.sparql.placeholder<'limit', number>('limit'))
+      .prepare();
+    const text = prepared.toSPARQL({ value: 'Ada', limit: 3 });
+    expect(text).toContain('"Ada"');
+    expect(text).toContain('LIMIT 3');
+    expect(text).not.toContain('urn:sparkql:placeholder');
+  });
+
   test('a session from another instance keeps its client', async () => {
     const [own, foreign] = await Promise.all([ownPromise, foreignPromise]);
     const session = new foreign.core.HttpSparqlSession({ connection: endpoint });
