@@ -277,8 +277,8 @@ export const tripleCollectionListInputBase = defineType({
 export const tripleCollectionBlankNodePropertiesInputBase = defineType({
   is: isTripleCollectionBlankNodePropertiesInputBase,
   from: [createTripleCollectionBlankNodePropertiesInputSyntaxFormatter()],
-  assertMessage: 'Expected a blank term.',
-  parseMessage: 'Unsupported blank term provided.',
+  assertMessage: 'Expected a blank node property list.',
+  parseMessage: 'Unsupported blank node property list value provided.',
 });
 
 /** Guards and parsers for RDF lists and blank node property lists, in AST or tuple syntax. */
@@ -291,27 +291,27 @@ export const tripleCollectionInput = defineUnionType({
 /** Guards and parsers for variable, IRI, literal and blank node terms and their inputs. */
 export const term = defineUnionType({
   members: [termVariable, termIri, termLiteral, termBlank] as const,
-  assertMessage: 'Expected an describe variable term..',
-  parseMessage: 'Unsupported describe variable term value provided.',
+  assertMessage: 'Expected a variable, IRI, literal or blank node term.',
+  parseMessage: 'Unsupported variable, IRI, literal or blank node term value provided.',
 });
 
 /** Guards and parsers for the terms that can be an expression: variables, IRIs and literals. */
 export const termExpression = defineUnionType({
   members: [termVariable, termIri, termLiteral] as const,
-  assertMessage: 'Expected an expression term..',
+  assertMessage: 'Expected an expression term.',
   parseMessage: 'Unsupported expression term value provided.',
 });
 
 /** Guards and parsers for variables and IRIs, the terms that can be a predicate or graph name. */
 export const termGraph = defineUnionType({
   members: [termVariable, termIri] as const,
-  assertMessage: 'Expected an describe variable term..',
-  parseMessage: 'Unsupported describe variable term value provided.',
+  assertMessage: 'Expected a variable or IRI term.',
+  parseMessage: 'Unsupported variable or IRI term value provided.',
 });
 
 /** Guards and parsers for concrete values, IRIs and literals, such as `VALUES` entries. */
 export const termValues = defineUnionType({
   members: [termIri, termLiteral] as const,
-  assertMessage: 'Expected an describe variable term..',
-  parseMessage: 'Unsupported describe variable term value provided.',
+  assertMessage: 'Expected an IRI or literal term.',
+  parseMessage: 'Unsupported IRI or literal term value provided.',
 });

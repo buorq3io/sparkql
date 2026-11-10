@@ -146,7 +146,7 @@ export function isTripleCollectionBlankNodePropertiesInputSyntax(
       isObjectLike(value[0]) &&
       value[0].subType === 'predicatePairCollection') ||
       (value.length === 2 &&
-        (termGraph.accepts(value[0]) || value[0].type === 'path') &&
+        (termGraph.accepts(value[0]) || (isObjectLike(value[0]) && value[0].type === 'path')) &&
         ((isObjectLike(value[1]) && value[1].subType === 'objectCollection') ||
           isGraphNodeInput(value[1]))))
   );
