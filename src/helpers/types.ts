@@ -47,7 +47,8 @@ export type TermVariableInput<
  * @typeParam K - Whether it may be unbound.
  */
 export type TermVariableAndBinding<
-  T extends QueryReturnType = QueryReturnType,
+  // `any` by default: an unparameterized binding stands for a binding of some value type.
+  T extends QueryReturnType = any,
   K extends Presence = Presence.required,
 > = PatternBindInput<T, K> | TermVariableInput<T, K>;
 
@@ -245,7 +246,8 @@ export type PatternFilterInput = Override<
 
 /** A `BIND` expression and its target variable. */
 export type PatternBindInput<
-  T extends QueryReturnType = QueryReturnType,
+  // `any` by default: pattern lists accept a BIND of any value type.
+  T extends QueryReturnType = any,
   K extends Presence = Presence.required,
 > = Override<
   AST.PatternBind,
@@ -490,8 +492,11 @@ export type TermLiteralOutput = RdfJs.Literal;
 
 /** The RDF/JS term returned for a bound variable that no cast or codec decodes. */
 export type DefaultQueryReturnType = TermIriOutput | TermBlankOutput | TermLiteralOutput;
-/** A value a query variable can have in a result row: an RDF/JS term or a decoded value. */
-export type QueryReturnType = DefaultQueryReturnType | any;
+/**
+ * A value a query variable can have in a result row: an RDF/JS term, or whatever a cast or
+ * codec decodes it to.
+ */
+export type QueryReturnType = unknown;
 
 /**
  * A function that converts the bound RDF/JS term of a variable into its row value.
