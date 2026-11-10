@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
-import ts from 'typescript';
+import ts from '@typescript/typescript6';
 import { expect, it } from 'vitest';
 
 // Each test typechecks a whole program of examples, which takes longer than the default timeout.
