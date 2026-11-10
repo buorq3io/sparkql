@@ -28,7 +28,7 @@ export interface PatternQueryConfig {
  * Provides `where`, `from`, `fromNamed`, `groupBy`, `having`, `orderBy`, `limit`, `offset` and
  * `values` with the standard builders' normalization, writing into `config.body`. The module
  * then reads the body through {@link QueryNormalizer}. Each clause method narrows the chain so
- * clauses come in SPARQL order.
+ * clauses come in SPARQL order and once each; `limit` and `offset` can come in either order.
  */
 export abstract class PatternModuleQueryBuilder<
   C extends PatternQueryConfig,
@@ -269,7 +269,8 @@ export abstract class PatternModuleQueryBuilder<
   /**
    * Adds a `LIMIT` clause.
    *
-   * Can be called once. After it, only `offset` and `values` remain available on the chain.
+   * Can be called once, before or after `offset`. After it, only `offset` (if not given yet)
+   * and `values` remain available on the chain.
    *
    * @param value - Maximum number of solutions.
    * @throws When `value` is not a non-negative safe integer.
@@ -299,9 +300,11 @@ export abstract class PatternModuleQueryBuilder<
    * LIMIT 10
    * ```
    */
-  limit(
+  limit<Self extends object>(
+    this: Self,
     value: number
-  ): Omit<this, 'limit' | 'orderBy' | 'having' | 'groupBy' | 'where' | 'from' | 'fromNamed'> {
+  ): Omit<Self, 'limit' | 'orderBy' | 'having' | 'groupBy' | 'where' | 'from' | 'fromNamed'>;
+  limit(value: number): this {
     assertNonNegativeInteger(value, 'LIMIT');
     this.body.limit(value);
     return this;
@@ -309,8 +312,8 @@ export abstract class PatternModuleQueryBuilder<
   /**
    * Adds an `OFFSET` clause.
    *
-   * Can be called once. After it, only `values` remains available on the chain, so call `limit`
-   * first when paginating.
+   * Can be called once, before or after `limit`. After it, only `limit` (if not given yet) and
+   * `values` remain available on the chain. The query always lists `LIMIT` first.
    *
    * @param value - Number of solutions to skip.
    * @throws When `value` is not a non-negative safe integer.
@@ -341,12 +344,11 @@ export abstract class PatternModuleQueryBuilder<
    * LIMIT 10 OFFSET 20
    * ```
    */
-  offset(
+  offset<Self extends object>(
+    this: Self,
     value: number
-  ): Omit<
-    this,
-    'offset' | 'limit' | 'orderBy' | 'having' | 'groupBy' | 'where' | 'from' | 'fromNamed'
-  > {
+  ): Omit<Self, 'offset' | 'orderBy' | 'having' | 'groupBy' | 'where' | 'from' | 'fromNamed'>;
+  offset(value: number): this {
     assertNonNegativeInteger(value, 'OFFSET');
     this.body.offset(value);
     return this;
