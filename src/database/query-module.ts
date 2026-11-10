@@ -1,4 +1,5 @@
 import type * as AST from '@traqula/rules-sparql-1-1';
+import type { TermCodecTable } from '../helpers/codecs.js';
 import type { TermFormats } from '../helpers/term-formats.js';
 import type {
   ContextDefinitionInput,
@@ -55,6 +56,8 @@ export interface QueryModuleContext<D extends AnySparqlDialect = AnySparqlDialec
   readonly context: readonly ContextDefinitionInput[];
   readonly factory: FactoryFunctions;
   readonly formats?: TermFormats;
+  /** Result decoders by datatype. Standard SELECT applies them; modules may. */
+  readonly codecs?: TermCodecTable;
   readonly dialect: D;
   normalizer(input?: QuerySelectInput): QueryNormalizer<D>;
 }

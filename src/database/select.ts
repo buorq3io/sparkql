@@ -145,12 +145,19 @@ export class SelectQueryBuilderBase<
 
   protected async makeQuery(session: SparqlSession, sparql: string): Promise<T[]> {
     const items: T[] = [];
+    const codecs = this.builderContext.codecs;
+    // An explicit transform wins over the codec table, which wins over the raw term.
+    const decode =
+      codecs && codecs.size > 0
+        ? (term: DefaultQueryReturnType | undefined) => (term ? codecs.decode(term) : term)
+        : (term: DefaultQueryReturnType | undefined) => term;
     for (const binding of await session.bindings(sparql)) {
       const temp = Object.entries(this.lookup).reduce(
         (acc, curr) => {
-          const func = this.lookupTransform[curr[0]] ?? ((self: any) => self);
+          const term = binding[curr[0]];
+          const transform = this.lookupTransform[curr[0]];
           // Unbound variables are absent; optional transforms accept undefined.
-          acc[curr[1]] = func(binding[curr[0]] as DefaultQueryReturnType);
+          acc[curr[1]] = transform ? transform(term as DefaultQueryReturnType) : decode(term);
           return acc;
         },
         {} as Record<string, any>

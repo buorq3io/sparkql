@@ -32,7 +32,8 @@ Results are decoded from `application/json`, rather than the SPARQL bindings
 format. Constant fields retain their primitive types. Variable fields are
 optional because ARQ omits unbound members. Their values are JSON scalars,
 reflecting ARQ's conversion of RDF terms. JavaScript variable transforms from
-SELECT do not describe ARQ's JSON conversion and are not applied here.
+SELECT do not describe ARQ's JSON conversion and are not applied here; neither
+are datatype codecs, since ARQ's JSON output does not carry datatypes.
 
 ## ARQ quad construction
 

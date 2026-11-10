@@ -1,4 +1,5 @@
 import type { MergePlaceholders, PlaceholderCarrier } from '../database/prepared.js';
+import type { TermCodec } from '../helpers/codecs.js';
 import {
   type DefaultQueryReturnType,
   type ExpressionInput,
@@ -212,6 +213,20 @@ export function createCast<R1 extends QueryReturnType, O extends any[] = []>(
 ) {
   return <R2, P extends Presence>(variable: TermVariableAndBinding<R2, P>, ...other: O) =>
     applyTransform(variable, self => transform(self, ...other));
+}
+
+/**
+ * Casts a variable with a codec's decoder, e.g. `castWith(codecs[xsd.dateTime], v.born)`,
+ * so one codec definition gives both the runtime value and the static type.
+ * Like every `castX`, it wins over the database's codec table.
+ */
+export function castWith<O, R2, P extends Presence>(
+  codec: TermCodec<O, any>,
+  variable: TermVariableAndBinding<R2, P>
+): TermVariableAndBinding<O, P> {
+  const decode = codec.decode;
+  if (!decode) throw new Error('castWith needs a codec with a decoder.');
+  return applyTransform(variable, self => decode(self));
 }
 
 export function always<T>(

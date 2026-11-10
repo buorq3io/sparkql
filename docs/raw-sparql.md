@@ -89,8 +89,10 @@ Templates use cooked strings, as JavaScript template literals normally do: write
 
 The type argument declares what a projected value decodes to, like drizzle's
 `` sql<T>`...` ``. It is only a declaration: without a transform, the endpoint's
-RDF term is returned as is. Use `.mapWith()` (or a `castX()` helper) to convert
-the value at runtime:
+RDF term is returned as is, or decoded by the database's
+[datatype codecs](../README.md#datatype-codecs) when it has them. Use `.mapWith()`
+(or a `castX()` helper) to convert the value at runtime; a transform always wins
+over the codec table:
 
 ```ts
 import { SparqlDatabase, as, castNumber, sparql, transformNumber } from 'sparkql';

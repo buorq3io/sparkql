@@ -6,6 +6,7 @@ import type {
 import { SparqlDatabase as BaseSparqlDatabase } from '../database/base.js';
 import type { SparqlHttpClient } from '../database/http-session.js';
 import type { WithQueryMethods } from '../database/query-module.js';
+import type { TermCodecs, WithCodecFormats } from '../helpers/codecs.js';
 import type { TermFormats } from '../helpers/term-formats.js';
 import type { IriManagerConfig } from '../structures/iri.js';
 import { arqDialect } from './dialect.js';
@@ -15,15 +16,17 @@ export * from './dialect.js';
 export * from './functions.js';
 export * from './queries.js';
 
-export type ArqDatabaseOptions<T extends IriManagerConfig, F extends TermFormats = {}> = Omit<
-  BaseSparqlDatabaseOptions<T, F, typeof arqDialect>,
-  'dialect'
->;
+export type ArqDatabaseOptions<
+  T extends IriManagerConfig,
+  F extends TermFormats = {},
+  X extends TermCodecs = {},
+> = Omit<BaseSparqlDatabaseOptions<T, F, typeof arqDialect, X>, 'dialect'>;
 
 export type SparqlDatabaseOptions<
   T extends IriManagerConfig,
   F extends TermFormats = {},
-> = ArqDatabaseOptions<T, F>;
+  X extends TermCodecs = {},
+> = ArqDatabaseOptions<T, F, X>;
 
 export type SparqlDatabase<
   T extends IriManagerConfig,
@@ -37,14 +40,25 @@ function create<
   K extends string = 'g_',
   F extends TermFormats = {},
   C extends SparqlHttpClient = SparqlHttpClient,
->(options: ArqDatabaseOptions<T, F> & { client: C }): SparqlDatabase<T, K, F, C>;
-function create<T extends IriManagerConfig, K extends string = 'g_', F extends TermFormats = {}>(
-  options?: ArqDatabaseOptions<T, F>
-): SparqlDatabase<T, K, F, DefaultSparqlClient>;
-function create<T extends IriManagerConfig, K extends string = 'g_', F extends TermFormats = {}>(
-  options?: ArqDatabaseOptions<T, F>
-): SparqlDatabase<T, K, F> {
-  return BaseSparqlDatabase.create<T, K, F, typeof arqDialect>({
+  X extends TermCodecs = {},
+>(
+  options: ArqDatabaseOptions<T, F, X> & { client: C }
+): SparqlDatabase<T, K, WithCodecFormats<F, X>, C>;
+function create<
+  T extends IriManagerConfig,
+  K extends string = 'g_',
+  F extends TermFormats = {},
+  X extends TermCodecs = {},
+>(
+  options?: ArqDatabaseOptions<T, F, X>
+): SparqlDatabase<T, K, WithCodecFormats<F, X>, DefaultSparqlClient>;
+function create<
+  T extends IriManagerConfig,
+  K extends string = 'g_',
+  F extends TermFormats = {},
+  X extends TermCodecs = {},
+>(options?: ArqDatabaseOptions<T, F, X>): SparqlDatabase<T, K, WithCodecFormats<F, X>> {
+  return BaseSparqlDatabase.create<T, K, F, typeof arqDialect, X>({
     ...options,
     dialect: arqDialect,
   });

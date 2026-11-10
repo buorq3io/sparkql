@@ -1,4 +1,10 @@
 import * as AST from '@traqula/rules-sparql-1-1';
+import {
+  codecFormatters,
+  type TermCodecs,
+  TermCodecTable,
+  type WithCodecFormats,
+} from '../helpers/codecs.js';
 import type { Formatter } from '../helpers/generators.js';
 import type { FormatInput, TermFormats } from '../helpers/term-formats.js';
 import {
@@ -52,6 +58,7 @@ import { UpdateQueryBuilderBase } from './update.js';
 interface PrivateSparqlDatabaseOptions {
   context: QueryInput['context'];
   formats?: TermFormats;
+  codecs?: TermCodecTable;
   factory?: AST.AstFactory;
   session?: SparqlSession;
   dialect?: AnySparqlDialect;
@@ -63,11 +70,19 @@ export interface SparqlDatabaseOptions<
   T extends IriManagerConfig,
   F extends TermFormats = {},
   D extends AnySparqlDialect = SparqlDialect,
+  X extends TermCodecs = {},
 > {
   dialect?: D;
   /** Log each request: `true` uses the console; omitted or `false` disables logging. */
   logger?: boolean | Logger;
   formats?: F & TermFormats;
+  /**
+   * How result terms decode by datatype, e.g. `defaultCodecs({ integer: 'number', decimal: 'number' })`.
+   * Applies to projected SELECT variables without an explicit transform
+   * (`castX`, `as`, typed functions). Without it, those return RDF/JS terms.
+   * Codec encoders extend `formats.literal`.
+   */
+  codecs?: X & TermCodecs;
   managerConfig?: T;
   /**
    * Options for the default HTTP session. A string is the query endpoint URL,
@@ -129,6 +144,7 @@ export class SparqlDatabase<
 > {
   private readonly dialect: D;
   private readonly formats: TermFormats;
+  private readonly codecs: TermCodecTable;
   private readonly queryInErrors: boolean;
   private readonly logger: Logger | undefined;
   /** The session queries run through. `undefined` on a build-only database. */
@@ -145,6 +161,7 @@ export class SparqlDatabase<
       literal: [...(options?.formats?.literal ?? [])],
       blank: [...(options?.formats?.blank ?? [])],
     };
+    this.codecs = options?.codecs ?? new TermCodecTable();
     this.$session = options?.session;
     this.logger = options?.logger;
     this.queryInErrors = options?.queryInErrors ?? false;
@@ -167,6 +184,7 @@ export class SparqlDatabase<
       context: this.initialContext,
       factory: this.factoryFunctions,
       formats: this.formats,
+      codecs: this.codecs,
       dialect: this.dialect,
       session: this.$session,
       queryInErrors: this.queryInErrors,
@@ -207,37 +225,48 @@ export class SparqlDatabase<
     F extends TermFormats = {},
     D extends AnySparqlDialect = SparqlDialect,
     C extends SparqlHttpClient = SparqlHttpClient,
+    X extends TermCodecs = {},
   >(
-    options: SparqlDatabaseOptions<T, F, D> & { client: C }
-  ): WithQueryMethods<SparqlDatabase<T, K, F, D, C>, D>;
+    options: SparqlDatabaseOptions<T, F, D, X> & { client: C }
+  ): WithQueryMethods<SparqlDatabase<T, K, WithCodecFormats<F, X>, D, C>, D>;
   static create<
     T extends IriManagerConfig,
     K extends string = 'g_',
     F extends TermFormats = {},
     D extends AnySparqlDialect = SparqlDialect,
+    X extends TermCodecs = {},
   >(
-    options?: SparqlDatabaseOptions<T, F, D>
-  ): WithQueryMethods<SparqlDatabase<T, K, F, D, DefaultSparqlClient>, D>;
+    options?: SparqlDatabaseOptions<T, F, D, X>
+  ): WithQueryMethods<SparqlDatabase<T, K, WithCodecFormats<F, X>, D, DefaultSparqlClient>, D>;
   static create<
     T extends IriManagerConfig,
     K extends string = 'g_',
     F extends TermFormats = {},
     D extends AnySparqlDialect = SparqlDialect,
-  >(options?: SparqlDatabaseOptions<T, F, D>): WithQueryMethods<SparqlDatabase<T, K, F, D>, D> {
-    return new SparqlDatabase<T, K, F, D>({
+    X extends TermCodecs = {},
+  >(
+    options?: SparqlDatabaseOptions<T, F, D, X>
+  ): WithQueryMethods<SparqlDatabase<T, K, WithCodecFormats<F, X>, D>, D> {
+    const codecs = new TermCodecTable(options?.codecs);
+    return new SparqlDatabase<T, K, WithCodecFormats<F, X>, D>({
       dialect: options?.dialect,
-      formats: options?.formats,
+      formats: {
+        ...options?.formats,
+        literal: [...(options?.formats?.literal ?? []), ...codecFormatters(options?.codecs)],
+      },
+      codecs,
       session: resolveSession(options),
       logger: options?.logger === true ? new DefaultLogger() : options?.logger || undefined,
       queryInErrors: options?.queryInErrors,
       context: transformIntoPrefixObject(options?.managerConfig ?? {}),
-    }) as WithQueryMethods<SparqlDatabase<T, K, F, D>, D>;
+    }) as WithQueryMethods<SparqlDatabase<T, K, WithCodecFormats<F, X>, D>, D>;
   }
 
   base(value: string): this {
     return new SparqlDatabase<T, R, F, D>({
       dialect: this.dialect,
       formats: this.formats,
+      codecs: this.codecs,
       session: this.$session,
       queryInErrors: this.queryInErrors,
       logger: this.logger,
@@ -260,6 +289,7 @@ export class SparqlDatabase<
     return new SparqlDatabase<T, R, F, D>({
       dialect: this.dialect,
       formats: this.formats,
+      codecs: this.codecs,
       session: this.$session,
       queryInErrors: this.queryInErrors,
       logger: this.logger,
