@@ -330,6 +330,8 @@ export const transformBoolean = (self =>
 /**
  * Converts a result term to an array split on a separator.
  *
+ * An empty separator cannot be split on, so the whole value becomes the only element.
+ *
  * @param self - Result term to convert.
  * @param separator - Separator used to split the value; defaults to the unit separator.
  *
@@ -341,7 +343,7 @@ export const transformBoolean = (self =>
  * ```
  */
 export const transformArray = ((self, separator: string = '\u001f') =>
-  self.value.split(separator)) satisfies TermVariableTransform;
+  separator === '' ? [self.value] : self.value.split(separator)) satisfies TermVariableTransform;
 
 /**
  * Converts a result term to a JavaScript date.
@@ -482,7 +484,8 @@ export const castBigint = createCast(transformBigint);
 /**
  * Decodes a selected variable or binding as an array split on a separator.
  *
- * The transform applies to results and does not change the generated SPARQL.
+ * The transform applies to results and does not change the generated SPARQL. An empty
+ * separator cannot be split on, so the whole value becomes the only element.
  *
  * @param variable - Variable or binding to decode.
  * @param other - Separator used to split the value.

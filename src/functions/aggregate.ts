@@ -378,8 +378,8 @@ export function sample(expression: ExpressionInput) {
  *
  * @param expression - The values to aggregate.
  * @param separator - The separator between values; defaults to the unit separator (`\u001f`).
- * An empty string omits the SPARQL `SEPARATOR` (the endpoint then joins with a space), but
- * the result is still split on the empty string, into single characters.
+ * An empty string is emitted as `SEPARATOR=""`; the joined values cannot be split apart again,
+ * so the result is a one-element array holding the whole concatenation.
  *
  * @example
  * Collect the names of each person’s friends.
@@ -416,8 +416,8 @@ export function groupConcat(expression: ExpressionInput, separator: string = '\u
  *
  * @param expression - The values to aggregate.
  * @param separator - The separator between values; defaults to the unit separator (`\u001f`).
- * An empty string omits the SPARQL `SEPARATOR` (the endpoint then joins with a space), but
- * the result is still split on the empty string, into single characters.
+ * An empty string is emitted as `SEPARATOR=""`; the joined values cannot be split apart again,
+ * so the result is a one-element array holding the whole concatenation.
  *
  * @example
  * Collect distinct names of each person’s friends.

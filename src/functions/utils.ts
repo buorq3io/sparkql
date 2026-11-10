@@ -192,7 +192,7 @@ export function createAggregateExpression<T extends QueryReturnType>(
     },
     distinct: false,
     aggregation: aggregation,
-    ...(separator ? { separator: separator } : {}),
+    ...(separator !== undefined ? { separator: separator } : {}),
     expression: expression,
     transform: transform,
   } as ExpressionAggregateInput<T>;
