@@ -1,4 +1,5 @@
 import type * as AST from '@traqula/rules-sparql-1-1';
+import type { TermFormats } from '../helpers/term-formats.js';
 import type {
   ContextDefinitionInput,
   ExpressionInput,
@@ -53,6 +54,7 @@ export interface QueryModuleContext<D extends AnySparqlDialect = AnySparqlDialec
   /** BASE and PREFIX definitions of the database. */
   readonly context: readonly ContextDefinitionInput[];
   readonly factory: FactoryFunctions;
+  readonly formats?: TermFormats;
   readonly dialect: D;
   normalizer(input?: QuerySelectInput): QueryNormalizer<D>;
 }

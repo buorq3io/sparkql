@@ -53,6 +53,12 @@ export abstract class ExecutableQuery<Result> implements PromiseLike<Result> {
   public async execute(): Promise<Result> {
     if (!this.session) throw new SparkqlError({ message: MISSING_SESSION_MESSAGE });
     const sparql = this.toSPARQL();
+    return this.executeSPARQL(sparql);
+  }
+
+  /** Shared transport, logging and error handling for prepared execution. */
+  protected async executeSPARQL(sparql: string): Promise<Result> {
+    if (!this.session) throw new SparkqlError({ message: MISSING_SESSION_MESSAGE });
     try {
       const session = this.logger
         ? new LoggingSparqlSession(this.session, this.logger, this.operationName)

@@ -1,4 +1,5 @@
 import type * as AST from '@traqula/rules-sparql-1-1';
+import { Placeholder } from '../database/prepared.js';
 import { tripleNesting } from '../structures/expression.js';
 import type { Formatter } from './generators.js';
 import type {
@@ -14,6 +15,7 @@ import { isObjectLike, term, termGraph } from './utilities.js';
 
 export function isGraphNodeInput(value: unknown): value is GraphNodeInput {
   return (
+    value instanceof Placeholder ||
     (isObjectLike(value) && value.type === 'tripleCollection') ||
     isTripleCollectionListInputSyntax(value) ||
     isTripleCollectionBlankNodePropertiesInputSyntax(value) ||

@@ -71,3 +71,31 @@ Either way:
   (spy, or count Traqula calls).
 - Missing and extra placeholder values are handled as documented, with
   type-level tests for required names.
+
+## Implementation decision
+
+Implemented with a string template; see [usage](../prepared-queries.md).
+The pinned Drizzle sources separate placeholder filling from encoding and cache
+query construction and result mapping. sparkql keeps that separation, passing
+actual supplied values through the database's formatters only at execution.
+
+Both strategies fit Traqula: AST substitution can patch a normalized tree and
+call the dialect generator again, while generated full-IRI markers and the
+LIMIT/OFFSET generator's verbatim output support a template. The regression suite
+compares template filling with fresh normalization/generation for literals,
+including escaping. AST substitution would still generate the full query on
+every call, so the template strategy meets the once-only generation requirement.
+
+Preparation clones the input, replaces each occurrence with a UUID-scoped marker,
+normalizes and generates once, then splits the result once. Every marker must
+occur exactly once, so a collision or a dialect that drops/duplicates markers
+fails preparation. Filling joins immutable text fragments and serialized terms;
+it never searches/replaces supplied text. Term serialization uses Traqula's
+`varOrTerm` rule with materialized source locations, validated language/blank-node
+labels, and percent-encoded forbidden IRI characters (Traqula's full-IRI rule
+itself prints values verbatim). This also prevents a typed literal's source
+location from selecting Traqula's raw-output shortcut.
+
+Prepared execution shares the existing session, result mapping, logging and
+query-error lifecycle. No server-side statement or result cache is introduced.
+Custom top-level query modules remain responsible for their own preparation API.

@@ -6,6 +6,7 @@ import type {
   UpdateOperationModifyInput,
 } from '../helpers/types.js';
 import type { AnySparqlDialect, DialectPattern, SparqlDialect } from './dialect.js';
+import type { MergePlaceholders, PlaceholderCarrier, placeholderTypes } from './prepared.js';
 import type { QueryModuleContext } from './query-module.js';
 import { SparqlQueryBuilderBase } from './sparql-query.js';
 import type { UpdateQueryBuilderBase } from './update.js';
@@ -77,15 +78,33 @@ export class WithQueryBuilderBase<
     this.updateBuilder = parent.builder;
   }
 
+  delete<Self extends PlaceholderCarrier<object>, Q extends QuadsInput[]>(
+    this: Self,
+    ...quads: Q
+  ): WithBuilderBaseWithout<this, TDynamic, 'delete'> &
+    PlaceholderCarrier<NonNullable<Self[typeof placeholderTypes]> & MergePlaceholders<Q[number]>>;
+
   delete(...quads: QuadsInput[]): WithBuilderBaseWithout<this, TDynamic, 'delete'> {
     this.operation.delete = [...this.operation.delete, ...quads];
     return this;
   }
 
+  insert<Self extends PlaceholderCarrier<object>, Q extends QuadsInput[]>(
+    this: Self,
+    ...quads: Q
+  ): WithBuilderBaseWithout<this, TDynamic, 'insert' | 'delete'> &
+    PlaceholderCarrier<NonNullable<Self[typeof placeholderTypes]> & MergePlaceholders<Q[number]>>;
+
   insert(...quads: QuadsInput[]): WithBuilderBaseWithout<this, TDynamic, 'insert' | 'delete'> {
     this.operation.insert = [...this.operation.insert, ...quads];
     return this;
   }
+
+  using<Self extends PlaceholderCarrier<object>>(
+    this: Self,
+    iri: TermIriInput
+  ): WithBuilderBaseWithout<this, TDynamic, 'insert' | 'delete'> &
+    PlaceholderCarrier<NonNullable<Self[typeof placeholderTypes]>>;
 
   using(iri: TermIriInput): WithBuilderBaseWithout<this, TDynamic, 'insert' | 'delete'> {
     this.operation.from.clauses = [
@@ -98,6 +117,12 @@ export class WithQueryBuilderBase<
     return this;
   }
 
+  usingNamed<Self extends PlaceholderCarrier<object>>(
+    this: Self,
+    iri: TermIriInput
+  ): WithBuilderBaseWithout<this, TDynamic, 'insert' | 'delete'> &
+    PlaceholderCarrier<NonNullable<Self[typeof placeholderTypes]>>;
+
   usingNamed(iri: TermIriInput): WithBuilderBaseWithout<this, TDynamic, 'insert' | 'delete'> {
     this.operation.from.clauses = [
       ...this.operation.from.clauses,
@@ -109,6 +134,12 @@ export class WithQueryBuilderBase<
     return this;
   }
 
+  where<Self extends PlaceholderCarrier<object>, P extends PatternInput<DialectPattern<D>>[]>(
+    this: Self,
+    ...patterns: P
+  ): WithBuilderBaseWithout<this, TDynamic, 'where' | 'insert' | 'delete'> &
+    PlaceholderCarrier<NonNullable<Self[typeof placeholderTypes]> & MergePlaceholders<P[number]>>;
+
   where(
     ...patterns: PatternInput<DialectPattern<D>>[]
   ): WithBuilderBaseWithout<this, TDynamic, 'where' | 'insert' | 'delete'> {
@@ -118,6 +149,11 @@ export class WithQueryBuilderBase<
     ];
     return this;
   }
+
+  $dynamic<Self extends PlaceholderCarrier<object>>(
+    this: Self
+  ): WithBuilderBaseWithout<this, true, never> &
+    PlaceholderCarrier<NonNullable<Self[typeof placeholderTypes]>>;
 
   $dynamic(): WithBuilderBaseWithout<this, true, any> {
     return this;
@@ -140,7 +176,15 @@ export class WithQueryBuilderBase<
     return this.$end().execute();
   }
 
-  protected makeQuery(): Promise<void> {
-    return this.$end().execute();
+  protected override preparationInput(): UpdateInput {
+    this.$end();
+    return this.updateConfig;
+  }
+
+  protected makeQuery(
+    session: import('./session.js').SparqlSession,
+    sparql: string
+  ): Promise<void> {
+    return session.update(sparql);
   }
 }
