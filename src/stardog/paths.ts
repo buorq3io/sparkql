@@ -1,8 +1,8 @@
 import { GeneratorBuilder } from '@traqula/core';
-import { sparql11GeneratorBuilder } from '@traqula/generator-sparql-1-1';
 import * as AST from '@traqula/rules-sparql-1-1';
 import { DataFactory } from 'rdf-data-factory';
 import type { SparqlDialect } from '../database/dialect.js';
+import { sparkqlGeneratorBuilder } from '../database/generator.js';
 import { assertNonNegativeInteger } from '../database/pattern-query-module.js';
 import {
   emptySelect,
@@ -103,7 +103,7 @@ const pathsRule: AST.SparqlGeneratorRule<'stardogPaths', PathsQueryAST> = {
       if (ast.limit !== undefined) PRINT_WORD(`LIMIT ${ast.limit}`);
     },
 };
-const generator = GeneratorBuilder.create(sparql11GeneratorBuilder).addRule(pathsRule).build();
+const generator = GeneratorBuilder.create(sparkqlGeneratorBuilder).addRule(pathsRule).build();
 const rdf = new DataFactory();
 
 function decodeTerm(value: unknown): DefaultQueryReturnType {
@@ -190,10 +190,11 @@ const pathsModule: QueryModule<PathsConfig, PathsQueryAST, PathResult[], SparqlD
     };
   },
   generate: ast => generator.stardogPaths(ast, AST.completeGeneratorContext({})).trim(),
-  execute: async (sparql, client) =>
-    decodePaths(await requestQueryJson(client, sparql, 'application/sparql-results+json')),
+  execute: async (sparql, session) =>
+    decodePaths(await requestQueryJson(session, sparql, 'application/sparql-results+json')),
 };
 
+type Incomplete = 'then' | 'execute' | 'getSPARQL' | 'toSPARQL';
 type Hidden<S extends boolean, E extends boolean, V extends boolean> =
   | (S extends true ? 'start' : never)
   | (E extends true ? 'end' : never)
@@ -202,9 +203,9 @@ type Hidden<S extends boolean, E extends boolean, V extends boolean> =
       ? E extends true
         ? V extends true
           ? never
-          : 'then' | 'getSPARQL' | 'toSPARQL'
-        : 'then' | 'getSPARQL' | 'toSPARQL'
-      : 'then' | 'getSPARQL' | 'toSPARQL');
+          : Incomplete
+        : Incomplete
+      : Incomplete);
 export type PathsQuery<
   S extends boolean = false,
   E extends boolean = false,

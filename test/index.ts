@@ -6,7 +6,7 @@ import { prefixes } from '#test/prefixes.js';
 export const blankNodePrefix = 'g_';
 export const db = SparqlDatabase.create({
   managerConfig: prefixes,
-  endpointUrl: process.env.DATABASE_URL,
+  connection: process.env.DATABASE_URL,
 });
 export const [v, n, b] = db.createManagers([], prefixes);
 

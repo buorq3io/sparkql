@@ -1,4 +1,6 @@
 import type * as AST from '@traqula/rules-sparql-1-1';
+import type { TermCodecTable } from '../helpers/codecs.js';
+import type { TermFormats } from '../helpers/term-formats.js';
 import type {
   ContextDefinitionInput,
   ExpressionInput,
@@ -7,11 +9,12 @@ import type {
   PatternInput,
   QuadsInput,
   QuerySelectInput,
-  SparqlClient,
 } from '../helpers/types.js';
 import type { AnySparqlDialect, DialectAST, DialectPattern } from './dialect.js';
-import { ExecutableQuery } from './executable.js';
+import { SparkqlError, SparqlResponseError } from './errors.js';
+import { ExecutableQuery, type ExecutionContext } from './executable.js';
 import { QueryBuilderBase } from './query.js';
+import type { SparqlSession } from './session.js';
 
 /** Shared normalization with the same semantics as the standard builders. */
 export class QueryNormalizer<D extends AnySparqlDialect> extends QueryBuilderBase<
@@ -20,8 +23,8 @@ export class QueryNormalizer<D extends AnySparqlDialect> extends QueryBuilderBas
   false,
   D
 > {
-  constructor(input: QuerySelectInput, factory: FactoryFunctions, dialect: D) {
-    super(input, factory, undefined, dialect);
+  constructor(input: QuerySelectInput, context: QueryModuleContext<D>) {
+    super(input, context);
   }
   pattern(value: PatternInput<DialectPattern<D>>): DialectAST<D, AST.Pattern> {
     return this.sanitizePattern(value as unknown as PatternInput) as unknown as DialectAST<
@@ -39,15 +42,23 @@ export class QueryNormalizer<D extends AnySparqlDialect> extends QueryBuilderBas
     return this.sanitizePropertyPath(value);
   }
   protected async makeQuery(): Promise<never> {
-    throw new Error('A normalizer cannot execute queries.');
+    throw new SparkqlError({ message: 'A normalizer cannot execute queries.' });
   }
 }
 
-export interface QueryModuleContext<D extends AnySparqlDialect = AnySparqlDialect> {
+/**
+ * Everything a builder needs from its database. Standard builders and
+ * dialect query modules receive the same object.
+ */
+export interface QueryModuleContext<D extends AnySparqlDialect = AnySparqlDialect>
+  extends ExecutionContext {
+  /** BASE and PREFIX definitions of the database. */
   readonly context: readonly ContextDefinitionInput[];
   readonly factory: FactoryFunctions;
+  readonly formats?: TermFormats;
+  /** Result decoders by datatype. Standard SELECT applies them; modules may. */
+  readonly codecs?: TermCodecTable;
   readonly dialect: D;
-  readonly endpointUrl?: string;
   normalizer(input?: QuerySelectInput): QueryNormalizer<D>;
 }
 
@@ -69,7 +80,7 @@ export function emptySelect(context: readonly ContextDefinitionInput[]): QuerySe
 export interface QueryModule<Config, Ast, Result, D extends AnySparqlDialect = AnySparqlDialect> {
   normalize(config: Config, context: QueryModuleContext<D>): Ast;
   generate(ast: Ast, context: QueryModuleContext<D>): string;
-  execute(sparql: string, client: SparqlClient, ast: Ast): Promise<Result>;
+  execute(sparql: string, session: SparqlSession, ast: Ast): Promise<Result>;
 }
 
 export abstract class ModuleQueryBuilder<
@@ -83,18 +94,17 @@ export abstract class ModuleQueryBuilder<
     protected readonly module: QueryModule<Config, Ast, Result, D>,
     protected readonly moduleContext: QueryModuleContext<D>
   ) {
-    super(moduleContext.endpointUrl);
+    super(moduleContext);
   }
 
   public getSPARQL(): Ast {
     return this.module.normalize(this.config, this.moduleContext);
   }
   public toSPARQL(): string {
-    return this.module.generate(this.getSPARQL(), this.moduleContext);
+    return this.withComments(this.module.generate(this.getSPARQL(), this.moduleContext));
   }
-  protected makeQuery(client: SparqlClient): Promise<Result> {
-    const ast = this.getSPARQL();
-    return this.module.execute(this.module.generate(ast, this.moduleContext), client, ast);
+  protected makeQuery(session: SparqlSession, sparql: string): Promise<Result> {
+    return this.module.execute(sparql, session, this.getSPARQL());
   }
 }
 
@@ -107,14 +117,21 @@ export type QueryMethods<D> = D extends { readonly queries?: infer Q }
   : {};
 export type WithQueryMethods<Database, D> = Database & QueryMethods<D>;
 
-/** Submit a query using its result format instead of SELECT's bindings decoder. */
+/**
+ * Run a query through `session.raw()` and parse a JSON result in the given
+ * format. Rejects a non-2xx response with a {@link SparqlResponseError}.
+ */
 export async function requestQueryJson(
-  client: SparqlClient,
+  session: SparqlSession,
   sparql: string,
   accept: string
 ): Promise<unknown> {
-  const response = await client.postDirect(sparql, { headers: { accept } });
+  const response = await session.raw(sparql, { accept });
   if (!response.ok)
-    throw new Error(`SPARQL query failed: ${response.status} ${response.statusText}`);
+    throw new SparqlResponseError({
+      status: response.status,
+      statusText: response.statusText,
+      body: await response.text().catch(() => ''),
+    });
   return response.json();
 }

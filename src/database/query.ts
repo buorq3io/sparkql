@@ -11,13 +11,27 @@ import type {
 import { isObjectLike } from '../helpers/utilities.js';
 import { group, values } from '../structures/pattern.js';
 import type { AnySparqlDialect, DialectPattern, SparqlDialect } from './dialect.js';
+import {
+  type MergePlaceholders,
+  Placeholder,
+  type PlaceholderCarrier,
+  type PlaceholderValues,
+  type placeholderTypes,
+} from './prepared.js';
 import { SparqlQueryBuilderBase } from './sparql-query.js';
 
+export declare const dynamicQuery: unique symbol;
+/**
+ * Type-only marker added by `$dynamic()`. Clause restrictions do not apply to a
+ * marked query, and every clause method keeps the marker on its result.
+ */
+export type DynamicQuery = { readonly [dynamicQuery]: true };
+
 export type QueryBuilderBaseWithout<
-  T extends QueryBuilderBase<any, any, any, any>,
+  T,
   TDynamic extends boolean,
   TExcluded extends keyof T & string,
-> = TDynamic extends true ? T : Omit<T, TExcluded>;
+> = TDynamic extends true ? T : [T] extends [DynamicQuery] ? T : Omit<T, TExcluded>;
 
 export type RootQueryBuilderBaseWithout<T extends QueryBuilderBase<any, any, any, any>> =
   QueryBuilderBaseWithout<
@@ -62,9 +76,16 @@ export abstract class QueryBuilderBase<
     return this.fromBase('named', [iri]);
   }
 
-  where(
-    ...patterns: PatternInput<DialectPattern<D>>[]
-  ): QueryBuilderBaseWithout<this, TDynamic, 'where' | 'from' | 'fromNamed'> {
+  where<Self extends PlaceholderCarrier<object>, P extends PatternInput<DialectPattern<D>>[]>(
+    this: Self,
+    ...patterns: P
+  ): QueryBuilderBaseWithout<this, TDynamic, 'where' | 'from' | 'fromNamed'> &
+    PlaceholderCarrier<NonNullable<Self[typeof placeholderTypes]> & MergePlaceholders<P[number]>>;
+
+  where<P extends PatternInput<DialectPattern<D>>[]>(
+    ...patterns: P
+  ): QueryBuilderBaseWithout<this, TDynamic, 'where' | 'from' | 'fromNamed'> &
+    PlaceholderCarrier<MergePlaceholders<P[number]>> {
     if (!this.config.where) {
       this.config.where = group(...patterns) as unknown as PatternGroupInput;
     } else {
@@ -73,8 +94,19 @@ export abstract class QueryBuilderBase<
         ...(patterns as unknown as PatternInput[]),
       ];
     }
-    return this;
+    return this as typeof this & PlaceholderCarrier<MergePlaceholders<P[number]>>;
   }
+
+  groupBy<
+    Self extends PlaceholderCarrier<object>,
+    Inputs extends (ExpressionInput | SolutionModifierGroupBindInput)[],
+  >(
+    this: Self,
+    ...expressions: Inputs
+  ): QueryBuilderBaseWithout<this, TDynamic, 'groupBy' | 'where' | 'from' | 'fromNamed'> &
+    PlaceholderCarrier<
+      NonNullable<Self[typeof placeholderTypes]> & MergePlaceholders<Inputs[number]>
+    >;
 
   groupBy(
     ...expressions: (ExpressionInput | SolutionModifierGroupBindInput)[]
@@ -91,6 +123,18 @@ export abstract class QueryBuilderBase<
     }
     return this;
   }
+
+  having<Self extends PlaceholderCarrier<object>, Inputs extends ExpressionInput[]>(
+    this: Self,
+    ...expressions: Inputs
+  ): QueryBuilderBaseWithout<
+    this,
+    TDynamic,
+    'having' | 'groupBy' | 'where' | 'from' | 'fromNamed'
+  > &
+    PlaceholderCarrier<
+      NonNullable<Self[typeof placeholderTypes]> & MergePlaceholders<Inputs[number]>
+    >;
 
   having(
     ...expressions: ExpressionInput[]
@@ -111,6 +155,21 @@ export abstract class QueryBuilderBase<
     }
     return this;
   }
+
+  orderBy<
+    Self extends PlaceholderCarrier<object>,
+    Inputs extends (OrderingInput | ExpressionInput)[],
+  >(
+    this: Self,
+    ...orderings: Inputs
+  ): QueryBuilderBaseWithout<
+    this,
+    TDynamic,
+    'orderBy' | 'having' | 'groupBy' | 'where' | 'from' | 'fromNamed'
+  > &
+    PlaceholderCarrier<
+      NonNullable<Self[typeof placeholderTypes]> & MergePlaceholders<Inputs[number]>
+    >;
 
   orderBy(
     ...orderings: (OrderingInput | ExpressionInput)[]
@@ -139,13 +198,24 @@ export abstract class QueryBuilderBase<
     return this;
   }
 
-  limit(
-    limit: number
+  limit<Self extends PlaceholderCarrier<object>, P extends number | Placeholder<string, number>>(
+    this: Self,
+    limit: P
   ): QueryBuilderBaseWithout<
     this,
     TDynamic,
     'limit' | 'orderBy' | 'having' | 'groupBy' | 'where' | 'from' | 'fromNamed'
-  > {
+  > &
+    PlaceholderCarrier<NonNullable<Self[typeof placeholderTypes]> & PlaceholderValues<P>>;
+
+  limit<P extends number | Placeholder<string, number>>(
+    limit: P
+  ): QueryBuilderBaseWithout<
+    this,
+    TDynamic,
+    'limit' | 'orderBy' | 'having' | 'groupBy' | 'where' | 'from' | 'fromNamed'
+  > &
+    PlaceholderCarrier<PlaceholderValues<P>> {
     if (
       !this.config.solutionModifiers.limitOffset ||
       this.config.solutionModifiers.limitOffset?.limit === undefined
@@ -154,23 +224,34 @@ export abstract class QueryBuilderBase<
         type: 'solutionModifier',
         subType: 'limitOffset',
         // @ts-expect-error A workaround of a bug in the underlying library
-        limit: String(limit),
+        limit: limit instanceof Placeholder ? limit : String(limit),
         offset: this.config.solutionModifiers.limitOffset?.offset,
         loc: {
           sourceLocationType: 'autoGenerate',
         },
       };
     }
-    return this;
+    return this as typeof this & PlaceholderCarrier<PlaceholderValues<P>>;
   }
 
-  offset(
-    offset: number
+  offset<Self extends PlaceholderCarrier<object>, P extends number | Placeholder<string, number>>(
+    this: Self,
+    offset: P
   ): QueryBuilderBaseWithout<
     this,
     TDynamic,
     'offset' | 'limit' | 'orderBy' | 'having' | 'groupBy' | 'where' | 'from' | 'fromNamed'
-  > {
+  > &
+    PlaceholderCarrier<NonNullable<Self[typeof placeholderTypes]> & PlaceholderValues<P>>;
+
+  offset<P extends number | Placeholder<string, number>>(
+    offset: P
+  ): QueryBuilderBaseWithout<
+    this,
+    TDynamic,
+    'offset' | 'limit' | 'orderBy' | 'having' | 'groupBy' | 'where' | 'from' | 'fromNamed'
+  > &
+    PlaceholderCarrier<PlaceholderValues<P>> {
     if (
       !this.config.solutionModifiers.limitOffset ||
       this.config.solutionModifiers.limitOffset?.offset === undefined
@@ -180,14 +261,34 @@ export abstract class QueryBuilderBase<
         subType: 'limitOffset',
         limit: this.config.solutionModifiers.limitOffset?.limit,
         // @ts-expect-error A workaround of a bug in the underlying library
-        offset: String(offset),
+        offset: offset instanceof Placeholder ? offset : String(offset),
         loc: {
           sourceLocationType: 'autoGenerate',
         },
       };
     }
-    return this;
+    return this as typeof this & PlaceholderCarrier<PlaceholderValues<P>>;
   }
+
+  values<Self extends PlaceholderCarrier<object>, Columns extends ValuePatternColumnsInput>(
+    this: Self,
+    columns: Columns
+  ): QueryBuilderBaseWithout<
+    this,
+    TDynamic,
+    | 'values'
+    | 'limit'
+    | 'offset'
+    | 'orderBy'
+    | 'having'
+    | 'groupBy'
+    | 'where'
+    | 'from'
+    | 'fromNamed'
+  > &
+    PlaceholderCarrier<
+      NonNullable<Self[typeof placeholderTypes]> & MergePlaceholders<Columns[keyof Columns][number]>
+    >;
 
   values(
     columns: ValuePatternColumnsInput
@@ -211,7 +312,15 @@ export abstract class QueryBuilderBase<
     return this;
   }
 
-  $dynamic(): QueryBuilderBaseWithout<this, true, any> {
-    return this;
+  /**
+   * Lifts the clause-order restrictions for the rest of the chain, so helpers
+   * can add clauses to a query in any order and more than once.
+   */
+  $dynamic<Self extends PlaceholderCarrier<object>>(
+    this: Self
+  ): this & DynamicQuery & PlaceholderCarrier<NonNullable<Self[typeof placeholderTypes]>>;
+
+  $dynamic(): this & DynamicQuery {
+    return this as this & DynamicQuery;
   }
 }

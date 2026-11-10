@@ -1,5 +1,4 @@
 import type {
-  FactoryFunctions,
   PatternInput,
   QuadsInput,
   TermIriInput,
@@ -7,6 +6,8 @@ import type {
   UpdateOperationModifyInput,
 } from '../helpers/types.js';
 import type { AnySparqlDialect, DialectPattern, SparqlDialect } from './dialect.js';
+import type { MergePlaceholders, PlaceholderCarrier, placeholderTypes } from './prepared.js';
+import type { QueryModuleContext } from './query-module.js';
 import { SparqlQueryBuilderBase } from './sparql-query.js';
 import type { UpdateQueryBuilderBase } from './update.js';
 
@@ -15,6 +16,13 @@ export type WithBuilderBaseWithout<
   TDynamic extends boolean,
   TExcluded extends keyof T & string,
 > = TDynamic extends true ? T : Omit<T, TExcluded>;
+
+/** The update request a WITH/INSERT/DELETE operation is appended to. */
+export interface WithParent<D extends AnySparqlDialect = SparqlDialect> {
+  context: UpdateInput['updates'][number]['context'];
+  config: UpdateInput;
+  builder: UpdateQueryBuilderBase<D>;
+}
 
 export class WithQueryBuilderBase<
     TDynamic extends boolean = false,
@@ -27,16 +35,9 @@ export class WithQueryBuilderBase<
   private updateContext: UpdateInput['updates'][number]['context'];
   private updateBuilder: UpdateQueryBuilderBase<D>;
   private readonly operation: UpdateOperationModifyInput;
+  private ended = false;
 
-  constructor(
-    updateContext: UpdateInput['updates'][number]['context'],
-    updateConfig: UpdateInput,
-    updateBuilder: UpdateQueryBuilderBase<D>,
-    factoryFunctions: FactoryFunctions,
-    endpointUrl?: string,
-    iri?: TermIriInput,
-    dialect?: D
-  ) {
+  constructor(context: QueryModuleContext<D>, parent: WithParent<D>, iri?: TermIriInput) {
     super(
       {
         type: 'update',
@@ -45,10 +46,9 @@ export class WithQueryBuilderBase<
           sourceLocationType: 'autoGenerate',
         },
       },
-      factoryFunctions,
-      endpointUrl,
-      dialect
+      context
     );
+    this.inheritComments(parent.builder);
     this.operation = {
       type: 'updateOperation',
       subType: 'modify',
@@ -74,20 +74,38 @@ export class WithQueryBuilderBase<
         patterns: [],
       },
     };
-    this.updateContext = updateContext;
-    this.updateConfig = updateConfig;
-    this.updateBuilder = updateBuilder;
+    this.updateContext = parent.context;
+    this.updateConfig = parent.config;
+    this.updateBuilder = parent.builder;
   }
+
+  delete<Self extends PlaceholderCarrier<object>, Q extends QuadsInput[]>(
+    this: Self,
+    ...quads: Q
+  ): WithBuilderBaseWithout<this, TDynamic, 'delete'> &
+    PlaceholderCarrier<NonNullable<Self[typeof placeholderTypes]> & MergePlaceholders<Q[number]>>;
 
   delete(...quads: QuadsInput[]): WithBuilderBaseWithout<this, TDynamic, 'delete'> {
     this.operation.delete = [...this.operation.delete, ...quads];
     return this;
   }
 
+  insert<Self extends PlaceholderCarrier<object>, Q extends QuadsInput[]>(
+    this: Self,
+    ...quads: Q
+  ): WithBuilderBaseWithout<this, TDynamic, 'insert' | 'delete'> &
+    PlaceholderCarrier<NonNullable<Self[typeof placeholderTypes]> & MergePlaceholders<Q[number]>>;
+
   insert(...quads: QuadsInput[]): WithBuilderBaseWithout<this, TDynamic, 'insert' | 'delete'> {
     this.operation.insert = [...this.operation.insert, ...quads];
     return this;
   }
+
+  using<Self extends PlaceholderCarrier<object>>(
+    this: Self,
+    iri: TermIriInput
+  ): WithBuilderBaseWithout<this, TDynamic, 'insert' | 'delete'> &
+    PlaceholderCarrier<NonNullable<Self[typeof placeholderTypes]>>;
 
   using(iri: TermIriInput): WithBuilderBaseWithout<this, TDynamic, 'insert' | 'delete'> {
     this.operation.from.clauses = [
@@ -100,6 +118,12 @@ export class WithQueryBuilderBase<
     return this;
   }
 
+  usingNamed<Self extends PlaceholderCarrier<object>>(
+    this: Self,
+    iri: TermIriInput
+  ): WithBuilderBaseWithout<this, TDynamic, 'insert' | 'delete'> &
+    PlaceholderCarrier<NonNullable<Self[typeof placeholderTypes]>>;
+
   usingNamed(iri: TermIriInput): WithBuilderBaseWithout<this, TDynamic, 'insert' | 'delete'> {
     this.operation.from.clauses = [
       ...this.operation.from.clauses,
@@ -111,6 +135,12 @@ export class WithQueryBuilderBase<
     return this;
   }
 
+  where<Self extends PlaceholderCarrier<object>, P extends PatternInput<DialectPattern<D>>[]>(
+    this: Self,
+    ...patterns: P
+  ): WithBuilderBaseWithout<this, TDynamic, 'where' | 'insert' | 'delete'> &
+    PlaceholderCarrier<NonNullable<Self[typeof placeholderTypes]> & MergePlaceholders<P[number]>>;
+
   where(
     ...patterns: PatternInput<DialectPattern<D>>[]
   ): WithBuilderBaseWithout<this, TDynamic, 'where' | 'insert' | 'delete'> {
@@ -121,20 +151,41 @@ export class WithQueryBuilderBase<
     return this;
   }
 
+  $dynamic<Self extends PlaceholderCarrier<object>>(
+    this: Self
+  ): WithBuilderBaseWithout<this, true, never> &
+    PlaceholderCarrier<NonNullable<Self[typeof placeholderTypes]>>;
+
   $dynamic(): WithBuilderBaseWithout<this, true, any> {
     return this;
   }
 
+  /** Appends this operation to the update request, once, and returns the request builder. */
   $end() {
-    this.updateConfig.updates.push({
-      context: this.updateContext,
-      operation: this.operation,
-    });
+    if (!this.ended) {
+      this.ended = true;
+      this.updateConfig.updates.push({
+        context: this.updateContext,
+        operation: this.operation,
+      });
+    }
     return this.updateBuilder;
   }
 
-  protected async makeQuery(): Promise<void> {
+  /** Runs the whole update request this operation belongs to. Errors carry that request's SPARQL. */
+  public override execute(): Promise<void> {
+    return this.$end().execute();
+  }
+
+  protected override preparationInput(): UpdateInput {
     this.$end();
-    return await this.updateBuilder;
+    return this.updateConfig;
+  }
+
+  protected makeQuery(
+    session: import('./session.js').SparqlSession,
+    sparql: string
+  ): Promise<void> {
+    return session.update(sparql);
   }
 }

@@ -59,7 +59,7 @@ const echoModule: QueryModule<number, EchoAST, number> = {
     prefixes: context.context.length,
   }),
   generate: ast => `ECHO ${ast.value}`,
-  execute: async (_sparql, _client, ast) => ast.value,
+  execute: async (_sparql, _session, ast) => ast.value,
 };
 class EchoBuilder extends ModuleQueryBuilder<number, EchoAST, number, typeof sparql11Dialect> {
   constructor(value: number, context: QueryModuleContext<typeof sparql11Dialect>) {
@@ -77,7 +77,7 @@ const echoDialect = defineDialect<never, never, typeof echoQueries>({
 
 describe('top-level query modules', () => {
   test('registers third-party builders and preserves them across context changes', async () => {
-    const db = SparqlDatabase.create({ dialect: echoDialect, endpointUrl: endpoint })
+    const db = SparqlDatabase.create({ dialect: echoDialect, connection: endpoint })
       .base('https://example.org/')
       .prefix({ ex: 'https://example.org/' });
     const query = db.echo(17);
@@ -117,8 +117,8 @@ describe('top-level query modules', () => {
     expect(() => db.json({}).toSPARQL()).toThrow('at least one');
   });
 
-  test('decodes ARQ JSON, keeps missing variables optional, and executes once', async () => {
-    const db = ArqDatabase.create({ endpointUrl: endpoint });
+  test('decodes ARQ JSON, keeps missing variables optional, and executes on every await', async () => {
+    const db = ArqDatabase.create({ connection: endpoint });
     const query = db.json({ name: db.variable('name'), answer: 42 }).where();
     respond = (_req, res) => {
       res.setHeader('content-type', 'application/json');
@@ -127,8 +127,9 @@ describe('top-level query modules', () => {
     const before = requests.length;
     const [first, second] = await Promise.all([query, query]);
     expect(first).toEqual([{ name: 'Ada', answer: 42 }, { answer: 42 }]);
-    expect(second).toBe(first);
-    expect(requests.length - before).toBe(1);
+    expect(second).toEqual(first);
+    expect(second).not.toBe(first);
+    expect(requests.length - before).toBe(2);
     expect(requests[requests.length - 1]?.accept).toBe('application/json');
     respond = (_req, res) => {
       res.end(JSON.stringify({ results: { bindings: [] } }));
@@ -141,7 +142,7 @@ describe('top-level query modules', () => {
   });
 
   test('constructs named/default graph templates and decodes graph-preserving quads', async () => {
-    const db = ArqDatabase.create({ endpointUrl: endpoint });
+    const db = ArqDatabase.create({ connection: endpoint });
     const s = db.variable('s');
     const p = db.iri('https://example.org/p');
     const o = db.variable('o');
@@ -209,7 +210,7 @@ describe('top-level query modules', () => {
   });
 
   test('decodes PATHS boundaries and RDF term metadata', async () => {
-    const db = StardogDatabase.create({ endpointUrl: endpoint });
+    const db = StardogDatabase.create({ connection: endpoint });
     const uri = (value: string) => ({ type: 'uri', value });
     respond = (_req, res) => {
       res.end(
@@ -256,7 +257,7 @@ describe('top-level query modules', () => {
   });
 
   test('propagates HTTP and malformed response errors and requires endpoint configuration', async () => {
-    const db = StardogDatabase.create({ endpointUrl: endpoint });
+    const db = StardogDatabase.create({ connection: endpoint });
     const query = () =>
       db.paths().start(db.variable('s')).end(db.variable('e')).via(db.variable('p'));
     respond = (_req, res) => {
@@ -268,9 +269,7 @@ describe('top-level query modules', () => {
       res.end(JSON.stringify({ results: { bindings: [{ s: { type: 'invalid', value: 'x' } }] } }));
     };
     await expect(query()).rejects.toThrow('RDF term type');
-    await expect(Promise.resolve(ArqDatabase.create().json({ x: 1 }).where())).rejects.toThrow(
-      'Database URL'
-    );
+    await expect(ArqDatabase.create().json({ x: 1 }).where()).rejects.toThrow('build-only');
   });
 });
 

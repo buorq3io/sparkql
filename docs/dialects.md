@@ -101,9 +101,12 @@ dialect.
 
 ## Connecting a Traqula generator
 
-Copy the standard builder with
-`GeneratorBuilder.create(sparql11GeneratorBuilder)` before patching rules.
-Traqula builders are mutable; patching the shared exported builder changes other
+Copy sparkql's standard builder with
+`GeneratorBuilder.create(sparkqlGeneratorBuilder)` before patching rules.
+`sparkqlGeneratorBuilder` (exported from `sparkql`) is Traqula's
+`sparql11GeneratorBuilder` plus the rules that print [raw `sparql` nodes](raw-sparql.md).
+A generator built straight from Traqula's builder cannot print them. Traqula
+builders are mutable; patching the shared exported builder changes other
 users of it. Patch the pattern dispatch rule to handle your custom nodes and
 retain its original implementation for standard nodes. New rules can be added
 with `addRule()` and invoked from that dispatch rule.
@@ -124,7 +127,7 @@ and nested `group`, `optional`, `union`, `minus`, `graph`, `service`, and
 `getSPARQL()` includes the dialect's output node types at pattern positions;
 `toSPARQL()` and execution use the configured generator. The default dialect
 preserves existing input/output types and behavior. Unrecognized pattern nodes
-still throw at runtime, protecting JavaScript callers that bypass TypeScript.
+still throw `SparkqlNormalizationError` at runtime, protecting JavaScript callers that bypass TypeScript.
 
 The pattern seam extends graph patterns. Existing expression node kinds can be
 used inside custom patterns through the normalization context. Dialects can also
@@ -133,6 +136,10 @@ AST and result decoder. The built-in ARQ modules add JSON and quad construction;
 the Stardog entry point adds PATHS. Custom expression node kinds and update
 operation kinds require separate extension interfaces.
 
+For a one-off fragment that no dialect covers, use the
+[raw `sparql` template tag](raw-sparql.md) instead of writing a dialect. Dialects
+remain the recommended route for reusable vendor features.
+
 ## Design references
 
 Drizzle keeps its dialect separate from query construction and carries generic
@@ -140,8 +147,12 @@ state through fluent query builders. Sparkql follows that separation, retaining
 its existing fluent builder restrictions and result inference rather than adding
 an HKT hierarchy for a fixed set of builder classes.
 
-- [Drizzle query builder](https://github.com/drizzle-team/drizzle-orm/blob/main/drizzle-orm/src/pg-core/query-builders/query-builder.ts)
-- [Drizzle select types](https://github.com/drizzle-team/drizzle-orm/blob/main/drizzle-orm/src/pg-core/query-builders/select.types.ts)
+These references use the pinned beta commit `5d71fc408add08bd207f4753f4554578ec9e0640`.
+The query builder passes its dialect to SELECT builders; `PgSelectKind` and
+`PgSelectWithout` carry selection state and omit previously used fluent methods.
+
+- [Drizzle query builder](https://github.com/drizzle-team/drizzle-orm/blob/5d71fc408add08bd207f4753f4554578ec9e0640/drizzle-orm/src/pg-core/query-builders/query-builder.ts#L109)
+- [Drizzle select types](https://github.com/drizzle-team/drizzle-orm/blob/5d71fc408add08bd207f4753f4554578ec9e0640/drizzle-orm/src/pg-core/query-builders/select.types.ts#L245)
 - [Traqula generator extension guide](https://comunica.github.io/traqula/documents/modifications_create-generator.html)
 
 - [ARQ LET assignment](https://jena.apache.org/documentation/query/assignment.html)

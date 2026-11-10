@@ -5,14 +5,17 @@
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
+  "types": "./dist/index.d.mts",
   "files": [
     "dist/**/*"
   ],
   "scripts": {
-    "build": "tsc --project tsconfig.build.json",
+    "build": "tsdown",
     "clean": "rm -rf ./dist/",
     "test": "vitest",
+    "test:types": "tsc -p test/types",
+    "test:exports": "vitest run test/exports.spec.ts",
+    "test:package": "pnpm build && node scripts/check-package.mjs",
     "semantic-release": "semantic-release",
     "typecheck": "tsc --noEmit",
     "lint": "biome lint .",
@@ -90,13 +93,14 @@
     "#test/*": "./test/*"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "0.18.5",
     "@biomejs/biome": "2.6.6",
     "@traqula/parser-sparql-1-1": "^1.0.7",
     "@types/node": "^20.19.43",
-    "@types/sparql-http-client": "^3.0.5",
     "@vitest/coverage-v8": "^3.2.4",
     "dotenv": "^16.5.0",
     "json-diff-ts": "^4.3.0",
+    "tsdown": "0.15.12",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   },
@@ -104,6 +108,7 @@
     "@traqula/core": "^1.1.0",
     "@traqula/generator-sparql-1-1": "^1.0.7",
     "@traqula/rules-sparql-1-1": "^1.0.7",
+    "@types/sparql-http-client": "^3.1.0",
     "rdf-data-factory": "^2.0.2",
     "sparql-http-client": "^3.0.1"
   }

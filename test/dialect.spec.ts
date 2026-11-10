@@ -126,7 +126,9 @@ describe('database dialects', () => {
 
   test('rejects unregistered nodes at runtime for untyped callers', () => {
     // @ts-expect-error Standard databases reject custom nodes.
-    expect(() => standard.select().where(lateral).toSPARQL()).toThrow('Unrecognized pattern');
+    expect(() => standard.select().where(lateral).toSPARQL()).toThrow(
+      'Unsupported pattern provided (type "pattern", subType "lateral").'
+    );
   });
 });
 

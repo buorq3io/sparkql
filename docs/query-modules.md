@@ -10,7 +10,7 @@ Query forms stay scoped to their dialect and survive `base()` and `prefix()`.
 ```ts
 import { SparqlDatabase, triples } from 'sparkql/arq';
 
-const db = SparqlDatabase.create({ endpointUrl: 'http://localhost:3030/ds/query' });
+const db = SparqlDatabase.create({ connection: 'http://localhost:3030/ds/query' });
 const name = db.variable('name');
 const query = db
   .json({ name, source: 'catalog', active: true })
@@ -32,14 +32,15 @@ Results are decoded from `application/json`, rather than the SPARQL bindings
 format. Constant fields retain their primitive types. Variable fields are
 optional because ARQ omits unbound members. Their values are JSON scalars,
 reflecting ARQ's conversion of RDF terms. JavaScript variable transforms from
-SELECT do not describe ARQ's JSON conversion and are not applied here.
+SELECT do not describe ARQ's JSON conversion and are not applied here; neither
+are datatype codecs, since ARQ's JSON output does not carry datatypes.
 
 ## ARQ quad construction
 
 ```ts
 import { SparqlDatabase, triples, quads } from 'sparkql/arq';
 
-const db = SparqlDatabase.create({ endpointUrl: 'http://localhost:3030/ds/query' });
+const db = SparqlDatabase.create({ connection: 'http://localhost:3030/ds/query' });
 const s = db.variable('s');
 const p = db.iri('https://example.org/name');
 const name = db.variable('name');
@@ -71,7 +72,7 @@ Their WHERE clauses support the existing ARQ LET and LATERAL patterns.
 ```ts
 import { SparqlDatabase, oneOrMore } from 'sparkql/stardog';
 
-const db = SparqlDatabase.create({ endpointUrl: 'http://localhost:5820/myDb/query' });
+const db = SparqlDatabase.create({ connection: 'http://localhost:5820/myDb/query' });
 const start = db.variable('start');
 const end = db.variable('end');
 
@@ -113,8 +114,9 @@ See [Stardog's syntax and result semantics](https://docs.stardog.com/query-stard
 
 `QueryModule<Config, Ast, Result, Dialect>` describes normalization, generation and
 execution. Extend `ModuleQueryBuilder` to get typed `getSPARQL()`, `toSPARQL()` and
-PromiseLike execution with one cached request per builder. Its configuration
-and module context are protected for use by custom fluent methods.
+PromiseLike execution. Each `await` (or `execute()`) sends one request; results
+are not cached. Its configuration and module context are protected for use by
+custom fluent methods.
 
 ```ts
 import {
@@ -134,10 +136,8 @@ interface ExplainAST {
 const explainModule: QueryModule<string, ExplainAST, unknown> = {
   normalize: source => ({ type: 'query', subType: 'explain', source }),
   generate: ast => `EXPLAIN ${ast.source}`,
-  execute: async (sparql, client) => {
-    const response = await client.postDirect(sparql, {
-      headers: { accept: 'application/json' },
-    });
+  execute: async (sparql, session) => {
+    const response = await session.raw(sparql, { accept: 'application/json' });
     if (!response.ok) throw new Error(`Query failed: ${response.status}`);
     return response.json();
   },
@@ -168,12 +168,45 @@ This illustrates registration; the example's EXPLAIN syntax and result format
 must match the target endpoint. A real module should expose typed query inputs
 and validate its response instead of accepting arbitrary source text.
 
-The context provides prefix/base definitions, term factories, endpoint options,
-the dialect, and `normalizer()`. The normalizer exposes pattern, expression,
+The context provides prefix/base definitions, term factories, the session,
+the dialect, and `normalizer()`. Standard builders receive the same object. The normalizer exposes pattern, expression,
 quad and property-path normalization plus the standard SELECT query body.
 `emptySelect(context.context)` creates a body configuration for forms that reuse
 standard clauses. `PatternModuleQueryBuilder` reuses those clauses for custom
 forms with WHERE, as the ARQ modules demonstrate.
+
+### Talking to the session
+
+A module never sees a URL or an HTTP client. `execute(sparql, session, ast)`
+receives the database's `SparqlSession` and asks for the result _format_ it
+needs:
+
+| Method                               | Returns                                          | Use for                |
+| ------------------------------------ | ------------------------------------------------ | ---------------------- |
+| `session.bindings(sparql)`           | `SparqlBindings[]`: variable name to RDF/JS term | solution sequences     |
+| `session.boolean(sparql)`            | `boolean`                                        | yes/no answers         |
+| `session.quads(sparql, { accept? })` | RDF/JS `Quad[]`                                  | graphs and datasets    |
+| `session.update(sparql)`             | nothing                                          | SPARQL Update requests |
+| `session.raw(sparql, { accept })`    | a fetch `Response`                               | any other format       |
+
+Prefer a decoded method when the result fits one: ARQ's `constructQuads()`
+calls `quads()` with `accept: 'application/n-quads'`. Use `raw()` for formats
+sparkql does not model: ARQ `json()` and Stardog `paths()` call it through
+`requestQueryJson(session, sparql, accept)`, which rejects non-2xx responses
+with a `SparqlResponseError` (`status`, `statusText`, `body`) and parses the
+JSON body. `raw()` itself returns the response whatever its
+status, so check `response.ok` when you call it directly.
+
+`execute` only runs when the database has a session; on a build-only database
+the builder rejects before reaching the module. Anything `execute` throws, from
+the session or from your own result validation, reaches the caller as a
+`SparkqlQueryError` with the generated SPARQL as `query` and your error as
+`cause`, so throw plain errors and leave the wrapping to the builder. A
+`SparkqlQueryError` you let through (from running another builder) is not
+wrapped again. The default HTTP session sends
+`raw()` and `quads()` with a custom `accept` as a direct POST
+(`application/sparql-query` body). A custom session decides for itself how to
+honour `accept`; one that cannot produce the requested format should reject.
 
 Generate using your own copied Traqula builder and a root rule accepting the
 module's AST. `QueryModule.generate()` handles that root; the dialect's existing

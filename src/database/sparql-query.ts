@@ -65,13 +65,25 @@ import {
   tripleCollectionBlankNodePropertiesInputBase,
   tripleCollectionListInputBase,
 } from '../helpers/utilities.js';
-import {
-  type AnySparqlDialect,
-  type DialectAST,
-  type SparqlDialect,
-  sparql11Dialect,
-} from './dialect.js';
+import type { AnySparqlDialect, DialectAST, SparqlDialect } from './dialect.js';
+import { SparkqlError, SparkqlNormalizationError } from './errors.js';
 import { ExecutableQuery } from './executable.js';
+import {
+  containsPlaceholder,
+  type PlaceholderCarrier,
+  PreparedQuery,
+  type placeholderTypes,
+  prepareTemplate,
+} from './prepared.js';
+import type { QueryModuleContext } from './query-module.js';
+import type {
+  RawASTValue,
+  RawExpression,
+  RawExpressionInput,
+  RawPattern,
+  RawPatternInput,
+  RawValue,
+} from './raw.js';
 
 type ASTConfig<T extends SparqlQueryInput> = T extends UpdateInput
   ? AST.Update
@@ -93,35 +105,63 @@ export abstract class SparqlQueryBuilderBase<
   protected readonly config: Config;
   protected readonly dialect: AnySparqlDialect;
   protected readonly factoryFunctions: FactoryFunctions;
+  /** The database context this builder was created from; nested builders reuse it. */
+  protected readonly builderContext: QueryModuleContext<D>;
   protected readonly anonymousBlanks: Map<symbol, AST.TermBlank>;
 
-  protected constructor(
-    initialConfig: Config,
-    factoryFunctions: FactoryFunctions,
-    endpointUrl?: string,
-    dialect?: D
-  ) {
-    super(endpointUrl);
+  protected constructor(initialConfig: Config, context: QueryModuleContext<D>) {
+    super(context);
     this.config = initialConfig;
+    this.builderContext = context;
     this.anonymousBlanks = new Map<symbol, AST.TermBlank>();
-    this.factoryFunctions = factoryFunctions;
-    this.dialect = dialect ?? sparql11Dialect;
+    this.factoryFunctions = context.factory;
+    this.dialect = context.dialect;
+  }
+
+  declare readonly [placeholderTypes]?: {};
+
+  protected preparationInput(): Config {
+    return this.config;
+  }
+
+  public prepare<T extends PlaceholderCarrier<object>>(
+    this: T
+  ): PreparedQuery<Return, NonNullable<T[typeof placeholderTypes]>>;
+  public prepare(): PreparedQuery<Return, object> {
+    const fill = prepareTemplate(this.preparationInput(), this.builderContext, config =>
+      this.withComments(this.dialect.generator.generate(this.normalizeConfig(config)))
+    );
+    return new PreparedQuery(fill, sparql => this.executeSPARQL(sparql));
   }
 
   public getSPARQL(): DialectAST<D, ASTConfig<Config>> {
-    if (this.config.type === 'query') {
-      return this.buildQuery(this.config) as unknown as DialectAST<D, ASTConfig<Config>>;
+    const config = this.preparationInput();
+    if (containsPlaceholder(config)) {
+      throw new SparkqlError({
+        message: 'Queries with placeholders must be prepared before execution.',
+      });
+    }
+    return this.normalizeConfig(config);
+  }
+
+  private normalizeConfig(config: Config): DialectAST<D, ASTConfig<Config>> {
+    if (config.type === 'query') {
+      return this.buildQuery(config) as unknown as DialectAST<D, ASTConfig<Config>>;
     }
 
-    if (this.config.type === 'update') {
-      return this.buildUpdate(this.config) as unknown as DialectAST<D, ASTConfig<Config>>;
+    if (config.type === 'update') {
+      return this.buildUpdate(config) as unknown as DialectAST<D, ASTConfig<Config>>;
     }
 
-    throw new Error('Unsupported query provided.');
+    throw new SparkqlNormalizationError('query', config);
+  }
+
+  protected override get operationName(): string {
+    return this.config.type === 'update' ? 'update' : this.config.subType;
   }
 
   public toSPARQL(): string {
-    return this.dialect.generator.generate(this.getSPARQL());
+    return this.withComments(this.dialect.generator.generate(this.getSPARQL()));
   }
 
   private buildQuery(query: QueryInput): AST.Query {
@@ -135,7 +175,7 @@ export abstract class SparqlQueryBuilderBase<
       case 'ask':
         return this.buildAskQuery(query);
       default:
-        throw new Error('Unsupported query provided.');
+        throw new SparkqlNormalizationError('query', query);
     }
   }
 
@@ -231,7 +271,7 @@ export abstract class SparqlQueryBuilderBase<
       case 'modify':
         return this.sanitizeModifyOperation(operation);
       default:
-        throw new Error('Unsupported update provided.');
+        throw new SparkqlNormalizationError('update', operation);
     }
   }
 
@@ -283,7 +323,9 @@ export abstract class SparqlQueryBuilderBase<
             },
           }
         : {}),
-      ...(modifiers.limitOffset ? { limitOffset: modifiers.limitOffset } : {}),
+      ...(modifiers.limitOffset
+        ? { limitOffset: modifiers.limitOffset as AST.SolutionModifierLimitOffset }
+        : {}),
     };
   }
 
@@ -443,6 +485,8 @@ export abstract class SparqlQueryBuilderBase<
             ...expression,
             args: this.sanitizePatternBasic(expression.args),
           };
+        case 'raw':
+          return this.sanitizeRaw(expression) as unknown as AST.Expression;
         case 'aggregate':
           if (isWildCardInputArray(expression.expression)) {
             return {
@@ -456,7 +500,7 @@ export abstract class SparqlQueryBuilderBase<
             expression: [this.sanitizeExpression(expression.expression[0])],
           };
         default:
-          throw new Error('Unsupported expression provided.');
+          throw new SparkqlNormalizationError('expression', expression);
       }
     }
 
@@ -464,7 +508,7 @@ export abstract class SparqlQueryBuilderBase<
       return termExpression.parseOrThrow(expression, this.factoryFunctions);
     }
 
-    throw new Error('Unsupported expression provided.');
+    throw new SparkqlNormalizationError('expression', expression);
   }
 
   protected sanitizeValuePatternColumns(columns: ValuePatternColumnsInput): AST.ValuePatternRow[] {
@@ -523,7 +567,7 @@ export abstract class SparqlQueryBuilderBase<
           items: [this.sanitizePropertyPath(path.items[0])],
         };
       default:
-        throw new Error('Unsupported property path provided.');
+        throw new SparkqlNormalizationError('property path', path);
     }
   }
 
@@ -556,7 +600,7 @@ export abstract class SparqlQueryBuilderBase<
     if (term.accepts(term_)) {
       return term.parseOrThrow(term_, this.factoryFunctions);
     }
-    throw Error('Unsupported term value provided');
+    throw new SparkqlNormalizationError('term', term_);
   }
 
   protected sanitizeTripleNesting(triple: TripleNestingInput): AST.TripleNesting {
@@ -706,6 +750,8 @@ export abstract class SparqlQueryBuilderBase<
     }
 
     switch (pattern.subType) {
+      case 'raw':
+        return this.sanitizeRaw(pattern) as unknown as AST.Pattern;
       case 'bgp':
         return this.sanitizeBgpPattern(pattern);
       case 'group':
@@ -727,8 +773,55 @@ export abstract class SparqlQueryBuilderBase<
       case 'values':
         return this.sanitizePatternValues(pattern);
       default:
-        throw new Error('Unrecognized pattern provided.');
+        throw new SparkqlNormalizationError('pattern', pattern);
     }
+  }
+
+  private sanitizeRaw(node: RawExpressionInput): RawExpression;
+  private sanitizeRaw(node: RawPatternInput): RawPattern;
+  private sanitizeRaw(node: RawExpressionInput | RawPatternInput): RawExpression | RawPattern {
+    const { strings, values } = node;
+    if (
+      !Array.isArray(strings) ||
+      !Array.isArray(values) ||
+      strings.length !== values.length + 1 ||
+      !strings.every(text => typeof text === 'string')
+    ) {
+      throw new SparkqlNormalizationError(node.type, node);
+    }
+    return {
+      type: node.type,
+      subType: 'raw',
+      loc: node.loc,
+      strings: [...strings],
+      values: values.map(value => this.sanitizeRawValue(value)),
+    } as RawExpression | RawPattern;
+  }
+
+  /** Interpolated values become AST nodes; none of them is spliced as text. */
+  private sanitizeRawValue(value: RawValue): RawASTValue {
+    if (Array.isArray(value)) {
+      throw new SparkqlError({
+        message: 'Arrays cannot be interpolated into sparql templates; use sparql.join().',
+      });
+    }
+    if (isObjectLike(value) && (value.type === 'pattern' || value.type === 'query')) {
+      return this.sanitizePattern(value as PatternInput);
+    }
+    // Database term formats apply first, as they do for db.iri()/db.literal().
+    const formats = this.builderContext.formats;
+    for (const kind of ['iri', 'literal', 'blank'] as const) {
+      for (const formatter of formats?.[kind] ?? []) {
+        if (formatter.test(value)) return formatter.format(value, this.factoryFunctions);
+      }
+    }
+    if (isObjectLike(value) && value.type === 'expression') {
+      return this.sanitizeExpression(value as ExpressionInput);
+    }
+    if (term.accepts(value)) {
+      return term.parseOrThrow(value, this.factoryFunctions);
+    }
+    throw new SparkqlNormalizationError('expression', value);
   }
 
   protected sanitizeQuads(quads: QuadsInput): AST.Quads {

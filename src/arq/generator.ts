@@ -1,9 +1,9 @@
 import { GeneratorBuilder } from '@traqula/core';
-import { sparql11GeneratorBuilder } from '@traqula/generator-sparql-1-1';
 import * as AST from '@traqula/rules-sparql-1-1';
+import { sparkqlGeneratorBuilder } from '../database/generator.js';
 import type { ArqPattern, ArqQuery } from './types.js';
 
-const standardPattern = sparql11GeneratorBuilder.getRule('generatePattern');
+const standardPattern = sparkqlGeneratorBuilder.getRule('generatePattern');
 const arqPattern: AST.SparqlGeneratorRule<'generatePattern', ArqPattern> = {
   name: 'generatePattern',
   gImpl: helpers => {
@@ -30,7 +30,7 @@ const arqPattern: AST.SparqlGeneratorRule<'generatePattern', ArqPattern> = {
   },
 };
 type StandardRules =
-  typeof sparql11GeneratorBuilder extends GeneratorBuilder<
+  typeof sparkqlGeneratorBuilder extends GeneratorBuilder<
     AST.SparqlGeneratorContext,
     any,
     infer Rules
@@ -48,7 +48,7 @@ type ArqGeneratorBuilder = GeneratorBuilder<
 >;
 
 export const arqGeneratorBuilder: ArqGeneratorBuilder = GeneratorBuilder.create(
-  sparql11GeneratorBuilder
+  sparkqlGeneratorBuilder
 )
   .patchRule(arqPattern)
   .typePatch<{ queryOrUpdate: [ArqQuery] }>();

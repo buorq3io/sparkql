@@ -1,6 +1,8 @@
 import type * as AST from '@traqula/rules-sparql-1-1';
 import type * as RdfJs from 'rdf-data-factory';
 import type { ExtensionPattern } from '../database/dialect.js';
+import type { Placeholder } from '../database/prepared.js';
+import type { RawExpressionInput, RawPatternInput } from '../database/raw.js';
 
 export type TermIriFullInput = AST.TermIriFull;
 export type TermIriInput = AST.TermIri | URL;
@@ -21,7 +23,12 @@ export type TermVariableAndBinding<
   K extends Presence = Presence.required,
 > = PatternBindInput<T, K> | TermVariableInput<T, K>;
 
-export type TermInput = TermIriInput | TermLiteralInput | TermBlankInput | TermVariableInput;
+export type TermInput =
+  | TermIriInput
+  | TermLiteralInput
+  | TermBlankInput
+  | TermVariableInput
+  | Placeholder;
 export type GraphNodeInput = TermInput | TripleCollectionInput;
 
 export type ObjectColletion = {
@@ -171,7 +178,7 @@ export type PatternValuesInput = Override<
 export type ValuePatternColumnsInput = Override<
   AST.ValuePatternRow,
   {
-    [x: string]: (TermIriInput | TermLiteralInput | undefined)[];
+    [x: string]: (TermIriInput | TermLiteralInput | Placeholder | undefined)[];
   }
 >;
 
@@ -187,6 +194,7 @@ export type PatternInput<P extends ExtensionPattern = never> =
   | PatternFilterInput
   | PatternBindInput
   | PatternValuesInput
+  | RawPatternInput
   | QuerySelectInput<P>;
 
 export type DatasetClausesInput = Override<
@@ -237,7 +245,10 @@ export type SolutionModifierOrderInput = Override<
   }
 >;
 
-export type SolutionModifierLimitOffsetInput = AST.SolutionModifierLimitOffset;
+export type SolutionModifierLimitOffsetInput = Override<
+  AST.SolutionModifierLimitOffset,
+  { limit?: number | Placeholder<string, number>; offset?: number | Placeholder<string, number> }
+>;
 
 export type SolutionModifiersInput = Override<
   AST.SolutionModifiers,
@@ -317,13 +328,15 @@ export type QueryInput =
   | QueryConstructInput;
 
 export type ExpressionInput<_T = any> =
+  | Placeholder
   | TermIriInput
   | TermLiteralInput
   | TermVariableInput<_T>
   | ExpressionOperationInput<_T>
   | ExpressionPatternOperationInput<_T>
   | ExpressionFunctionCallInput<_T>
-  | ExpressionAggregateInput<_T>;
+  | ExpressionAggregateInput<_T>
+  | RawExpressionInput<_T>;
 
 export type TermIriOutput = RdfJs.NamedNode;
 export type TermBlankOutput = RdfJs.BlankNode;
@@ -576,8 +589,6 @@ export type PathInput =
   | PropertyPathChainInput
   | PathModifiedInput
   | PathNegatedInput;
-
-export type { StreamClient as SparqlClient } from 'sparql-http-client';
 
 export type FactoryFunctions = {
   variable: (value: string) => AST.TermVariable;

@@ -1,9 +1,16 @@
 import * as AST from '@traqula/rules-sparql-1-1';
+import {
+  codecFormatters,
+  type TermCodecs,
+  TermCodecTable,
+  type WithCodecFormats,
+} from '../helpers/codecs.js';
 import type { Formatter } from '../helpers/generators.js';
 import type { FormatInput, TermFormats } from '../helpers/term-formats.js';
 import {
   type FactoryFunctions,
   type PatternBgpInput,
+  type PatternInput,
   type QuadsInput,
   type QueryInput,
   Strictness,
@@ -23,8 +30,22 @@ import {
 } from '../structures/index.js';
 import { AskQueryBuilderBase } from './ask.js';
 import { ConstructQueryBuilderBase } from './construct.js';
+import { type CountOptions, CountQueryBuilder } from './count.js';
 import { DescribeQueryBuilderBase } from './describe.js';
-import { type AnySparqlDialect, type SparqlDialect, sparql11Dialect } from './dialect.js';
+import {
+  type AnySparqlDialect,
+  type DialectPattern,
+  type SparqlDialect,
+  sparql11Dialect,
+} from './dialect.js';
+import { is } from './entity.js';
+import {
+  HttpSparqlSession,
+  type SparqlConnectionOptions,
+  type SparqlHttpClient,
+} from './http-session.js';
+import { DefaultLogger, type Logger } from './logger.js';
+import type { MergePlaceholders, PlaceholderCarrier } from './prepared.js';
 import type { RootQueryBuilderBaseWithout } from './query.js';
 import {
   emptySelect,
@@ -38,25 +59,87 @@ import {
   SelectQueryBuilderBase,
   type TypedSelectedVariables,
 } from './select.js';
+import { isSparqlSession, type SparqlSession } from './session.js';
 import { UpdateQueryBuilderBase } from './update.js';
 
 interface PrivateSparqlDatabaseOptions {
   context: QueryInput['context'];
   formats?: TermFormats;
+  codecs?: TermCodecTable;
   factory?: AST.AstFactory;
-  endpointUrl?: string;
+  session?: SparqlSession;
   dialect?: AnySparqlDialect;
+  queryInErrors?: boolean;
+  logger?: Logger;
 }
 
 export interface SparqlDatabaseOptions<
   T extends IriManagerConfig,
   F extends TermFormats = {},
   D extends AnySparqlDialect = SparqlDialect,
+  X extends TermCodecs = {},
 > {
   dialect?: D;
+  /** Log each request: `true` uses the console; omitted or `false` disables logging. */
+  logger?: boolean | Logger;
   formats?: F & TermFormats;
+  /**
+   * How result terms decode by datatype, e.g. `defaultCodecs({ integer: 'number', decimal: 'number' })`.
+   * Applies to projected SELECT variables without an explicit transform
+   * (`castX`, `as`, typed functions). Without it, those return RDF/JS terms.
+   * Codec encoders extend `formats.literal`.
+   */
+  codecs?: X & TermCodecs;
   managerConfig?: T;
+  /**
+   * Options for the default HTTP session. A string is the query endpoint URL,
+   * which then also receives updates.
+   */
+  connection?: string | SparqlConnectionOptions;
+  /** A ready `sparql-http-client` instance for the default HTTP session to use. */
+  client?: SparqlHttpClient;
+  /** A custom session, e.g. an in-process engine or a test double. */
+  session?: SparqlSession;
+  /**
+   * Repeat the generated SPARQL in the `message` of a `SparkqlQueryError`.
+   * Off by default: values inlined into a query (VALUES rows, literals) would
+   * reach every log that records error messages. The `query` property always
+   * holds it.
+   */
+  queryInErrors?: boolean;
+  /** @deprecated Use `connection`. */
   endpointUrl?: string;
+  /** @deprecated Use `connection.updateUrl`. */
+  updateUrl?: string;
+}
+
+/**
+ * The client behind a database made with `connection`: it is loaded on first
+ * use, so it is a promise. `undefined` for custom-session and build-only databases.
+ */
+export type DefaultSparqlClient = Promise<SparqlHttpClient> | undefined;
+/** Every value `$client` can hold when the way the database was created is unknown. */
+export type AnySparqlClient = SparqlHttpClient | DefaultSparqlClient;
+
+function resolveSession(
+  options: SparqlDatabaseOptions<any, any, any> = {}
+): SparqlSession | undefined {
+  const { connection, client, session, endpointUrl, updateUrl } = options;
+  const legacy = endpointUrl !== undefined || updateUrl !== undefined;
+  const given = [connection !== undefined, client !== undefined, session !== undefined, legacy];
+  if (given.filter(Boolean).length > 1)
+    throw new Error(
+      'Pass only one of `connection`, `client`, `session` or the deprecated `endpointUrl`/`updateUrl`.'
+    );
+  if (session !== undefined) {
+    if (!isSparqlSession(session))
+      throw new Error('`session` must implement bindings, boolean, quads, update and raw.');
+    return session;
+  }
+  if (client !== undefined) return new HttpSparqlSession({ client });
+  if (connection !== undefined) return new HttpSparqlSession({ connection });
+  if (legacy) return new HttpSparqlSession({ connection: { endpointUrl, updateUrl } });
+  return undefined;
 }
 
 export class SparqlDatabase<
@@ -64,10 +147,16 @@ export class SparqlDatabase<
   R extends string = 'g_',
   F extends TermFormats = {},
   D extends AnySparqlDialect = SparqlDialect,
+  C extends AnySparqlClient = AnySparqlClient,
 > {
   private readonly dialect: D;
   private readonly formats: TermFormats;
-  private readonly endpointUrl?: string;
+  private readonly codecs: TermCodecTable;
+  private readonly queryInErrors: boolean;
+  private readonly logger: Logger | undefined;
+  /** The session queries run through. `undefined` on a build-only database. */
+  readonly $session: SparqlSession | undefined;
+  private readonly moduleContext: QueryModuleContext<D>;
   private readonly initialContext;
   private readonly factory: AST.AstFactory;
   protected readonly factoryFunctions: FactoryFunctions;
@@ -79,7 +168,10 @@ export class SparqlDatabase<
       literal: [...(options?.formats?.literal ?? [])],
       blank: [...(options?.formats?.blank ?? [])],
     };
-    this.endpointUrl = options?.endpointUrl;
+    this.codecs = options?.codecs ?? new TermCodecTable();
+    this.$session = options?.session;
+    this.logger = options?.logger;
+    this.queryInErrors = options?.queryInErrors ?? false;
     this.initialContext = options?.context ?? [];
     this.factory = options?.factory ?? new AST.AstFactory();
     this.factoryFunctions = {
@@ -98,41 +190,93 @@ export class SparqlDatabase<
     const moduleContext: QueryModuleContext<D> = {
       context: this.initialContext,
       factory: this.factoryFunctions,
+      formats: this.formats,
+      codecs: this.codecs,
       dialect: this.dialect,
-      endpointUrl: this.endpointUrl,
+      session: this.$session,
+      queryInErrors: this.queryInErrors,
+      logger: this.logger,
       normalizer: input =>
-        new QueryNormalizer(
-          input ?? emptySelect(this.initialContext),
-          this.factoryFunctions,
-          this.dialect
-        ),
+        new QueryNormalizer(input ?? emptySelect(this.initialContext), moduleContext),
     };
+    this.moduleContext = moduleContext;
     for (const [name, factory] of Object.entries(this.dialect.queries ?? {})) {
       if (name === 'then' || name in this)
         throw new Error(`Query module name conflicts with database member: ${name}`);
-      Object.defineProperty(this, name, { value: factory(moduleContext), enumerable: true });
+      Object.defineProperty(this, name, {
+        value: factory({ ...moduleContext, operationName: name }),
+        enumerable: true,
+      });
     }
   }
 
+  /**
+   * The `sparql-http-client` instance behind the default HTTP session: the
+   * `client` passed to `create()`, or a promise of the one created from
+   * `connection`. `undefined` for custom-session and build-only databases.
+   */
+  get $client(): C {
+    return (is(this.$session, HttpSparqlSession) ? this.$session.client : undefined) as C;
+  }
+
+  /**
+   * Creates a database. Configure the transport once with `connection`
+   * (options for the default HTTP session), `client` (a ready
+   * `sparql-http-client` instance) or `session` (any {@link SparqlSession}).
+   * Without one the database is build-only: queries generate SPARQL and
+   * reject when awaited.
+   */
   static create<
     T extends IriManagerConfig,
     K extends string = 'g_',
     F extends TermFormats = {},
     D extends AnySparqlDialect = SparqlDialect,
-  >(options?: SparqlDatabaseOptions<T, F, D>): WithQueryMethods<SparqlDatabase<T, K, F, D>, D> {
-    return new SparqlDatabase<T, K, F, D>({
+    C extends SparqlHttpClient = SparqlHttpClient,
+    X extends TermCodecs = {},
+  >(
+    options: SparqlDatabaseOptions<T, F, D, X> & { client: C }
+  ): WithQueryMethods<SparqlDatabase<T, K, WithCodecFormats<F, X>, D, C>, D>;
+  static create<
+    T extends IriManagerConfig,
+    K extends string = 'g_',
+    F extends TermFormats = {},
+    D extends AnySparqlDialect = SparqlDialect,
+    X extends TermCodecs = {},
+  >(
+    options?: SparqlDatabaseOptions<T, F, D, X>
+  ): WithQueryMethods<SparqlDatabase<T, K, WithCodecFormats<F, X>, D, DefaultSparqlClient>, D>;
+  static create<
+    T extends IriManagerConfig,
+    K extends string = 'g_',
+    F extends TermFormats = {},
+    D extends AnySparqlDialect = SparqlDialect,
+    X extends TermCodecs = {},
+  >(
+    options?: SparqlDatabaseOptions<T, F, D, X>
+  ): WithQueryMethods<SparqlDatabase<T, K, WithCodecFormats<F, X>, D>, D> {
+    const codecs = new TermCodecTable(options?.codecs);
+    return new SparqlDatabase<T, K, WithCodecFormats<F, X>, D>({
       dialect: options?.dialect,
-      formats: options?.formats,
-      endpointUrl: options?.endpointUrl,
+      formats: {
+        ...options?.formats,
+        literal: [...(options?.formats?.literal ?? []), ...codecFormatters(options?.codecs)],
+      },
+      codecs,
+      session: resolveSession(options),
+      logger: options?.logger === true ? new DefaultLogger() : options?.logger || undefined,
+      queryInErrors: options?.queryInErrors,
       context: transformIntoPrefixObject(options?.managerConfig ?? {}),
-    }) as WithQueryMethods<SparqlDatabase<T, K, F, D>, D>;
+    }) as WithQueryMethods<SparqlDatabase<T, K, WithCodecFormats<F, X>, D>, D>;
   }
 
-  base(value: string): WithQueryMethods<SparqlDatabase<T, R, F, D>, D> {
+  base(value: string): this {
     return new SparqlDatabase<T, R, F, D>({
       dialect: this.dialect,
       formats: this.formats,
-      endpointUrl: this.endpointUrl,
+      codecs: this.codecs,
+      session: this.$session,
+      queryInErrors: this.queryInErrors,
+      logger: this.logger,
       factory: this.factory,
       context: [
         ...this.initialContext,
@@ -145,14 +289,17 @@ export class SparqlDatabase<
           value: this.iri(value),
         },
       ],
-    }) as WithQueryMethods<SparqlDatabase<T, R, F, D>, D>;
+    }) as unknown as this;
   }
 
-  prefix(values: { [x in string]: string }): WithQueryMethods<SparqlDatabase<T, R, F, D>, D> {
+  prefix(values: { [x in string]: string }): this {
     return new SparqlDatabase<T, R, F, D>({
       dialect: this.dialect,
       formats: this.formats,
-      endpointUrl: this.endpointUrl,
+      codecs: this.codecs,
+      session: this.$session,
+      queryInErrors: this.queryInErrors,
+      logger: this.logger,
       factory: this.factory,
       context: [
         ...this.initialContext,
@@ -169,7 +316,25 @@ export class SparqlDatabase<
             }) as const
         ),
       ],
-    }) as WithQueryMethods<SparqlDatabase<T, R, F, D>, D>;
+    }) as unknown as this;
+  }
+
+  /** Count solutions, optionally counting distinct bindings of a variable. */
+  $count<P extends PatternInput<DialectPattern<D>>[]>(
+    ...inputs: [...P, CountOptions]
+  ): CountQueryBuilder<D> & PlaceholderCarrier<MergePlaceholders<P[number]>>;
+  $count<P extends PatternInput<DialectPattern<D>>[]>(
+    ...patterns: P
+  ): CountQueryBuilder<D> & PlaceholderCarrier<MergePlaceholders<P[number]>>;
+  $count(...inputs: (PatternInput<DialectPattern<D>> | CountOptions)[]): CountQueryBuilder<D> {
+    const last = inputs[inputs.length - 1];
+    const options =
+      last && 'distinct' in last && !('type' in last) ? (inputs.pop() as CountOptions) : undefined;
+    return new CountQueryBuilder(
+      this.moduleContext,
+      inputs as PatternInput<DialectPattern<D>>[],
+      options
+    );
   }
 
   select<U extends SelectedVariables>(
@@ -183,15 +348,7 @@ export class SparqlDatabase<
   select<U extends Record<string, any>>(
     variables?: TypedSelectedVariables<U>
   ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U, D>> {
-    return new SelectQueryBuilderBase<U, D>(
-      variables,
-      this.initialContext,
-      this.factoryFunctions,
-      undefined,
-      undefined,
-      this.endpointUrl,
-      this.dialect
-    );
+    return new SelectQueryBuilderBase<U, D>(this.moduleContext, { variables });
   }
 
   selectDistinct<U extends SelectedVariables>(
@@ -205,15 +362,7 @@ export class SparqlDatabase<
   selectDistinct<U extends Record<string, any>>(
     variables?: TypedSelectedVariables<U>
   ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U, D>> {
-    return new SelectQueryBuilderBase<U, D>(
-      variables,
-      this.initialContext,
-      this.factoryFunctions,
-      true,
-      undefined,
-      this.endpointUrl,
-      this.dialect
-    );
+    return new SelectQueryBuilderBase<U, D>(this.moduleContext, { variables, distinct: true });
   }
 
   selectReduced<U extends SelectedVariables>(
@@ -227,67 +376,46 @@ export class SparqlDatabase<
   selectReduced<U extends Record<string, any>>(
     variables?: TypedSelectedVariables<U>
   ): RootQueryBuilderBaseWithout<SelectQueryBuilderBase<U, D>> {
-    return new SelectQueryBuilderBase<U, D>(
-      variables,
-      this.initialContext,
-      this.factoryFunctions,
-      undefined,
-      true,
-      this.endpointUrl,
-      this.dialect
-    );
+    return new SelectQueryBuilderBase<U, D>(this.moduleContext, { variables, reduced: true });
   }
 
   ask(): RootQueryBuilderBaseWithout<AskQueryBuilderBase<D>> {
-    return new AskQueryBuilderBase<D>(
-      this.initialContext,
-      this.factoryFunctions,
-      this.endpointUrl,
-      this.dialect
-    );
+    return new AskQueryBuilderBase<D>(this.moduleContext);
   }
 
   describe(
     ...variables: (TermIriInput | TermVariableInput)[]
   ): RootQueryBuilderBaseWithout<DescribeQueryBuilderBase<D>> {
-    return new DescribeQueryBuilderBase<D>(
-      variables,
-      this.initialContext,
-      this.factoryFunctions,
-      this.endpointUrl,
-      this.dialect
-    );
+    return new DescribeQueryBuilderBase<D>(this.moduleContext, variables);
   }
 
-  construct(
-    ...templates: PatternBgpInput[]
-  ): RootQueryBuilderBaseWithout<ConstructQueryBuilderBase<D>> {
+  construct<Q extends PatternBgpInput[]>(
+    ...templates: Q
+  ): RootQueryBuilderBaseWithout<ConstructQueryBuilderBase<D>> &
+    PlaceholderCarrier<MergePlaceholders<Q[number]>> {
     return new ConstructQueryBuilderBase<D>(
-      templates,
-      this.initialContext,
-      this.factoryFunctions,
-      this.endpointUrl,
-      this.dialect
-    );
+      this.moduleContext,
+      templates
+    ) as ConstructQueryBuilderBase<D> & PlaceholderCarrier<MergePlaceholders<Q[number]>>;
   }
 
-  insertData(...quads: QuadsInput[]) {
+  insertData<Q extends QuadsInput[]>(...quads: Q) {
     return this.update().insertData(...quads);
   }
 
-  deleteData(...quads: QuadsInput[]) {
+  deleteData<Q extends QuadsInput[]>(...quads: Q) {
     return this.update().deleteData(...quads);
   }
 
-  deleteWhere(...quads: QuadsInput[]) {
+  deleteWhere<Q extends QuadsInput[]>(...quads: Q) {
     return this.update().deleteWhere(...quads);
   }
 
-  insert(...quads: QuadsInput[]) {
+  insert<Q extends QuadsInput[]>(...quads: Q) {
     return this.update().insert(...quads);
   }
 
-  delete(...quads: QuadsInput[]) {
+  delete<Q extends QuadsInput[]>(...quads: Q) {
     return this.update().delete(...quads);
   }
 
@@ -432,15 +560,11 @@ export class SparqlDatabase<
   }
 
   protected update() {
-    return new UpdateQueryBuilderBase<D>(
-      this.initialContext,
-      this.factoryFunctions,
-      this.endpointUrl,
-      this.dialect
-    );
+    return new UpdateQueryBuilderBase<D>(this.moduleContext);
   }
 
-  variable(value: string): AST.TermVariable {
+  /** A variable term; selected bare, it yields RDF/JS terms like a manager's `v.name`. */
+  variable(value: string): TermVariableInput {
     return this.factory.termVariable(value, { sourceLocationType: 'autoGenerate' });
   }
 
