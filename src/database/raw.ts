@@ -75,16 +75,28 @@ type RawCarrier<V extends readonly unknown[]> = RawValue[] extends V
 /** A raw expression returned by the `sparql` tag. */
 export type SparqlRawExpression<T = DefaultQueryReturnType> = RawExpressionInput<T> & {
   /**
-   * Decode selected values with `transform`, like the `castX()` helpers.
+   * Decodes selected values with a transform.
+   *
    * Returns a new expression; the original keeps its transform.
+   *
+   * @param transform - Decoder applied to selected values.
+   *
+   * @example
+   * Attach a decoder to an expression.
+   *
+   * ```ts
+   * const length = sparql<number>`STRLEN(${v.name})`.mapWith(transformNumber);
+   * ```
    */
   mapWith<U>(transform: TermVariableTransform<U>): SparqlRawExpression<U>;
 };
 
+/** @internal Whether a value is a raw expression made by the `sparql` tag. */
 export function isRawExpression(value: unknown): value is RawExpressionInput | RawExpression {
   return isRaw(value, 'expression');
 }
 
+/** @internal Whether a value is a raw pattern made by `sparql.pattern`. */
 export function isRawPattern(value: unknown): value is RawPatternInput | RawPattern {
   return isRaw(value, 'pattern');
 }
@@ -152,14 +164,28 @@ function createPattern(strings: readonly string[], values: readonly RawValue[]):
 }
 
 /**
- * Raw SPARQL expression. Text written in the template is emitted verbatim;
- * every interpolated value is normalized into a safe RDF term or AST node.
+ * Creates a raw SPARQL expression.
  *
- * The type argument declares the selected result type without converting it;
- * use `.mapWith(transform)` to decode values at runtime.
+ * Template text is verbatim; interpolated values are normalized as terms or nodes. The type
+ * argument declares the result type but does not decode it; use `mapWith()` to decode.
+ * Arrays, null and undefined are rejected.
+ *
+ * @param strings - Template text.
+ * @param values - Interpolated values.
+ * @throws {@link SparkqlError} When the template or its interpolated values are invalid.
  *
  * @example
- * sparql<number>`<http://example.org/fn#score>(${doc}, ${'query text'})`
+ * Filter by the length of a name.
+ *
+ * ```ts
+ * db.select().where(filter(sparql`STRLEN(${v.name}) > ${3}`));
+ * ```
+ *
+ * ```sparql
+ * SELECT * WHERE {
+ *   FILTER ( ( STRLEN(?name) > "3"^^<http://www.w3.org/2001/XMLSchema#integer> ) )
+ * }
+ * ```
  */
 function sparqlTag<T = DefaultQueryReturnType, const V extends readonly RawValue[] = RawValue[]>(
   strings: TemplateStringsArray,
@@ -171,7 +197,28 @@ function sparqlTag<T = DefaultQueryReturnType, const V extends readonly RawValue
   ) as SparqlRawExpression<T> & RawCarrier<V>;
 }
 
-/** Raw SPARQL graph pattern, spliced into the enclosing group. */
+/**
+ * Creates a raw graph pattern.
+ *
+ * Template text is emitted into the enclosing group; interpolated values are normalized.
+ *
+ * @param strings - Template text.
+ * @param values - Interpolated values.
+ * @throws {@link SparkqlError} When the template or its interpolated values are invalid.
+ *
+ * @example
+ * Match names with a raw graph pattern.
+ *
+ * ```ts
+ * db.select().where(sparql.pattern`${v.person} ${n.foaf.name} ${v.name} .`);
+ * ```
+ *
+ * ```sparql
+ * SELECT * WHERE {
+ *   ?person foaf:name ?name .
+ * }
+ * ```
+ */
 function pattern<const V extends readonly RawValue[] = RawValue[]>(
   strings: TemplateStringsArray,
   ...values: V
@@ -181,8 +228,25 @@ function pattern<const V extends readonly RawValue[] = RawValue[]>(
 }
 
 /**
- * **Unsafe**: emits `text` verbatim, without escaping. Never pass untrusted
- * input; interpolate values with the `sparql` tag instead.
+ * Creates a raw SPARQL expression from text.
+ *
+ * **Unsafe:** text is emitted verbatim without escaping. Never pass untrusted input;
+ * interpolate values with the `sparql` tag instead.
+ *
+ * @param text - Verbatim SPARQL text.
+ *
+ * @example
+ * Keep solutions with a bound name.
+ *
+ * ```ts
+ * db.select().where(filter(sparql.raw('BOUND(?name)')));
+ * ```
+ *
+ * ```sparql
+ * SELECT * WHERE {
+ *   FILTER ( ( BOUND(?name) ) )
+ * }
+ * ```
  */
 function raw<T = DefaultQueryReturnType>(text: string): SparqlRawExpression<T> {
   if (typeof text !== 'string') {
@@ -192,10 +256,27 @@ function raw<T = DefaultQueryReturnType>(text: string): SparqlRawExpression<T> {
 }
 
 /**
- * Joins values into one raw fragment, optionally separated by a raw fragment.
+ * Joins values into a raw expression.
+ *
+ * The optional separator is inserted between values. Arrays, null and undefined as items
+ * are rejected.
+ *
+ * @param values - Values to join.
+ * @param separator - Raw fragment inserted between values.
+ * @throws {@link SparkqlError} When the template or its interpolated values are invalid.
  *
  * @example
- * sparql`?s IN (${sparql.join([a, b], sparql`, `)})`
+ * Match either Ada or Alan by name.
+ *
+ * ```ts
+ * db.select().where(filter(sparql`${v.name} IN (${sparql.join(['Ada', 'Alan'], sparql`, `)})`));
+ * ```
+ *
+ * ```sparql
+ * SELECT * WHERE {
+ *   FILTER ( ( ?name IN ( "Ada", "Alan") ) )
+ * }
+ * ```
  */
 function join<T = DefaultQueryReturnType>(
   values: readonly RawValue[],
@@ -212,7 +293,27 @@ function join<T = DefaultQueryReturnType>(
   );
 }
 
-/** Creates a named value supplied when a prepared query executes. */
+/**
+ * Creates a named placeholder for a prepared query.
+ *
+ * The value type defaults to unknown; preparation checks for missing names at runtime.
+ *
+ * @param name - Name of the value to supply.
+ *
+ * @example
+ * Supply a name to a prepared query.
+ *
+ * ```ts
+ * db.select().where(triples(v.person, n.foaf.name,
+ *   sparql.placeholder<'name', string>('name'))).prepare().toSPARQL({ name: 'Ada' });
+ * ```
+ *
+ * ```sparql
+ * SELECT * WHERE {
+ *   ?person foaf:name "Ada" .
+ * }
+ * ```
+ */
 function placeholder<Name extends string, Value = unknown>(name: Name): Placeholder<Name, Value> {
   return new Placeholder(name);
 }

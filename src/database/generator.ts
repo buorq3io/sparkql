@@ -66,8 +66,22 @@ const blankNodeToken = anchored(AST.lex.terminals.blankNodeLabel.PATTERN);
 const languageToken = anchored(AST.lex.terminals.langTag.PATTERN);
 
 /**
- * Percent-encodes every character IRIREF forbids, including backslashes, so a
- * value can never end the `<…>` term. Valid IRIs print unchanged.
+ * Percent-encodes every character an IRI reference (`IRIREF`) forbids, so a value can never
+ * end its `<…>` term.
+ *
+ * Covers spaces, ASCII control characters, `<>"{}|^` and backticks, and backslashes. A valid
+ * IRI comes back unchanged. The generator applies it to every full IRI it prints.
+ *
+ * @param value - The IRI text to print.
+ *
+ * @example
+ * Make an IRI built from user input safe to print.
+ *
+ * ```ts
+ * escapeIri('https://example.org/people/Ada Lovelace>');
+ * // 'https://example.org/people/Ada%20Lovelace%3E'
+ * escapeIri('https://example.org/people/ada'); // unchanged
+ * ```
  */
 export function escapeIri(value: string): string {
   // biome-ignore lint/suspicious/noControlCharactersInRegex: IRIREF excludes ASCII controls.
@@ -149,7 +163,10 @@ export const safeBlankNodeRule: AST.SparqlGeneratorRule<'blankNode', AST.TermBla
   },
 };
 
-/** Raw expressions print in parentheses, so operator precedence never leaks. */
+/**
+ * Generator rule that prints raw `sparql` expressions in parentheses, so operator precedence
+ * never leaks.
+ */
 export const rawExpressionRule: AST.SparqlGeneratorRule<'expression', AST.Expression> = {
   name: 'expression',
   gImpl: helpers => {
@@ -164,8 +181,10 @@ export const rawExpressionRule: AST.SparqlGeneratorRule<'expression', AST.Expres
 };
 
 /**
- * Raw patterns print as group content. A dot is added when the output ends
- * open (not with `.` or `}`), so following triples stay separate.
+ * Generator rule that prints raw `sparql` patterns as group content.
+ *
+ * A dot is added when the output ends open (not with `.` or `}`), so following triples stay
+ * separate.
  */
 export const rawPatternRule: AST.SparqlGeneratorRule<'generatePattern', AST.Pattern> = {
   name: 'generatePattern',
@@ -180,10 +199,32 @@ export const rawPatternRule: AST.SparqlGeneratorRule<'generatePattern', AST.Patt
   },
 };
 
+// Prints an RDF list as `( a b ... )` with every item separated. Traqula's rule prints the
+// items back to back and relies on each term to space itself; literals do, but IRIs and
+// variables do not, which produced `( foaf:Adafoaf:Grace )`.
+const collectionPathRule: AST.SparqlGeneratorRule<'collectionPath', AST.TripleCollectionList> = {
+  name: 'collectionPath',
+  gImpl:
+    ({ SUBRULE, PRINT_WORD }) =>
+    (ast, { astFactory: F }) => {
+      F.printFilter(ast, () => PRINT_WORD('('));
+      // Even triples are `rdf:first` (the items); odd ones are `rdf:rest` links.
+      for (const [index, triple] of ast.triples.entries()) {
+        if (index % 2 !== 0) continue;
+        F.printFilter(ast, () => PRINT_WORD(''));
+        SUBRULE(AST.gram.graphNodePath, triple.object);
+      }
+      F.printFilter(ast, () => PRINT_WORD(')'));
+    },
+};
+
 /**
- * Traqula's SPARQL 1.1 generator with support for the raw `sparql` nodes. RDF
- * terms print escaped or are refused, so no value can break out of its term.
- * Dialect generators copy this builder (never mutate it) before patching rules.
+ * Traqula's SPARQL 1.1 generator builder with support for raw `sparql` nodes, and with RDF
+ * list items always separated by a space.
+ *
+ * RDF terms print escaped or are refused, so no value can break out of its term. Dialect
+ * generators copy this builder with `GeneratorBuilder.create(...)` before patching rules;
+ * never mutate it.
  */
 export const sparkqlGeneratorBuilder: typeof sparql11GeneratorBuilder = GeneratorBuilder.create(
   sparql11GeneratorBuilder
@@ -193,11 +234,36 @@ export const sparkqlGeneratorBuilder: typeof sparql11GeneratorBuilder = Generato
   .patchRule(safeIriFullRule)
   .patchRule(safePrefixedNameRule)
   .patchRule(safeLiteralRule)
-  .patchRule(safeBlankNodeRule);
+  .patchRule(safeBlankNodeRule)
+  .patchRule(collectionPathRule);
 
 const generator = sparkqlGeneratorBuilder.build();
 
-/** Generates a query or update from a normalized sparkql AST. */
+/**
+ * Prints a normalized SPARQL 1.1 query or update as SPARQL text.
+ *
+ * Unlike `toSPARQL()`, it does not add `.comment()` lines, and it does not print dialect
+ * extension patterns. Custom query modules use it as their `generate` step.
+ *
+ * @param query - Normalized query or update, such as the result of a builder's `getSPARQL()`.
+ *
+ * @example
+ * Print the AST of a built query.
+ *
+ * ```ts
+ * const ast = db
+ *   .select({ name: v.name })
+ *   .where(triples(v.person, n.foaf.name, v.name))
+ *   .getSPARQL();
+ * const text = generateSparql(ast);
+ * ```
+ *
+ * ```sparql
+ * SELECT ?name WHERE {
+ *   ?person foaf:name ?name .
+ * }
+ * ```
+ */
 export function generateSparql(query: AST.SparqlQuery): string {
   return generator.queryOrUpdate(query, AST.completeGeneratorContext({})).trim();
 }

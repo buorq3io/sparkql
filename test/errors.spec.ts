@@ -273,3 +273,26 @@ describe('multiple library instances', () => {
     expect(is(session, HttpSparqlSession)).toBe(true);
   });
 });
+
+describe('library errors are SparkqlErrors', () => {
+  test.each([
+    [
+      'conflicting transport options',
+      () => SparqlDatabase.create({ connection: ex('sparql'), session: {} as SparqlSession }),
+    ],
+    ['an incomplete session', () => SparqlDatabase.create({ session: {} as SparqlSession })],
+    ['a connection without URLs', () => new HttpSparqlSession({} as never)],
+    [
+      'an encoding codec for IRIs',
+      () =>
+        SparqlDatabase.create({
+          codecs: { iri: { encode: {} as never } },
+        }),
+    ],
+    ['an unparseable IRI input', () => SparqlDatabase.create().iri({} as never)],
+    ['a negative custom LIMIT', () => ArqDatabase.create().json({ x: 1 }).where().limit(-1)],
+    ['an empty JSON projection', () => ArqDatabase.create().json({}).where().toSPARQL()],
+  ])('%s', (_, run) => {
+    expect(run).toThrow(SparkqlError);
+  });
+});

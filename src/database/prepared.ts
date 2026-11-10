@@ -7,13 +7,16 @@ import type { QueryModuleContext } from './query-module.js';
 
 /** Type-only metadata carried by composed inputs and fluent builders. */
 export declare const placeholderTypes: unique symbol;
+/** @internal Carries the placeholder values an input or builder needs, at the type level only. */
 export type PlaceholderCarrier<V extends object> = { readonly [placeholderTypes]?: V };
+/** @internal The placeholder values one input needs, by placeholder name. */
 export type PlaceholderValues<T> =
   T extends Placeholder<infer N, infer V>
     ? Record<N, V>
     : T extends PlaceholderCarrier<infer V>
       ? V
       : {};
+/** @internal Intersects the placeholder values of several inputs. */
 export type MergePlaceholders<T> = (
   T extends unknown
     ? (value: PlaceholderValues<T>) => void
@@ -22,7 +25,14 @@ export type MergePlaceholders<T> = (
   ? V
   : {};
 
-/** A named value, formatted only after execute() supplies its actual value. */
+/**
+ * A named value supplied to a prepared query.
+ *
+ * The value is formatted when the prepared query is filled.
+ *
+ * @typeParam Name - The placeholder name.
+ * @typeParam Value - The accepted value type.
+ */
 export class Placeholder<Name extends string = string, Value = unknown> {
   static readonly [entityKind]: string = 'Placeholder';
 
@@ -31,22 +41,84 @@ export class Placeholder<Name extends string = string, Value = unknown> {
   }
 
   declare protected value: Value;
+  /** The name used to look up the supplied value. */
   constructor(readonly name: Name) {}
 }
 
 type Arguments<V extends object> = keyof V extends never ? [values?: V] : [values: V];
 
-/** Client-side preparation: generated text is cached; results are never cached. */
+/**
+ * A client-side prepared query.
+ *
+ * Generated text is cached, but results are not. Each execution sends a new request.
+ *
+ * @typeParam Result - The result returned by execution.
+ * @typeParam Values - The named placeholder values required by the query.
+ */
 export class PreparedQuery<Result, Values extends object = {}> {
   constructor(
     private readonly fill: (values: Record<string, unknown>) => string,
     private readonly run: (sparql: string) => Promise<Result>
   ) {}
 
+  /**
+   * Returns the SPARQL with placeholder values substituted.
+   *
+   * Missing names and invalid values throw during substitution. No request is sent.
+   *
+   * @param args - Placeholder values, required when the query has inferred names.
+   * @throws {@link SparkqlError} When a placeholder value is missing or invalid.
+   *
+   * @example
+   * Look people up by name, with the name and page size supplied later.
+   *
+   * ```ts
+   * const byName = db
+   *   .select({ person: v.person })
+   *   .where(triples(v.person, n.foaf.name, sparql.placeholder<'name', string>('name')))
+   *   .limit(sparql.placeholder<'limit', number>('limit'))
+   *   .prepare();
+   *
+   * byName.toSPARQL({ name: 'Ada', limit: 10 });
+   * ```
+   *
+   * ```sparql
+   * SELECT ?person WHERE {
+   *   ?person foaf:name "Ada" .
+   * }
+   * LIMIT 10
+   * ```
+   */
   toSPARQL(...args: Arguments<Values>): string {
     return this.fill((args[0] ?? {}) as Record<string, unknown>);
   }
 
+  /**
+   * Executes the prepared query with placeholder values.
+   *
+   * Each call sends a new request. Missing or invalid values reject before the request.
+   *
+   * @param args - Placeholder values, required when the query has inferred names.
+   *
+   * @example
+   * Run the same prepared query with different values.
+   *
+   * ```ts
+   * const byName = db
+   *   .select({ person: v.person })
+   *   .where(triples(v.person, n.foaf.name, sparql.placeholder<'name', string>('name')))
+   *   .prepare();
+   *
+   * const ada = await byName.execute({ name: 'Ada' });
+   * const alan = await byName.execute({ name: 'Alan' }); // a second request
+   * ```
+   *
+   * ```sparql
+   * SELECT ?person WHERE {
+   *   ?person foaf:name "Ada" .
+   * }
+   * ```
+   */
   async execute(...args: Arguments<Values>): Promise<Result> {
     return this.run(this.fill((args[0] ?? {}) as Record<string, unknown>));
   }
@@ -104,6 +176,7 @@ function serialize(value: unknown, context: QueryModuleContext): string {
   return termGenerator.varOrTerm(safe, termContext).trim();
 }
 
+/** @internal Whether a plain input tree contains a {@link Placeholder} anywhere. */
 export function containsPlaceholder(input: unknown): boolean {
   if (input instanceof Placeholder) return true;
   if (Array.isArray(input)) return input.some(containsPlaceholder);
@@ -113,7 +186,10 @@ export function containsPlaceholder(input: unknown): boolean {
   return false;
 }
 
-/** Clone the input tree, substituting opaque markers before normalization. */
+/**
+ * @internal Clones the input tree with opaque markers in place of placeholders, generates
+ * SPARQL once, and returns a function that splices escaped values into the markers.
+ */
 export function prepareTemplate<Config>(
   input: Config,
   context: QueryModuleContext,

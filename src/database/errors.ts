@@ -23,12 +23,17 @@ export class SparkqlError extends Error {
   }
 }
 
+/** Options for a failed query error. */
 export interface SparkqlQueryErrorOptions {
   /** The SPARQL that was sent. */
   query: string;
   /** What the session or the result decoder threw. */
   cause: unknown;
-  /** Repeat `query` in `message`. Off by default, since the query text can contain user data. */
+  /**
+   * Repeat `query` in `message`; the query text can contain user data.
+   *
+   * @defaultValue `false`
+   */
   queryInMessage?: boolean;
 }
 
@@ -80,7 +85,9 @@ export class SparkqlQueryError extends SparkqlError {
 export class SparqlResponseError extends SparkqlError {
   static override readonly [entityKind]: string = 'SparqlResponseError';
 
+  /** HTTP status code. */
   readonly status: number;
+  /** HTTP status text. */
   readonly statusText: string;
   /** Response body, cut to {@link MAX_ERROR_BODY_LENGTH} characters. */
   readonly body: string;

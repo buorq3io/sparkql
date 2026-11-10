@@ -348,7 +348,11 @@ const [v, n] = db.createManagers([], prefixes);
 const constructed = await db
   .construct(triples(v.person, n.rdf.type, n.foaf.Person))
   .where(triples(v.person, n.foaf.name, v.name));
+console.log(constructed); // SparqlQuad[]: RDF/JS quads from the session
 ```
+
+`construct()` and `describe()` resolve to the RDF/JS quads (`SparqlQuad[]`) the
+session returns.
 
 ### UPDATE Queries
 
@@ -473,9 +477,11 @@ a matching codec stay terms.
 **Precedence:** an explicit transform (`castX`, `castWith`, `as` with a typed
 expression, a raw `sparql` expression's `.mapWith()`, functions with a fixed
 result type such as `bound` or `count`) wins
-over the codec table, and the codec table wins over the raw term. Codecs only
-change runtime values: a bare variable is still typed as an RDF/JS term, so use a
-cast where you need a precise static type. `castWith(codecs[xsd.dateTime], v.born)`
+over the codec table, and the codec table wins over the raw term. A bare
+variable's datatype is only known at runtime, so on a database with codecs it is
+typed as the RDF/JS term or any value one of the table's decoders returns (for
+`defaultCodecs`, e.g. `string | number | boolean | Date | LangString | Term`). Use
+a cast where you need one precise type. `castWith(codecs[xsd.dateTime], v.born)`
 reuses a codec's decoder as a cast, so one definition drives both.
 
 `defaultCodecs()` decodes `xsd:string` to a string, `xsd:boolean` to a boolean

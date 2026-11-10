@@ -14,6 +14,20 @@ import type {
   WildcardInput,
 } from '../helpers/types.js';
 
+/**
+ * Creates an operation expression with the given SPARQL operator.
+ *
+ * @param operator - The SPARQL operator.
+ * @param args - Its operands.
+ * @param transform - An optional result transformer.
+ *
+ * @example
+ * Build an absolute-age expression.
+ *
+ * ```ts
+ * const expression = createOperationExpression('abs', [v.age]);
+ * ```
+ */
 export function createOperationExpression<T extends QueryReturnType>(
   operator: string,
   args: ExpressionInput[],
@@ -31,6 +45,20 @@ export function createOperationExpression<T extends QueryReturnType>(
   };
 }
 
+/**
+ * Creates an operation expression over a group pattern.
+ *
+ * @param operator - The SPARQL operator.
+ * @param args - The group pattern.
+ * @param transform - An optional result transformer.
+ *
+ * @example
+ * Test for a person with a name.
+ *
+ * ```ts
+ * const expression = createPatternOperationExpression('exists', group(triples(v.person, n.foaf.name, v.name)));
+ * ```
+ */
 export function createPatternOperationExpression<T extends QueryReturnType>(
   operator: string,
   args: PatternGroupInput,
@@ -48,6 +76,20 @@ export function createPatternOperationExpression<T extends QueryReturnType>(
   };
 }
 
+/**
+ * Creates a call to a function identified by an IRI.
+ *
+ * @param func - The function IRI.
+ * @param args - The function arguments.
+ * @param transform - An optional result transformer.
+ *
+ * @example
+ * Call an IRI-identified function on a name.
+ *
+ * ```ts
+ * const expression = createFunctionCallExpression(n.schema.name, [v.name]);
+ * ```
+ */
 export function createFunctionCallExpression<T extends QueryReturnType>(
   func: TermIriInput,
   args: ExpressionInput[],
@@ -66,6 +108,21 @@ export function createFunctionCallExpression<T extends QueryReturnType>(
   };
 }
 
+/**
+ * Creates an aggregate expression.
+ *
+ * @param aggregation - The aggregate name.
+ * @param expression - The value or wildcard to aggregate.
+ * @param separator - The separator for concatenation, if supplied.
+ * @param transform - An optional result transformer.
+ *
+ * @example
+ * Count bound person values.
+ *
+ * ```ts
+ * const expression = createAggregateExpression('count', [v.person], undefined);
+ * ```
+ */
 export function createAggregateExpression<T extends QueryReturnType>(
   aggregation: string,
   expression: [ExpressionInput],
@@ -73,6 +130,23 @@ export function createAggregateExpression<T extends QueryReturnType>(
   transform?: TermVariableTransform<T>
 ): ExpressionAggregateDefaultInput<T>;
 
+/**
+ * Creates an aggregate expression.
+ *
+ * See the first overload for details.
+ *
+ * @param aggregation - The aggregate name.
+ * @param expression - The value or wildcard to aggregate.
+ * @param separator - The separator for concatenation, if supplied.
+ * @param transform - An optional result transformer.
+ *
+ * @example
+ * Count all solutions with a wildcard.
+ *
+ * ```ts
+ * const expression = createAggregateExpression('count', [createWildCardInput()], undefined);
+ * ```
+ */
 export function createAggregateExpression<T extends QueryReturnType>(
   aggregation: string,
   expression: [WildcardInput],
@@ -80,6 +154,23 @@ export function createAggregateExpression<T extends QueryReturnType>(
   transform?: TermVariableTransform<T>
 ): ExpressionAggregateOnWildcardInput<T>;
 
+/**
+ * Creates an aggregate expression.
+ *
+ * See the first overload for details.
+ *
+ * @param aggregation - The aggregate name.
+ * @param expression - The value or wildcard to aggregate.
+ * @param separator - The separator for concatenation, if supplied.
+ * @param transform - An optional result transformer.
+ *
+ * @example
+ * Join names with a comma separator.
+ *
+ * ```ts
+ * const expression = createAggregateExpression('group_concat', [v.name], ', ');
+ * ```
+ */
 export function createAggregateExpression<T extends QueryReturnType>(
   aggregation: string,
   expression: [ExpressionInput],
@@ -101,12 +192,24 @@ export function createAggregateExpression<T extends QueryReturnType>(
     },
     distinct: false,
     aggregation: aggregation,
-    ...(separator ? { separator: separator } : {}),
+    ...(separator !== undefined ? { separator: separator } : {}),
     expression: expression,
     transform: transform,
   } as ExpressionAggregateInput<T>;
 }
 
+/**
+ * Adds `DISTINCT` to an aggregate or function call.
+ *
+ * @param expression - The expression to make distinct.
+ *
+ * @example
+ * Count distinct friends.
+ *
+ * ```ts
+ * const expression = distinct(count(v.friend));
+ * ```
+ */
 export function distinct<
   T extends QueryReturnType,
   K extends ExpressionFunctionCallInput<T> | ExpressionAggregateInput<T>,
@@ -114,6 +217,17 @@ export function distinct<
   return { ...expression, distinct: true };
 }
 
+/**
+ * Creates a wildcard input for an aggregate.
+ *
+ *
+ * @example
+ * Create a wildcard for counting solutions.
+ *
+ * ```ts
+ * const wildcard = createWildCardInput();
+ * ```
+ */
 export function createWildCardInput(): WildcardInput {
   return {
     type: 'wildcard',

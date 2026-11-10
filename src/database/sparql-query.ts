@@ -97,6 +97,7 @@ type ASTConfig<T extends SparqlQueryInput> = T extends UpdateInput
           ? AST.QueryAsk
           : never;
 
+/** Base class for executable SPARQL query and update builders. */
 export abstract class SparqlQueryBuilderBase<
   Config extends SparqlQueryInput,
   Return,
@@ -118,12 +119,33 @@ export abstract class SparqlQueryBuilderBase<
     this.dialect = context.dialect;
   }
 
+  /** @internal Carries placeholder types. */
   declare readonly [placeholderTypes]?: {};
 
   protected preparationInput(): Config {
     return this.config;
   }
 
+  /**
+   * Prepares a query template for execution with placeholder values.
+   *
+   * The SPARQL is generated once, when `prepare()` is called, and kept as a text template.
+   * Only that text is cached: each `execute()` on the prepared query fills in the
+   * placeholder values and sends a new request.
+   *
+   * @example
+   * Prepare a query for people's names.
+   *
+   * ```ts
+   * db.select({ name: v.name }).where(triples(v.person, n.foaf.name, v.name)).prepare();
+   * ```
+   *
+   * ```sparql
+   * SELECT ?name WHERE {
+   *   ?person foaf:name ?name .
+   * }
+   * ```
+   */
   public prepare<T extends PlaceholderCarrier<object>>(
     this: T
   ): PreparedQuery<Return, NonNullable<T[typeof placeholderTypes]>>;
@@ -134,6 +156,23 @@ export abstract class SparqlQueryBuilderBase<
     return new PreparedQuery(fill, sparql => this.executeSPARQL(sparql));
   }
 
+  /**
+   * Returns the normalized query AST (a Traqula node), not SPARQL text.
+   *
+   * Use {@link SparqlQueryBuilderBase.toSPARQL} for the text. No request is sent.
+   *
+   * @throws {@link SparkqlError} When the query contains placeholders.
+   *
+   * @example
+   * Inspect the AST of a name query.
+   *
+   * ```ts
+   * const ast = db
+   *   .select({ name: v.name })
+   *   .where(triples(v.person, n.foaf.name, v.name))
+   *   .getSPARQL();
+   * ```
+   */
   public getSPARQL(): DialectAST<D, ASTConfig<Config>> {
     const config = this.preparationInput();
     if (containsPlaceholder(config)) {
@@ -160,6 +199,24 @@ export abstract class SparqlQueryBuilderBase<
     return this.config.type === 'update' ? 'update' : this.config.subType;
   }
 
+  /**
+   * Returns the generated SPARQL text without executing a request.
+   *
+   * @throws {@link SparkqlError} When the query contains placeholders.
+   *
+   * @example
+   * Generate SPARQL for a name query.
+   *
+   * ```ts
+   * db.select({ name: v.name }).where(triples(v.person, n.foaf.name, v.name)).toSPARQL();
+   * ```
+   *
+   * ```sparql
+   * SELECT ?name WHERE {
+   *   ?person foaf:name ?name .
+   * }
+   * ```
+   */
   public toSPARQL(): string {
     return this.withComments(this.dialect.generator.generate(this.getSPARQL()));
   }

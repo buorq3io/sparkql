@@ -9,6 +9,7 @@ import {
   type InferredSelectResult,
   maybe,
   type Presence,
+  type QueryReturnType,
   SparqlDatabase,
   type TermVariableAndBinding,
   type TermVariableInput,
@@ -88,3 +89,6 @@ db.select<Person>({
 expectTypeOf<TypedSelectedVariables<{ a: number }>['a']>().toEqualTypeOf<
   TermVariableAndBinding<number>
 >();
+
+// QueryReturnType is the top type of row values: it no longer collapses to `any`.
+expectTypeOf<QueryReturnType>().toBeUnknown();

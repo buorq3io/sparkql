@@ -6,10 +6,12 @@ export type SparqlBindings = Readonly<Record<string, DefaultQueryReturnType | un
 /** An RDF/JS quad, as returned by CONSTRUCT and DESCRIBE. */
 export type SparqlQuad = ReturnType<DataFactory['quad']>;
 
+/** Options for requesting graph results. */
 export interface SparqlQuadsOptions {
   /** Media type to request instead of the session's default graph format. */
   accept?: string;
 }
+/** Options for requesting an undecoded response. */
 export interface SparqlRawOptions {
   /** Media type the caller will decode. */
   accept: string;
@@ -21,26 +23,113 @@ export interface SparqlRawOptions {
  * per query form, so custom query forms reuse the format they need.
  */
 export interface SparqlSession {
-  /** Optional logging metadata. Return undefined for transports without a URL. */
+  /**
+   * Returns the target URL for logging, if available.
+   *
+   * @param kind - The request kind.
+   *
+   * @example
+   * Find the URL used for a query request.
+   *
+   * ```ts
+   * const session = {} as SparqlSession;
+   * void session.getRequestUrl?.('query');
+   * ```
+   */
   getRequestUrl?(kind: 'query' | 'update'): string | undefined;
-  /** Runs a query whose result is a solution sequence (SELECT). */
+  /**
+   * Runs a query and returns its solution bindings.
+   *
+   * @param sparql - The SPARQL query.
+   *
+   * @example
+   * Request bindings from a session.
+   *
+   * ```ts
+   * const session = {} as SparqlSession;
+   * void session.bindings('SELECT * WHERE {}');
+   * ```
+   */
   bindings(sparql: string): Promise<SparqlBindings[]>;
-  /** Runs a query whose result is a boolean (ASK). */
+  /**
+   * Runs a query and returns its boolean result.
+   *
+   * @param sparql - The SPARQL query.
+   *
+   * @example
+   * Request a boolean answer from a session.
+   *
+   * ```ts
+   * const session = {} as SparqlSession;
+   * void session.boolean('ASK {}');
+   * ```
+   */
   boolean(sparql: string): Promise<boolean>;
-  /** Runs a query whose result is an RDF graph or dataset (CONSTRUCT, DESCRIBE). */
+  /**
+   * Runs a query and returns its RDF quads.
+   *
+   * @param sparql - The SPARQL query.
+   * @param options - The requested response format.
+   *
+   * @example
+   * Request quads from a session.
+   *
+   * ```ts
+   * const session = {} as SparqlSession;
+   * void session.quads('CONSTRUCT WHERE {}');
+   * ```
+   */
   quads(sparql: string, options?: SparqlQuadsOptions): Promise<SparqlQuad[]>;
-  /** Runs a SPARQL Update request. */
+  /**
+   * Runs a SPARQL Update request.
+   *
+   * @param sparql - The SPARQL update.
+   *
+   * @example
+   * Send an update through a session.
+   *
+   * ```ts
+   * const session = {} as SparqlSession;
+   * void session.update('CLEAR DEFAULT');
+   * ```
+   */
   update(sparql: string): Promise<void>;
   /**
-   * Runs a query and returns the undecoded response, for result formats the
-   * other methods do not cover. The response is returned whatever its status;
-   * callers check `ok` and decode the body.
+   * Runs a query and returns its undecoded response.
+   *
+   * The response is returned regardless of status; callers check `ok` and decode it.
+   *
+   * @param sparql - The SPARQL query.
+   * @param options - The requested response format.
+   *
+   * @example
+   * Request a raw response with a JSON accept header.
+   *
+   * ```ts
+   * const session = {} as SparqlSession;
+   * void session.raw('ASK {}', { accept: 'application/json' });
+   * ```
    */
   raw(sparql: string, options: SparqlRawOptions): Promise<Response>;
 }
 
 const SESSION_METHODS = ['bindings', 'boolean', 'quads', 'update', 'raw'] as const;
 
+/**
+ * Checks whether a value implements the session methods.
+ *
+ * The check tests for callable methods, not their signatures or behavior.
+ *
+ * @param value - The value to inspect.
+ *
+ * @example
+ * Check a candidate session.
+ *
+ * ```ts
+ * const candidate: unknown = db.$session;
+ * const valid = isSparqlSession(candidate);
+ * ```
+ */
 export function isSparqlSession(value: unknown): value is SparqlSession {
   return (
     typeof value === 'object' &&

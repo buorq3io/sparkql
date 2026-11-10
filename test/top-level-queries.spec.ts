@@ -117,6 +117,24 @@ describe('top-level query modules', () => {
     expect(() => db.json({}).toSPARQL()).toThrow('at least one');
   });
 
+  test('accepts LIMIT and OFFSET on custom builders in either order, each once', () => {
+    const db = ArqDatabase.create();
+    const name = db.variable('name');
+    const limitFirst = db.json({ name }).where().limit(10).offset(20);
+    const offsetFirst = db.json({ name }).where().offset(20).limit(10);
+    expect(compact(offsetFirst.toSPARQL())).toContain('LIMIT 10 OFFSET 20');
+    expect(offsetFirst.toSPARQL()).toBe(limitFirst.toSPARQL());
+    expectTypeOf(offsetFirst).not.toHaveProperty('limit');
+    expectTypeOf(offsetFirst).not.toHaveProperty('offset');
+    expectTypeOf(offsetFirst).toHaveProperty('values');
+    expectTypeOf(limitFirst).not.toHaveProperty('limit');
+    expectTypeOf(limitFirst).not.toHaveProperty('offset');
+    // @ts-expect-error LIMIT cannot be given twice.
+    db.json({ name }).where().offset(20).limit(10).limit(5);
+    // @ts-expect-error OFFSET cannot be given twice.
+    db.json({ name }).where().offset(20).offset(5);
+  });
+
   test('decodes ARQ JSON, keeps missing variables optional, and executes on every await', async () => {
     const db = ArqDatabase.create({ connection: endpoint });
     const query = db.json({ name: db.variable('name'), answer: 42 }).where();

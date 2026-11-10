@@ -31,6 +31,20 @@ expectTypeOf<Awaited<typeof paths>>().toEqualTypeOf<PathResult[]>();
 // @ts-expect-error An incomplete PATHS query is not executable.
 stardog.paths().start(stardog.variable('s')).then();
 
+// Modifiers keep the narrowing: they hide neither the endpoint methods' removal nor execution.
+const graph = stardog.iri('https://example.org/g');
+const incomplete = stardog.paths().all().shortest().cyclic().from(graph).fromNamed(graph);
+for (const key of ['then', 'execute', 'getSPARQL', 'toSPARQL'] as const) {
+  expectTypeOf(incomplete).not.toHaveProperty(key);
+  expectTypeOf(incomplete.maxLength(1).limit(1).offset(1)).not.toHaveProperty(key);
+}
+const modified = paths.all().cyclic().maxLength(4).offset(1).limit(3).from(graph);
+for (const key of ['start', 'end', 'via'] as const) {
+  expectTypeOf(modified).not.toHaveProperty(key);
+}
+expectTypeOf<Awaited<typeof modified>>().toEqualTypeOf<PathResult[]>();
+expectTypeOf(stardog.paths().start(stardog.variable('s')).limit(1)).not.toHaveProperty('start');
+
 // Query forms belong to their dialect's database only.
 expectTypeOf(standard).not.toHaveProperty('json');
 expectTypeOf(standard).not.toHaveProperty('paths');

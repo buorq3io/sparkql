@@ -5,10 +5,13 @@
  */
 export const entityKind = Symbol.for('sparkql:entityKind');
 
+/** A class identity shared across copies of sparkql. */
 export interface SparkqlEntity {
+  /** The globally registered kind of the entity. */
   [entityKind]: string;
 }
 
+/** A constructor carrying a sparkql entity kind. */
 export type SparkqlEntityClass<T> = (
   | (abstract new (
       ...args: any[]
@@ -37,6 +40,17 @@ const nativeHasInstance = Function.prototype[Symbol.hasInstance];
  * Whether `value` is an instance of `type` or of a class with the same entity
  * kind from another copy of sparkql. Classes that declare an entity kind also
  * route `instanceof` through this check.
+ *
+ * @param value - The value to check.
+ * @param type - The entity class to check against.
+ *
+ * @example
+ * Check an error across package copies.
+ *
+ * ```ts
+ * const error: unknown = new SparkqlError({ message: 'Problem' });
+ * const matches = is(error, SparkqlError);
+ * ```
  */
 export function is<T extends SparkqlEntityClass<any>>(
   value: unknown,
