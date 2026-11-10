@@ -15,7 +15,7 @@ pnpm add sparkql
 - **Query Types** - Support for SELECT, ASK, CONSTRUCT, DESCRIBE, and UPDATE queries
 - **Prefix Management** - Easy prefix definition and IRI handling
 - **Aggregates** - Built-in aggregate functions (COUNT, SUM, AVG, etc.)
-- **Transformations** - Type-safe data transformations
+- **Transformations** - Type-safe data transformations, plus per-database [datatype codecs](#datatype-codecs)
 - **Pluggable execution** - Built-in HTTP client, or [bring your own client or session](#connecting)
 - **Path Expressions** - Property path support
 - **Functions** - Comprehensive SPARQL function support
@@ -431,6 +431,97 @@ This replaces global format registries and `LiteralFormatMap`,
 `NamedNodeFormatMap`, and `BlankFormatMap` module augmentation. Move custom
 registrations into `SparqlDatabase.create({ formats: ... })`; importing a module
 no longer changes another database's accepted types or formatting behavior.
+
+## Datatype codecs
+
+By default, a projected variable without a cast returns an RDF/JS term. Pass
+`codecs` to decode result terms by datatype once per database instead of
+casting each variable:
+
+```typescript
+import { castString, defaultCodecs, SparqlDatabase, triples, xsd } from 'sparkql';
+
+const prefixes = {
+  ex: { uri: 'https://example.org/', fields: ['born', 'label', 'count'] },
+} as const;
+const db = SparqlDatabase.create({
+  connection: 'https://your-sparql-endpoint.com/sparql',
+  codecs: {
+    ...defaultCodecs({ integer: 'number', decimal: 'number' }),
+    iri: { decode: term => new URL(term.value) },
+  },
+});
+const [v, n] = db.createManagers([], prefixes);
+
+const rows = await db
+  .select({ person: v.person, born: v.born, label: v.label, count: castString(v.count) })
+  .where(
+    triples(v.person, n.ex.born, v.born),
+    triples(v.person, n.ex.label, v.label),
+    triples(v.person, n.ex.count, v.count)
+  );
+// rows[0].born is a Date for an xsd:dateTime, rows[0].label is { value, language }
+// for a language-tagged string, rows[0].person is a URL, and rows[0].count is a
+// string: castString wins over the xsd:integer codec.
+```
+
+A codec table maps datatype IRIs (`rdf:langString` for language-tagged strings)
+and the pseudo-keys `iri` and `blank` to codecs. The decoder runs on each bound
+value by its actual datatype; unbound values stay `undefined`, and terms without
+a matching codec stay terms.
+
+**Precedence:** an explicit transform (`castX`, `castWith`, `as` with a typed
+expression, a raw `sparql` expression's `.mapWith()`, functions with a fixed
+result type such as `bound` or `count`) wins
+over the codec table, and the codec table wins over the raw term. Codecs only
+change runtime values: a bare variable is still typed as an RDF/JS term, so use a
+cast where you need a precise static type. `castWith(codecs[xsd.dateTime], v.born)`
+reuses a codec's decoder as a cast, so one definition drives both.
+
+`defaultCodecs()` decodes `xsd:string` to a string, `xsd:boolean` to a boolean
+(`true`/`1`), `xsd:double`/`xsd:float` to a number (including `INF` and `NaN`),
+`xsd:dateTime`/`xsd:date` to a `Date` (UTC when the value has no timezone), and
+`rdf:langString` to `{ value, language }`. You choose how numbers are read:
+`integer: 'number' | 'bigint'` covers `xsd:integer` and its derived types, and
+`decimal: 'number' | 'string'` covers `xsd:decimal`. IRIs, blank nodes and other
+datatypes stay terms unless you add codecs. Nothing is decoded without `codecs`.
+
+A codec may also `encode`: an input formatter tried after `formats.literal` and
+before the built-in conversions, so encoding and decoding live together. The
+`rdf:langString` default codec accepts `{ value, language }` back as input.
+Encoders widen the instance's literal input type, like `formats`. Pseudo-key
+codecs only decode; use `formats.iri` and `formats.blank` for those inputs.
+
+```typescript
+import { defaultCodecs, refineCodecs, SparqlDatabase, xsd } from 'sparkql';
+
+class Celsius {
+  constructor(readonly degrees: number) {}
+}
+const celsius = 'https://example.org/celsius';
+
+const db = SparqlDatabase.create({
+  codecs: refineCodecs(defaultCodecs({ integer: 'bigint', decimal: 'string' }), {
+    [xsd.string]: undefined, // keep plain strings as terms
+    [celsius]: {
+      decode: term => new Celsius(Number(term.value)),
+      encode: {
+        test: (value): value is Celsius => value instanceof Celsius,
+        format: (value, factory) => factory.literal(String(value.degrees), factory.iri(celsius)),
+      },
+    },
+  }),
+});
+
+db.literal(new Celsius(21)); // "21"^^<https://example.org/celsius>
+db.literal({ value: 'chat', language: 'fr' }); // "chat"@fr
+```
+
+`refineCodecs` merges tables per key and per hook, later tables winning; a key set
+to `undefined` is removed. Codecs survive `base()` and `prefix()` and work the
+same in `sparkql/arq` and `sparkql/stardog` databases. Encoders also apply to
+values interpolated into `sparql` templates. Codecs apply to SELECT results; the ARQ `json()` module returns ARQ's own JSON scalars, which carry no
+datatype, so codecs do not apply there.
 
 ## Advanced Features
 
