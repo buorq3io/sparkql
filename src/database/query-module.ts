@@ -101,7 +101,7 @@ export abstract class ModuleQueryBuilder<
     return this.module.normalize(this.config, this.moduleContext);
   }
   public toSPARQL(): string {
-    return this.module.generate(this.getSPARQL(), this.moduleContext);
+    return this.withComments(this.module.generate(this.getSPARQL(), this.moduleContext));
   }
   protected makeQuery(session: SparqlSession, sparql: string): Promise<Result> {
     return this.module.execute(sparql, session, this.getSPARQL());

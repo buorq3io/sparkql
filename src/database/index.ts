@@ -1,4 +1,5 @@
 export * from './base.js';
+export type { CommentInput } from './comment.js';
 export * from './count.js';
 export * from './dialect.js';
 export * from './entity.js';

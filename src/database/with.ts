@@ -48,6 +48,7 @@ export class WithQueryBuilderBase<
       },
       context
     );
+    this.inheritComments(parent.builder);
     this.operation = {
       type: 'updateOperation',
       subType: 'modify',

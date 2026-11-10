@@ -129,7 +129,7 @@ export abstract class SparqlQueryBuilderBase<
   ): PreparedQuery<Return, NonNullable<T[typeof placeholderTypes]>>;
   public prepare(): PreparedQuery<Return, object> {
     const fill = prepareTemplate(this.preparationInput(), this.builderContext, config =>
-      this.dialect.generator.generate(this.normalizeConfig(config))
+      this.withComments(this.dialect.generator.generate(this.normalizeConfig(config)))
     );
     return new PreparedQuery(fill, sparql => this.executeSPARQL(sparql));
   }
@@ -161,7 +161,7 @@ export abstract class SparqlQueryBuilderBase<
   }
 
   public toSPARQL(): string {
-    return this.dialect.generator.generate(this.getSPARQL());
+    return this.withComments(this.dialect.generator.generate(this.getSPARQL()));
   }
 
   private buildQuery(query: QueryInput): AST.Query {

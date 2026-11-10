@@ -1,3 +1,4 @@
+import { type CommentInput, encodeComment } from './comment.js';
 import { is } from './entity.js';
 import { SparkqlError, SparkqlQueryError } from './errors.js';
 import { type Logger, LoggingSparqlSession } from './logger.js';
@@ -20,6 +21,7 @@ export interface ExecutionContext {
 
 /** Shared execution lifecycle for standard and dialect-defined query forms. */
 export abstract class ExecutableQuery<Result> implements PromiseLike<Result> {
+  private commentLines: string[] = [];
   protected readonly session: SparqlSession | undefined;
   private readonly queryInErrors: boolean;
   private readonly logger: Logger | undefined;
@@ -30,6 +32,23 @@ export abstract class ExecutableQuery<Result> implements PromiseLike<Result> {
     this.logger = context.logger;
     this.moduleName = context.operationName ?? 'query';
     this.queryInErrors = context.queryInErrors ?? false;
+  }
+
+  /** Appends one sanitized SPARQL comment line before the query. */
+  public comment(input: CommentInput): this {
+    const text = encodeComment(input);
+    if (text) this.commentLines.push(text);
+    return this;
+  }
+
+  /** Operation builders belonging to the same update share request comments. */
+  protected inheritComments(parent: ExecutableQuery<unknown>): void {
+    this.commentLines = parent.commentLines;
+  }
+
+  /** Traqula does not carry comments in its AST; decorate the generated request. */
+  protected withComments(sparql: string): string {
+    return this.commentLines.map(line => `#${line}\n`).join('') + sparql;
   }
 
   protected get operationName(): string {
