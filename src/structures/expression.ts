@@ -265,10 +265,11 @@ export function transformBlank(self: DefaultQueryReturnType): TermBlankOutput {
 export const transformString = (self => self.value) satisfies TermVariableTransform;
 
 /**
- * Formats a result term as `'value'@language` when it has a `language` property.
+ * Formats a result term as `'value'@language` when it is a language-tagged literal.
  *
- * Every RDF/JS literal has one, so a literal without a language tag becomes `'value'@`.
- * IRIs and blank nodes return their plain value.
+ * Only a literal with a non-empty language tag gets the `@language` suffix. A literal without
+ * one (an untagged string or any other datatype), an IRI and a blank node return their plain
+ * value, matching the `rdf:langString` codec, which treats an empty language as untagged.
  *
  * @param self - Result term to convert.
  *
@@ -280,7 +281,7 @@ export const transformString = (self => self.value) satisfies TermVariableTransf
  * ```
  */
 export const transformLangstring = (self =>
-  'language' in self
+  self.termType === 'Literal' && self.language !== ''
     ? `'${self.value}'@${self.language}`
     : self.value) satisfies TermVariableTransform;
 
@@ -422,7 +423,7 @@ export const castString = createCast(transformString);
 /**
  * Decodes a selected variable or binding as `'value'@language` (see {@link transformLangstring}).
  *
- * A literal without a language tag becomes `'value'@`.
+ * A value without a language tag decodes to its plain value, such as `Ada`.
  *
  * The transform applies to results and does not change the generated SPARQL.
  *
