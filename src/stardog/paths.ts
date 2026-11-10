@@ -253,7 +253,8 @@ type Hidden<S extends boolean, E extends boolean, V extends boolean> =
  * The chain returned by `db.paths()`.
  *
  * `start`, `end` and `via` disappear once called, and `then`, `execute`, `getSPARQL` and
- * `toSPARQL` appear once all three have been called.
+ * `toSPARQL` appear once all three have been called. The modifier methods (`all`, `limit`, ...)
+ * return the same narrowed type.
  *
  * @typeParam S - Whether `start` has been called.
  * @typeParam E - Whether `end` has been called.
@@ -483,9 +484,9 @@ export class PathsQueryBuilder<
    * PATHS ALL START ?start = <https://example.org/alice> END ?end = <https://example.org/bob> VIA foaf:knows
    * ```
    */
-  all(): this {
+  all(): PathsQuery<S, E, V> {
     this.config.mode = 'ALL';
-    return this;
+    return this as unknown as PathsQuery<S, E, V>;
   }
   /**
    * Returns only the `SHORTEST` paths.
@@ -511,9 +512,9 @@ export class PathsQueryBuilder<
    * PATHS SHORTEST START ?start = <https://example.org/alice> END ?end = <https://example.org/bob> VIA foaf:knows
    * ```
    */
-  shortest(): this {
+  shortest(): PathsQuery<S, E, V> {
     this.config.mode = 'SHORTEST';
-    return this;
+    return this as unknown as PathsQuery<S, E, V>;
   }
   /**
    * Adds the `CYCLIC` keyword, which lets paths contain cycles.
@@ -545,9 +546,9 @@ export class PathsQueryBuilder<
    * PATHS ALL CYCLIC START ?start = <https://example.org/alice> END ?end = <https://example.org/alice> VIA foaf:knows
    * ```
    */
-  cyclic(): this {
+  cyclic(): PathsQuery<S, E, V> {
     this.config.cyclic = true;
-    return this;
+    return this as unknown as PathsQuery<S, E, V>;
   }
   /**
    * Adds a `FROM` dataset clause.
@@ -580,9 +581,9 @@ export class PathsQueryBuilder<
    * PATHS SHORTEST FROM <https://example.org/people> START ?start = <https://example.org/alice> END ?end = <https://example.org/bob> VIA foaf:knows
    * ```
    */
-  from(iri: TermIriInput): this {
+  from(iri: TermIriInput): PathsQuery<S, E, V> {
     this.moduleContext.normalizer(this.config.body).from(iri);
-    return this;
+    return this as unknown as PathsQuery<S, E, V>;
   }
   /**
    * Adds a `FROM NAMED` dataset clause.
@@ -615,9 +616,9 @@ export class PathsQueryBuilder<
    * PATHS SHORTEST FROM NAMED <https://example.org/people> START ?start = <https://example.org/alice> END ?end = <https://example.org/bob> VIA foaf:knows
    * ```
    */
-  fromNamed(iri: TermIriInput): this {
+  fromNamed(iri: TermIriInput): PathsQuery<S, E, V> {
     this.moduleContext.normalizer(this.config.body).fromNamed(iri);
-    return this;
+    return this as unknown as PathsQuery<S, E, V>;
   }
   /**
    * Adds a `MAX LENGTH` clause that limits the number of edges in a path.
@@ -646,10 +647,10 @@ export class PathsQueryBuilder<
    * PATHS SHORTEST START ?start = <https://example.org/alice> END ?end = <https://example.org/bob> VIA foaf:knows MAX LENGTH 4
    * ```
    */
-  maxLength(value: number): this {
+  maxLength(value: number): PathsQuery<S, E, V> {
     assertNonNegativeInteger(value, 'MAX LENGTH');
     this.config.maxLength = value;
-    return this;
+    return this as unknown as PathsQuery<S, E, V>;
   }
   /**
    * Adds a `LIMIT` clause that caps the number of paths returned.
@@ -684,10 +685,10 @@ export class PathsQueryBuilder<
    * PATHS ALL START ?start = <https://example.org/alice> END ?end = <https://example.org/bob> VIA foaf:knows LIMIT 3
    * ```
    */
-  limit(value: number): this {
+  limit(value: number): PathsQuery<S, E, V> {
     assertNonNegativeInteger(value, 'LIMIT');
     this.config.limit = value;
-    return this;
+    return this as unknown as PathsQuery<S, E, V>;
   }
   /**
    * Adds an `OFFSET` clause that skips paths.
@@ -723,10 +724,10 @@ export class PathsQueryBuilder<
    * PATHS ALL START ?start = <https://example.org/alice> END ?end = <https://example.org/bob> VIA foaf:knows OFFSET 3 LIMIT 3
    * ```
    */
-  offset(value: number): this {
+  offset(value: number): PathsQuery<S, E, V> {
     assertNonNegativeInteger(value, 'OFFSET');
     this.config.offset = value;
-    return this;
+    return this as unknown as PathsQuery<S, E, V>;
   }
 }
 /** Factories for the Stardog database method `db.paths()`. */
