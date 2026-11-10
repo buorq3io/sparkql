@@ -1,6 +1,6 @@
-import { Generator } from '@traqula/generator-sparql-1-1';
 import type * as AST from '@traqula/rules-sparql-1-1';
 import type { ExpressionInput, FactoryFunctions, PatternInput } from '../helpers/types.js';
+import { generateSparql } from './generator.js';
 import type { QueryFactories } from './query-module.js';
 
 /** Custom patterns use distinct subtypes, just like Traqula's built-in nodes. */
@@ -82,5 +82,5 @@ export const sparql11Dialect: SparqlDialect = {
       throw new Error('The SPARQL 1.1 dialect does not support custom patterns.');
     },
   },
-  generator: new Generator(),
+  generator: { generate: generateSparql },
 };

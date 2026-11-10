@@ -2,6 +2,7 @@ import type * as AST from '@traqula/rules-sparql-1-1';
 import type * as RdfJs from 'rdf-data-factory';
 import type { ExtensionPattern } from '../database/dialect.js';
 import type { Placeholder } from '../database/prepared.js';
+import type { RawExpressionInput, RawPatternInput } from '../database/raw.js';
 
 export type TermIriFullInput = AST.TermIriFull;
 export type TermIriInput = AST.TermIri | URL;
@@ -193,6 +194,7 @@ export type PatternInput<P extends ExtensionPattern = never> =
   | PatternFilterInput
   | PatternBindInput
   | PatternValuesInput
+  | RawPatternInput
   | QuerySelectInput<P>;
 
 export type DatasetClausesInput = Override<
@@ -333,7 +335,8 @@ export type ExpressionInput<_T = any> =
   | ExpressionOperationInput<_T>
   | ExpressionPatternOperationInput<_T>
   | ExpressionFunctionCallInput<_T>
-  | ExpressionAggregateInput<_T>;
+  | ExpressionAggregateInput<_T>
+  | RawExpressionInput<_T>;
 
 export type TermIriOutput = RdfJs.NamedNode;
 export type TermBlankOutput = RdfJs.BlankNode;

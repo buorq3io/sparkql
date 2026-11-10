@@ -20,6 +20,7 @@ pnpm add sparkql
 - **Path Expressions** - Property path support
 - **Functions** - Comprehensive SPARQL function support
 - **Custom dialects** - [Type-safe graph pattern extensions](docs/dialects.md), plus built-in LET/LATERAL, MOD/IDIV, and collation support through `sparkql/arq`
+- **Raw SPARQL** - A [`sparql` template tag](docs/raw-sparql.md) for one-off fragments, with interpolated values escaped as RDF terms
 
 ## ARQ
 

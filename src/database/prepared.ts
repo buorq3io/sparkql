@@ -27,12 +27,6 @@ export class Placeholder<Name extends string = string, Value = unknown> {
   constructor(readonly name: Name) {}
 }
 
-export const sparql = {
-  placeholder<Name extends string, Value = unknown>(name: Name): Placeholder<Name, Value> {
-    return new Placeholder(name);
-  },
-};
-
 type Arguments<V extends object> = keyof V extends never ? [values?: V] : [values: V];
 
 /** Client-side preparation: generated text is cached; results are never cached. */
