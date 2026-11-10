@@ -14,6 +14,5 @@ export default defineConfig({
   sourcemap: true,
   dts: true,
   clean: true,
-  outExtensions: ({ format }) =>
-    format === 'cjs' ? { js: '.cjs', dts: '.d.cts' } : { js: '.mjs', dts: '.d.mts' },
+  fixedExtension: true,
 });
