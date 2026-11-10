@@ -40,13 +40,18 @@ limited.limit(2);
 // @ts-expect-error A fresh query has no LIMIT yet.
 root.limit(1);
 
-// `$dynamic()` exposes every clause method, in any order.
-const dynamic = db.select().$dynamic();
-for (const key of ['where', 'from', 'values', 'limit', 'offset', 'orderBy', 'groupBy'] as const) {
+// `$dynamic()` exposes every clause method, in any order, for the rest of the chain.
+const clauses = ['where', 'from', 'values', 'limit', 'offset', 'orderBy', 'groupBy'] as const;
+const dynamic = db.select({ s: v.s }).$dynamic();
+const repeated = dynamic.limit(1).where(pattern).where(pattern).groupBy(v.s).limit(2).offset(1);
+for (const key of clauses) {
   expectTypeOf(dynamic).toHaveProperty(key);
+  expectTypeOf(repeated).toHaveProperty(key);
 }
-expectTypeOf(dynamic.where(pattern)).toHaveProperty('limit');
-expectTypeOf<Awaited<typeof dynamic>>().toEqualTypeOf<Awaited<typeof root>>();
+expectTypeOf<Awaited<typeof repeated>>().toEqualTypeOf<Awaited<typeof dynamic>>();
+const fixed = db.select({ s: v.s }).where(pattern).limit(1);
+expectTypeOf<Awaited<typeof dynamic>>().toEqualTypeOf<Awaited<typeof fixed>>();
+db.ask().$dynamic().limit(1).where(pattern).offset(1).offset(2);
 
 // Restrictions apply to ASK, CONSTRUCT and DESCRIBE too.
 const ask = db.ask();
