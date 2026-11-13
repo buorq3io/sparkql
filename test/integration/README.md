@@ -15,16 +15,16 @@ The unit suite (`pnpm test`) skips this directory.
 
 ## Engines
 
-| Engine     | Dialects            | Query endpoint (host)                                      |
-| ---------- | ------------------- | ---------------------------------------------------------- |
-| fuseki     | SPARQL 1.1, ARQ     | `http://localhost:13030/ds/query`                          |
-| virtuoso   | SPARQL 1.1          | `http://localhost:18890/sparql`                            |
-| graphdb    | SPARQL 1.1          | `http://localhost:17200/repositories/sparkql`              |
-| rdf4j      | SPARQL 1.1          | `http://localhost:18080/rdf4j-server/repositories/sparkql` |
-| oxigraph   | SPARQL 1.1          | `http://localhost:17878/query`                             |
-| qlever     | SPARQL 1.1          | `http://localhost:17001/`                                  |
-| blazegraph | SPARQL 1.1          | `http://localhost:19999/bigdata/namespace/kb/sparql`       |
-| stardog    | SPARQL 1.1, Stardog | `http://localhost:15820/sparkql/query`                     |
+| Engine     | Dialects             | Query endpoint (host)                                      |
+| ---------- | -------------------- | ---------------------------------------------------------- |
+| fuseki     | SPARQL 1.1, ARQ      | `http://localhost:13030/ds/query`                          |
+| virtuoso   | SPARQL 1.1, Virtuoso | `http://localhost:18890/sparql`                            |
+| graphdb    | SPARQL 1.1, GraphDB  | `http://localhost:17200/repositories/sparkql`              |
+| rdf4j      | SPARQL 1.1           | `http://localhost:18080/rdf4j-server/repositories/sparkql` |
+| oxigraph   | SPARQL 1.1           | `http://localhost:17878/query`                             |
+| qlever     | SPARQL 1.1           | `http://localhost:17001/`                                  |
+| blazegraph | SPARQL 1.1           | `http://localhost:19999/bigdata/namespace/kb/sparql`       |
+| stardog    | SPARQL 1.1, Stardog  | `http://localhost:15820/sparkql/query`                     |
 
 Stardog needs a license key and is off by default. To run it, put the key at
 `docker/stardog-license-key.bin` (gitignored), then run:

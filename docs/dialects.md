@@ -78,6 +78,300 @@ returns an RDF literal if projected, with no JavaScript sorting or conversion.
 Locale handling and fallback follow the endpoint's JVM, as described in
 [Jena's collation documentation](https://jena.apache.org/documentation/query/collation.html).
 
+## Amazon Neptune query hints
+
+Import `sparkql/neptune` to add [Neptune SPARQL query hints](https://docs.aws.amazon.com/neptune/latest/userguide/sparql-query-hints.html).
+Its `SparqlDatabase.create()` configures `neptuneDialect`, which is also exported
+for the standard factory, and the entry point re-exports the standard helpers.
+
+`queryHint(scope, name, value)` adds the triple `hint:<scope> hint:<name> <value>`
+to the enclosing group. It is written with full IRIs, so no prefix declaration is
+needed. TypeScript checks each hint's scopes and values, and the helper checks
+them again at runtime for JavaScript callers:
+
+| Hint                                               | Scopes           | Value                                                       |
+| -------------------------------------------------- | ---------------- | ----------------------------------------------------------- |
+| `joinOrder`                                        | `Query`, `Group` | `'Ordered'`                                                 |
+| `evaluationStrategy`                               | `SubQuery`       | `'BottomUp'`                                                |
+| `queryTimeout`                                     | `Query`          | milliseconds, a non-negative integer                        |
+| `rangeSafe`                                        | `Query`, `Prior` | boolean                                                     |
+| `queryId`                                          | `Query`          | non-empty string                                            |
+| `useDFE`                                           | `Query`          | boolean                                                     |
+| `describeMode`                                     | `Query`          | `'ForwardOneStep'`, `'SymmetricOneStep'`, `'CBD'`, `'SCBD'` |
+| `describeIterationLimit`, `describeStatementLimit` | `Query`          | non-negative integer; `0` means no limit                    |
+
+Neptune reads a hint where it appears. Put `Query` hints in the main `WHERE`
+clause, `Group` hints in the group they affect, `SubQuery` hints inside the
+subquery, and `Prior` hints right after the pattern they apply to:
+
+```ts
+import { SparqlDatabase, queryHint, triples } from 'sparkql/neptune';
+
+const db = SparqlDatabase.create();
+const [s, p, o] = [db.variable('s'), db.variable('p'), db.variable('o')];
+
+const subquery = db
+  .select({ s })
+  .where(queryHint('SubQuery', 'evaluationStrategy', 'BottomUp'), triples(s, p, o))
+  .as();
+const query = db
+  .select()
+  .where(
+    queryHint('Query', 'queryTimeout', 5000),
+    subquery,
+    triples(s, p, o),
+    queryHint('Prior', 'rangeSafe', true)
+  );
+```
+
+Other databases reject hints in TypeScript and when the query is generated. On
+another store a hint would be an ordinary triple pattern that matches nothing,
+which would silently empty the results. Hints normalize to standard triple
+patterns, so the dialect reuses the standard generator.
+
+## Ontotext GraphDB
+
+Import `sparkql/graphdb` for GraphDB's query controls. Its `SparqlDatabase.create()`
+configures `graphdbDialect`, which is also exported for the standard factory, and the
+entry point re-exports the standard helpers. See the
+[GraphDB documentation](https://graphdb.ontotext.com/documentation/11.5/).
+
+### Pseudo-graphs
+
+`ontoGraphs` holds GraphDB's pseudo-graph IRIs for `.from()` and `.fromNamed()`.
+GraphDB reads them as switches rather than as graphs:
+
+| Member                  | IRI                                               | Effect in `FROM`                                                     |
+| ----------------------- | ------------------------------------------------- | -------------------------------------------------------------------- |
+| `explicit`              | `http://www.ontotext.com/explicit`                | only asserted statements                                             |
+| `implicit`              | `http://www.ontotext.com/implicit`                | only inferred statements                                             |
+| `disableSameAs`         | `http://www.ontotext.com/disable-sameAs`          | no `owl:sameAs` expansion: one result per equivalence class          |
+| `skipRedundantImplicit` | `http://www.ontotext.com/skip-redundant-implicit` | leave out inferred statements that are also asserted in that context |
+
+`historyAt(timestamp)` returns the history pseudo-graph
+`http://www.ontotext.com/at/<timestamp>`, which shows the data as it was at that
+time. The timestamp is `yyyy[MM[dd[HH[mm[ss]]]]]` in the server's time zone; other
+forms throw. History is only kept while GraphDB's history plugin is enabled.
+
+```ts
+import { SparqlDatabase, historyAt, ontoGraphs, triples } from 'sparkql/graphdb';
+
+const db = SparqlDatabase.create();
+const [s, p, o] = [db.variable('s'), db.variable('p'), db.variable('o')];
+
+const asserted = db
+  .select()
+  .from(ontoGraphs.explicit)
+  .where(triples(s, p, o));
+const lastYear = db
+  .select()
+  .from(historyAt('20250101'))
+  .where(triples(s, p, o));
+```
+
+Like any `FROM` clause, a pseudo-graph replaces the default dataset. GraphDB
+documents the filters for its default graph only. Test before relying on how they
+combine with ordinary `FROM` graphs.
+
+### Query plans
+
+`db.explain(query)` and `db.measure(query)` take a SELECT builder and send it with
+`FROM onto:explain` or `FROM onto:measure` before its other dataset clauses. The
+wrapped query is not changed. `explain` asks GraphDB for its plan with estimated
+iterations without running the query. `measure` runs it and reports actual
+iterations and timings. Both resolve to the plan text, which GraphDB returns as
+literal bindings instead of the query's solutions.
+
+```ts
+import { SparqlDatabase, triples } from 'sparkql/graphdb';
+
+const db = SparqlDatabase.create({ connection: 'http://localhost:7200/repositories/people' });
+const [s, p, o] = [db.variable('s'), db.variable('p'), db.variable('o')];
+
+const query = db
+  .select({ o })
+  .where(triples(s, p, o))
+  .limit(10);
+const plan: string = await db.explain(query);
+```
+
+GraphDB documents query plans for SELECT only, so other query forms are rejected
+in TypeScript. The plan's layout is GraphDB's and is not parsed.
+
+### `ofn:` functions
+
+`ofn` holds GraphDB's own functions from
+`http://www.ontotext.com/sparql/functions/`. Each member prints the full function
+IRI, so no prefix is needed, and selects as `number`:
+
+- math, returning `xsd:double`: `acos`, `asin`, `atan`, `atan2`, `cbrt`,
+  `copySign`, `cos`, `cosh`, `e`, `exp`, `expm1`, `floorDiv`, `floorMod`,
+  `getExponent`, `hypot`, `IEEEremainder`, `log`, `log10`, `log1p`, `max`, `min`,
+  `nextAfter`, `nextDown`, `nextUp`, `pi`, `pow`, `rint`, `scalb`, `signum`, `sin`,
+  `sinh`, `sqrt`, `tan`, `tanh`, `toDegrees`, `toRadians`, `ulp`;
+- durations, returning `xsd:long`: `yearsFromDuration` … `millisFromDuration`
+  (GraphDB's `years-from-duration` and so on) and `asWeeks` … `asMillis`;
+- date differences, returning `xsd:long`: `weeksBetween`, `daysBetween`,
+  `hoursBetween`, `minutesBetween`, `secondsBetween`, `millisBetween`.
+
+```ts
+import { SparqlDatabase, as, ofn, triples } from 'sparkql/graphdb';
+
+const db = SparqlDatabase.create();
+const [membership, start, end, days] = ['membership', 'start', 'end', 'days'].map(name =>
+  db.variable(name)
+);
+const startDate = db.iri('https://schema.org/startDate');
+const endDate = db.iri('https://schema.org/endDate');
+
+const query = db
+  .select({ days: as(ofn.daysBetween(start, end), days) })
+  .where(triples(membership, startDate, start), triples(membership, endDate, end));
+// Awaited: { days: number }[]
+```
+
+GraphDB's plugin predicates (full-text search, geo-spatial, RDF Rank, similarity,
+connectors) and RDF-star are not modelled yet. Plugin predicates are standard
+triple patterns and can be written with `triples()`.
+
+## OpenLink Virtuoso
+
+Import `sparkql/virtuoso` for Virtuoso's SPARQL extensions. Its `SparqlDatabase.create()`
+configures `virtuosoDialect`, which is also exported for the standard factory, and the
+entry point re-exports the standard helpers. See the
+[Virtuoso SPARQL documentation](https://docs.openlinksw.com/virtuoso/rdfsparql/).
+
+### `DEFINE` pragmas
+
+`define(name, value)` adds a pragma such as `input:inference` or `sql:select-option`.
+Place it in the outermost `WHERE` clause of a query or update: the Virtuoso generator
+takes it out of the pattern and prints `DEFINE name value` before `BASE` and `PREFIX`,
+where Virtuoso's grammar puts it. A pragma anywhere else, such as in a subquery, is
+refused when the query is generated.
+
+The pragma names and value types are typed in `VirtuosoPragmas`. A `URL` value prints as
+an IRI, a string as a quoted string and a number as an integer. The `output:format`
+pragmas are left out, because sparkql decodes standard result formats only.
+
+```ts
+import { SparqlDatabase, define, triples } from 'sparkql/virtuoso';
+
+const db = SparqlDatabase.create();
+const [s, p, o] = [db.variable('s'), db.variable('p'), db.variable('o')];
+
+const query = db
+  .select()
+  .where(
+    define('input:inference', 'people-rules'),
+    define('input:same-as', 'yes'),
+    triples(s, p, o)
+  );
+// DEFINE input:inference "people-rules"
+// DEFINE input:same-as "yes"
+// SELECT * WHERE { ?s ?p ?o . }
+```
+
+### Full-text search
+
+`textContains(text, query, { score })` prints the `bif:contains` predicate:
+`?text bif:contains "query" OPTION (score ?rank)`. The literals bound to `text`
+must be in Virtuoso's full-text index. The query uses Virtuoso's text syntax:
+quote words and phrases that contain spaces or other non-alphanumeric characters,
+and add `*` after a word prefix of at least four characters (`'Lovel*'`; Virtuoso
+rejects `'Ada*'`). Virtuoso refuses some variable names in full-text patterns
+because its SQL gives them a meaning: `score`, `score_limit`, `ranges`,
+`main_ranges`, `attr_ranges`, `offband`, `descending`, `start_id` and `end_id`, in
+any case. `textContains` throws for them, so name the score variable `?rank` or
+similar.
+
+```ts
+import { SparqlDatabase, desc, textContains, triples } from 'sparkql/virtuoso';
+
+const db = SparqlDatabase.create();
+const [s, p, o, rank] = ['s', 'p', 'o', 'rank'].map(name => db.variable(name));
+
+const query = db
+  .select({ s })
+  .where(triples(s, p, o), textContains(o, '"New York" AND city', { score: rank }))
+  .orderBy(desc(rank))
+  .limit(10);
+```
+
+`bif.contains(text, query)` is the same test as a function, for `FILTER`.
+
+### Transitive subqueries
+
+`transitive(subquery, options)` prints a subquery followed by
+`OPTION (TRANSITIVE, t_in (...), t_out (...), ...)`. Virtuoso repeats the subquery,
+feeding each step's `out` variables back in as the next step's `in` variables. The
+subquery must project every `in` and `out` variable, and `in` and `out` must have the
+same length.
+
+| Option         | Virtuoso                   | Meaning                                                 |
+| -------------- | -------------------------- | ------------------------------------------------------- |
+| `distinct`     | `t_distinct`               | use each binding of the inputs once                     |
+| `exists`       | `t_exists`                 | generate a single path                                  |
+| `noCycles`     | `t_no_cycles`              | skip paths that loop                                    |
+| `cyclesOnly`   | `t_cycles_only`            | return only paths that loop                             |
+| `shortestOnly` | `t_shortest_only`          | when both ends are bound, stop at the first path length |
+| `min`, `max`   | `t_min (n)`, `t_max (n)`   | path length bounds; `min: 0` includes the start         |
+| `direction`    | `t_direction 1/2/3`        | evaluate `forward`, `backward` or from `both` ends      |
+| `stepNumber`   | `t_step ('step_no') AS ?v` | the step number on the path                             |
+| `pathId`       | `t_step ('path_id') AS ?v` | an identifier of the path                               |
+| `stepValues`   | `t_step (?in) AS ?v`       | the value of an input variable at each step             |
+
+```ts
+import { SparqlDatabase, eq, filter, transitive, triples } from 'sparkql/virtuoso';
+
+const db = SparqlDatabase.create();
+const [person, friend, distance] = ['person', 'friend', 'distance'].map(name => db.variable(name));
+const knows = db.iri('http://xmlns.com/foaf/0.1/knows');
+
+const step = db
+  .select({ person, friend })
+  .where(triples(person, knows, friend))
+  .as();
+const query = db
+  .select({ friend, distance })
+  .where(
+    transitive(step, { in: [person], out: [friend], distinct: true, min: 1, stepNumber: distance }),
+    filter(eq(person, db.iri('https://example.org/people/ada')))
+  );
+```
+
+Bind the start or the end next to the pattern, as the `FILTER` does here, so
+Virtuoso does not walk the whole graph. `t_end_flag` and `t_no_order` are not
+modelled, because Virtuoso's documentation does not describe them for SPARQL.
+
+### `bif:` and `sql:` functions
+
+Virtuoso reserves the `bif:` prefix for SQL built-in functions and `sql:` for
+Virtuoso/PL procedures owned by `DBA`. Calls print as `bif:name(...)` and
+`sql:name(...)` without a prefix declaration; Virtuoso documents no IRI for them.
+
+`bif` holds the documented geometry functions, named as Virtuoso writes them:
+`st_point`, `st_intersects`, `st_within`, `st_contains`, `st_may_intersect`,
+`st_distance`, `st_x`, `st_y`, `st_astext`, `st_geomfromtext`, `st_ewkt_read`,
+`st_srid`, `st_setsrid`, `st_get_bounding_box`, `isgeometry` and
+`haversine_deg_km`, plus `contains`. Distances and precisions are in kilometres for
+latitude-longitude geometries. Tests select as booleans, distances and coordinates
+as numbers and geometries as their text. `bifCall(name, args, transform?)` and
+`sqlCall(name, args, transform?)` call anything else.
+
+```ts
+import { SparqlDatabase, as, bif, filter, triples } from 'sparkql/virtuoso';
+
+const db = SparqlDatabase.create();
+const [place, geometry, km] = ['place', 'geometry', 'km'].map(name => db.variable(name));
+const geometryOf = db.iri('http://www.w3.org/2003/01/geo/wgs84_pos#geometry');
+
+const centre = bif.st_point(0, 52);
+const query = db
+  .select({ place, km: as(bif.st_distance(geometry, centre), km) })
+  .where(triples(place, geometryOf, geometry), filter(bif.st_intersects(geometry, centre, 100)));
+// Awaited: { place: ..., km: number }[]
+```
+
 ## The dialect contract
 
 `defineDialect<Input, Output>()` couples three responsibilities:

@@ -89,6 +89,36 @@
         "types": "./dist/stardog.d.cts",
         "default": "./dist/stardog.cjs"
       }
+    },
+    "./neptune": {
+      "import": {
+        "types": "./dist/neptune.d.mts",
+        "default": "./dist/neptune.mjs"
+      },
+      "require": {
+        "types": "./dist/neptune.d.cts",
+        "default": "./dist/neptune.cjs"
+      }
+    },
+    "./graphdb": {
+      "import": {
+        "types": "./dist/graphdb.d.mts",
+        "default": "./dist/graphdb.mjs"
+      },
+      "require": {
+        "types": "./dist/graphdb.d.cts",
+        "default": "./dist/graphdb.cjs"
+      }
+    },
+    "./virtuoso": {
+      "import": {
+        "types": "./dist/virtuoso.d.mts",
+        "default": "./dist/virtuoso.mjs"
+      },
+      "require": {
+        "types": "./dist/virtuoso.d.cts",
+        "default": "./dist/virtuoso.cjs"
+      }
     }
   },
   "imports": {

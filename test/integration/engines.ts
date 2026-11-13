@@ -5,7 +5,7 @@ import type { SparqlConnectionOptions } from '#src/index.js';
  * A dialect a spec targets. `sparql11` is plain SPARQL 1.1 and runs on every
  * engine; the others only run where the extension is evaluated.
  */
-export type DialectName = 'sparql11' | 'arq' | 'stardog';
+export type DialectName = 'sparql11' | 'arq' | 'stardog' | 'virtuoso' | 'graphdb';
 
 /** A triple store started by `compose.yaml`. */
 export interface Engine {
@@ -117,7 +117,7 @@ export const engines: readonly Engine[] = [
   },
   {
     name: 'virtuoso',
-    dialects: [],
+    dialects: ['virtuoso'],
     connection: { endpointUrl: at(18890, '/sparql') },
     ready: () => answers(at(18890, '/sparql?query=ASK%7B%7D')),
     async load(data) {
@@ -132,7 +132,7 @@ export const engines: readonly Engine[] = [
   },
   {
     name: 'graphdb',
-    dialects: [],
+    dialects: ['graphdb'],
     connection: graphdb.connection,
     ready: () => answers(at(17200, '/rest/repositories')),
     load: graphdb.load,
