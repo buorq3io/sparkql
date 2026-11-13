@@ -1,0 +1,98 @@
+# Triple stores for the integration tests (`pnpm test:integration`).
+#
+# `pnpm db:up` starts every open source engine; name services to start a subset,
+# e.g. `pnpm db:up fuseki oxigraph`. Stardog needs a license, so it sits behind
+# the `stardog` profile: put the key at test/integration/docker/stardog-license-key.bin
+# (gitignored) and run `COMPOSE_PROFILES=stardog pnpm db:up`.
+#
+# Containers only start the servers. The test global setup
+# (test/integration/setup.ts) creates repositories and loads data/sample.ttl over
+# HTTP, so a running stack can be reloaded without restarting it.
+#
+# Host ports are fixed (in the 1xxxx range, clear of the engines' usual ports);
+# the endpoints in test/integration/engines.ts must match.
+
+name: sparkql-integration
+
+services:
+  # Apache Jena Fuseki: the ARQ dialect. Apache-2.0.
+  fuseki:
+    image: secoresearch/fuseki:6.2.0
+    # The image's bundled configuration makes the default graph the union of
+    # named graphs; serve a plain in-memory dataset at /ds instead.
+    command:
+      [
+        java,
+        -cp,
+        "*:/javalibs/*",
+        org.apache.jena.fuseki.main.cmds.FusekiServerPlainCmd,
+        --mem,
+        --update,
+        /ds,
+      ]
+    ports:
+      - "13030:3030"
+
+  # OpenLink Virtuoso Open-Source Edition. GPL-2.0.
+  virtuoso:
+    image: openlink/virtuoso-opensource-7:7.2.17
+    environment:
+      DBA_PASSWORD: dba
+    volumes:
+      - ./docker/virtuoso-init.sql:/opt/virtuoso-opensource/initdb.d/init.sql:ro
+    ports:
+      - "18890:8890"
+
+  # Ontotext GraphDB Free. Pinned to 10.x: from 11 on, the free edition also
+  # needs a (free, registration-only) license key.
+  graphdb:
+    image: ontotext/graphdb:10.8.14
+    environment:
+      GDB_JAVA_OPTS: -Xmx1g
+    ports:
+      - "17200:7200"
+
+  # Eclipse RDF4J Server (bundled with the workbench). BSD-3-Clause.
+  rdf4j:
+    image: eclipse/rdf4j-workbench:6.1.0-tomcat
+    environment:
+      JAVA_OPTS: -Xmx1g
+    ports:
+      - "18080:8080"
+
+  # Oxigraph. Apache-2.0 / MIT.
+  oxigraph:
+    image: ghcr.io/oxigraph/oxigraph:0.5.13
+    command: serve --location /data --bind 0.0.0.0:7878
+    ports:
+      - "17878:7878"
+
+  # QLever builds its index ahead of time, so the dataset is loaded at startup.
+  # Apache-2.0.
+  qlever:
+    image: adfreiburg/qlever:commit-0998359ab0
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - >-
+        cd /tmp &&
+        qlever-index -i sample -f /seed/sample.ttl -F ttl &&
+        exec qlever-server -i sample -p 7001 -a sparkql -m 1G -c 512M
+    volumes:
+      - ./data:/seed:ro
+    ports:
+      - "17001:7001"
+
+  # Blazegraph: unmaintained, but still behind the Wikidata Query Service. GPL-2.0.
+  blazegraph:
+    image: lyrasis/blazegraph:2.1.5
+    ports:
+      - "19999:8080"
+
+  # Stardog: commercial. Requires a license key, see above.
+  stardog:
+    image: stardog/stardog:12.2.1
+    profiles: ["stardog"]
+    volumes:
+      - ./docker/stardog-license-key.bin:/var/opt/stardog/stardog-license-key.bin:ro
+    ports:
+      - "15820:5820"

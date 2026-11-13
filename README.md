@@ -629,3 +629,7 @@ Run `pnpm check` to check lint and formatting with Biome. Use `pnpm check:fix` t
 `pnpm test:exports` fails when a barrel exports one name from two places, such as two `export *`
 sources or a local export that shadows one; intended overrides are listed in `test/exports.spec.ts`.
 Both also run in CI, and `test:exports` is part of `pnpm test`.
+
+`pnpm test:integration` runs queries against real triple stores in Docker: Jena Fuseki,
+Virtuoso, GraphDB, RDF4J, Oxigraph, QLever, Blazegraph and, with a license key, Stardog. Start
+them with `pnpm db:up`; see [test/integration/README.md](test/integration/README.md).

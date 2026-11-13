@@ -1,0 +1,55 @@
+name: integration
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  integration:
+    name: integration (${{ matrix.engine }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Every service in test/integration/compose.yaml except the licensed ones.
+        engine:
+          - fuseki
+          - virtuoso
+          - graphdb
+          - rdf4j
+          - oxigraph
+          - qlever
+          - blazegraph
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: "pnpm"
+
+      - name: Start ${{ matrix.engine }}
+        run: pnpm db:up ${{ matrix.engine }}
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Run integration tests
+        run: pnpm test:integration
+        env:
+          SPARKQL_ENGINES: ${{ matrix.engine }}
+
+      - name: Show ${{ matrix.engine }} logs
+        if: failure()
+        run: docker compose -f test/integration/compose.yaml logs ${{ matrix.engine }}
