@@ -109,6 +109,16 @@
         "types": "./dist/graphdb.d.cts",
         "default": "./dist/graphdb.cjs"
       }
+    },
+    "./virtuoso": {
+      "import": {
+        "types": "./dist/virtuoso.d.mts",
+        "default": "./dist/virtuoso.mjs"
+      },
+      "require": {
+        "types": "./dist/virtuoso.d.cts",
+        "default": "./dist/virtuoso.cjs"
+      }
     }
   },
   "imports": {

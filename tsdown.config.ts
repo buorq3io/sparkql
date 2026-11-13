@@ -7,6 +7,7 @@ export default defineConfig({
     stardog: 'src/stardog/index.ts',
     neptune: 'src/neptune/index.ts',
     graphdb: 'src/graphdb/index.ts',
+    virtuoso: 'src/virtuoso/index.ts',
   },
   format: ['cjs', 'esm'],
   unbundle: true,
