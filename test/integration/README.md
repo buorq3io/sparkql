@@ -20,7 +20,7 @@ The unit suite (`pnpm test`) skips this directory.
 | fuseki     | SPARQL 1.1, ARQ      | `http://localhost:13030/ds/query`                          |
 | virtuoso   | SPARQL 1.1, Virtuoso | `http://localhost:18890/sparql`                            |
 | graphdb    | SPARQL 1.1, GraphDB  | `http://localhost:17200/repositories/sparkql`              |
-| rdf4j      | SPARQL 1.1           | `http://localhost:18080/rdf4j-server/repositories/sparkql` |
+| rdf4j      | SPARQL 1.1, RDF4J    | `http://localhost:18080/rdf4j-server/repositories/sparkql` |
 | oxigraph   | SPARQL 1.1, Oxigraph | `http://localhost:17878/query`                             |
 | qlever     | SPARQL 1.1           | `http://localhost:17001/`                                  |
 | blazegraph | SPARQL 1.1           | `http://localhost:19999/bigdata/namespace/kb/sparql`       |
@@ -33,6 +33,9 @@ Stardog needs a license key and is off by default. To run it, put the key at
 COMPOSE_PROFILES=stardog pnpm db:up stardog
 SPARKQL_ENGINES=stardog pnpm test:integration
 ```
+
+RDF4J also gets a second repository, `sparkql-lucene`, which wraps its store in
+a LuceneSail for the text search specs. The loader fills both with the same data.
 
 GraphDB is pinned to 10.x because GraphDB 11 requires a license key even for
 the free edition.

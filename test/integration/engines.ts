@@ -5,7 +5,14 @@ import type { SparqlConnectionOptions } from '#src/index.js';
  * A dialect a spec targets. `sparql11` is plain SPARQL 1.1 and runs on every
  * engine; the others only run where the extension is evaluated.
  */
-export type DialectName = 'sparql11' | 'arq' | 'stardog' | 'virtuoso' | 'graphdb' | 'oxigraph';
+export type DialectName =
+  | 'sparql11'
+  | 'arq'
+  | 'stardog'
+  | 'virtuoso'
+  | 'graphdb'
+  | 'oxigraph'
+  | 'rdf4j';
 
 /** A triple store started by `compose.yaml`. */
 export interface Engine {
@@ -73,8 +80,8 @@ async function update(url: string, sparql: string, headers: HeadersInit = {}): P
 const config = (file: string) => readFile(new URL(`./docker/${file}`, import.meta.url), 'utf8');
 
 /** RDF4J's REST API, which GraphDB also implements. */
-function rdf4jRepository(root: string, createRepository: () => Promise<void>) {
-  const repository = `${root}/repositories/sparkql`;
+function rdf4jRepository(root: string, createRepository: () => Promise<void>, id = 'sparkql') {
+  const repository = `${root}/repositories/${id}`;
   return {
     connection: { endpointUrl: repository, updateUrl: `${repository}/statements` },
     async load(data: string) {
@@ -86,12 +93,22 @@ function rdf4jRepository(root: string, createRepository: () => Promise<void>) {
   };
 }
 
-const rdf4j = rdf4jRepository(at(18080, '/rdf4j-server'), async () => {
-  await send(at(18080, '/rdf4j-server/repositories/sparkql'), {
-    method: 'PUT',
-    ...turtle(await config('rdf4j-repository.ttl')),
-  });
-});
+const rdf4jServer = at(18080, '/rdf4j-server');
+const rdf4jConfigured = (id: string, file: string) =>
+  rdf4jRepository(
+    rdf4jServer,
+    async () => {
+      await send(`${rdf4jServer}/repositories/${id}`, {
+        method: 'PUT',
+        ...turtle(await config(file)),
+      });
+    },
+    id
+  );
+const rdf4j = rdf4jConfigured('sparkql', 'rdf4j-repository.ttl');
+const rdf4jLucene = rdf4jConfigured('sparkql-lucene', 'rdf4j-lucene-repository.ttl');
+/** The RDF4J repository with a Lucene full-text index, for the text search specs. */
+export const rdf4jLuceneConnection: SparqlConnectionOptions = rdf4jLucene.connection;
 
 const graphdb = rdf4jRepository(at(17200), async () => {
   const form = new FormData();
@@ -139,10 +156,13 @@ export const engines: readonly Engine[] = [
   },
   {
     name: 'rdf4j',
-    dialects: [],
+    dialects: ['rdf4j'],
     connection: rdf4j.connection,
     ready: () => answers(at(18080, '/rdf4j-server/protocol')),
-    load: rdf4j.load,
+    async load(data) {
+      await rdf4j.load(data);
+      await rdf4jLucene.load(data);
+    },
   },
   {
     name: 'oxigraph',

@@ -129,6 +129,16 @@
         "types": "./dist/oxigraph.d.cts",
         "default": "./dist/oxigraph.cjs"
       }
+    },
+    "./rdf4j": {
+      "import": {
+        "types": "./dist/rdf4j.d.mts",
+        "default": "./dist/rdf4j.mjs"
+      },
+      "require": {
+        "types": "./dist/rdf4j.d.cts",
+        "default": "./dist/rdf4j.cjs"
+      }
     }
   },
   "imports": {

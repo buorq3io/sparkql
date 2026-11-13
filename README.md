@@ -19,7 +19,7 @@ pnpm add sparkql
 - **Pluggable execution** - Built-in HTTP client, or [bring your own client or session](#connecting)
 - **Path Expressions** - Property path support
 - **Functions** - Comprehensive SPARQL function support
-- **Custom dialects** - [Type-safe graph pattern extensions](docs/dialects.md), plus built-in LET/LATERAL, MOD/IDIV, and collation support through `sparkql/arq`, Neptune query hints through `sparkql/neptune`, and GraphDB pseudo-graphs, `ofn:` functions and query plans through `sparkql/graphdb`, Virtuoso `DEFINE` pragmas, full-text search, transitive subqueries and `bif:` functions through `sparkql/virtuoso`, and Oxigraph's `LATERAL` and `ADJUST` through `sparkql/oxigraph`
+- **Custom dialects** - [Type-safe graph pattern extensions](docs/dialects.md), plus built-in LET/LATERAL, MOD/IDIV, and collation support through `sparkql/arq`, Neptune query hints through `sparkql/neptune`, and GraphDB pseudo-graphs, `ofn:` functions and query plans through `sparkql/graphdb`, Virtuoso `DEFINE` pragmas, full-text search, transitive subqueries and `bif:` functions through `sparkql/virtuoso`, Oxigraph's `LATERAL` and `ADJUST` through `sparkql/oxigraph`, and RDF4J full-text search, GeoSPARQL functions and query plans through `sparkql/rdf4j`
 - **Raw SPARQL** - A [`sparql` template tag](docs/raw-sparql.md) for one-off fragments, with interpolated values escaped as RDF terms
 
 ## ARQ
@@ -110,6 +110,24 @@ const query = db
   .where(triples(s, p, db.variable('x')), lateral(triples(s, p, o)));
 ```
 
+## Eclipse RDF4J
+
+Use the RDF4J entry point for [full-text search, GeoSPARQL functions, the `rdf4j:nil` graph and query plans](docs/dialects.md#eclipse-rdf4j):
+
+```typescript
+import { SparqlDatabase, as, geof, textSearch } from 'sparkql/rdf4j';
+
+const db = SparqlDatabase.create();
+const [book, score, wkt] = [db.variable('book'), db.variable('score'), db.variable('wkt')];
+const query = db
+  .select({
+    book,
+    inside: as(geof.sfWithin(wkt, 'POLYGON((0 0, 0 2, 2 2, 2 0, 0 0))'), db.variable('inside')),
+  })
+  .where(textSearch(book, 'light*', { score }));
+const plan = await db.explain(query); // RDF4J's plan as text
+```
+
 See the [dialect guide](docs/dialects.md) for configuration and custom extensions.
 
 ## Top-level query extensions
@@ -117,7 +135,8 @@ See the [dialect guide](docs/dialects.md) for configuration and custom extension
 ARQ databases also provide `json(projection)` and `constructQuads(...templates)`.
 Import `SparqlDatabase` from `sparkql/stardog` for a typed `paths()` builder with
 START, END, VIA, and path-specific modifiers, and GraphDB databases provide
-`explain(query)` and `measure(query)`. Each query form has its own AST and
+`explain(query)` and `measure(query)`, and RDF4J databases provide
+`explain(query, level)`. Each query form has its own AST and
 result decoder. See [top-level query modules](docs/query-modules.md) for examples
 and instructions for registering your own forms.
 

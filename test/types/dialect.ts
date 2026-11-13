@@ -18,6 +18,12 @@ import {
   oxigraphDialect,
   lateral as oxigraphLateral,
 } from '../../src/oxigraph/index.js';
+import {
+  geof,
+  SparqlDatabase as Rdf4jDatabase,
+  rdf4jDialect,
+  textSearch,
+} from '../../src/rdf4j/index.js';
 import { SparqlDatabase as StardogDatabase } from '../../src/stardog/index.js';
 
 const standard = SparqlDatabase.create();
@@ -75,6 +81,28 @@ oxigraphLateral(letValue);
 oxigraph.select().where(lateral(letValue));
 // @ts-expect-error ADJUST needs a timezone.
 adjust(variable);
+
+// RDF4J databases accept text search at any depth; other databases reject it.
+const rdf4j = Rdf4jDatabase.create();
+const search = textSearch(variable, 'light*', { score: variable });
+rdf4j.select().where(search, optional(group(textSearch(variable, [{ query: 'a', boost: 2 }]))));
+SparqlDatabase.create({ dialect: rdf4jDialect }).ask().where(search);
+// @ts-expect-error Text search is an RDF4J extension.
+standard.select().where(search);
+// @ts-expect-error The Oxigraph dialect does not include RDF4J text search.
+oxigraph.select().where(search);
+// @ts-expect-error A combined search takes properties in its clauses.
+textSearch(variable, [{ query: 'a' }], { property: variable });
+// @ts-expect-error The query must be a string; RDF4J cannot take a variable.
+textSearch(variable, variable);
+// @ts-expect-error db.explain() takes queries, not updates.
+rdf4j.explain(rdf4j.insert(triples(variable, variable, variable)).where());
+// @ts-expect-error Unknown explain level.
+rdf4j.explain(rdf4j.ask().where(), 'Full');
+expectTypeOf(rdf4j.explain(rdf4j.describe(variable).where())).resolves.toEqualTypeOf<string>();
+expectTypeOf(geof.sfWithin(variable, 'POINT(0 0)').transform).returns.toEqualTypeOf<boolean>();
+// @ts-expect-error The distance needs a unit.
+geof.distance(variable, variable);
 
 // @ts-expect-error `$dynamic()` lifts clause restrictions, not dialect checks.
 standard.select().$dynamic().where(letValue);

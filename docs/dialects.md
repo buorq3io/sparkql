@@ -446,6 +446,165 @@ const db = SparqlDatabase.create({
 });
 ```
 
+## Eclipse RDF4J
+
+Import `sparkql/rdf4j` for RDF4J Server's full-text search, GeoSPARQL functions,
+`rdf4j:nil` graph and query plans. Its `SparqlDatabase.create()` configures
+`rdf4jDialect`, which is also exported for the standard factory, and the entry
+point re-exports the standard helpers. GraphDB is built on RDF4J but has its own
+entry point, `sparkql/graphdb`.
+
+### Full-text search
+
+`textSearch(subject, query, options?)` searches the repository's
+[Lucene index](https://rdf4j.org/documentation/programming/lucene/). It prints
+`subject search:matches [ search:query "..." ; ... ]` with the LuceneSail
+vocabulary written as full IRIs. The query uses Lucene syntax: words, `*`
+wildcards, `OR` and quoted phrases. Options:
+
+| Option     | Effect                                                                     |
+| ---------- | -------------------------------------------------------------------------- |
+| `property` | an IRI limits the search to that property; a variable receives the match's |
+| `score`    | a variable that receives the score                                         |
+| `snippet`  | a variable that receives the matching text, with hits in `<B>` tags        |
+| `numDocs`  | at most this many matches                                                  |
+
+```ts
+import { SparqlDatabase, desc, textSearch } from 'sparkql/rdf4j';
+
+const db = SparqlDatabase.create();
+const [book, score, text] = ['book', 'score', 'text'].map(name => db.variable(name));
+const label = db.iri('http://www.w3.org/2000/01/rdf-schema#label');
+
+const query = db
+  .select({ book, text })
+  .where(textSearch(book, 'light*', { property: label, score, snippet: text }))
+  .orderBy(desc(score));
+```
+
+Pass an array of clauses instead of one query to combine searches over several
+properties, each with its own `property`, `boost` and `snippet`. The `score` is then
+the combined score:
+
+```ts
+import { SparqlDatabase, textSearch } from 'sparkql/rdf4j';
+
+const db = SparqlDatabase.create();
+const [item, score] = [db.variable('item'), db.variable('score')];
+const name = db.iri('https://schema.org/name');
+const description = db.iri('https://schema.org/description');
+
+const query = db.select({ item, score }).where(
+  textSearch(
+    item,
+    [
+      { query: 'lighthouse', property: name, boost: 0.8 },
+      { query: 'lighthouse', property: description, boost: 0.2 },
+    ],
+    { score }
+  )
+);
+```
+
+RDF4J only evaluates the search on a repository whose store is wrapped in a
+LuceneSail; other repositories return no matches. A repository configuration
+for RDF4J Server looks like this:
+
+```turtle
+@prefix config: <tag:rdf4j.org,2023:config/> .
+[] a config:Repository ;
+  config:rep.id "books" ;
+  config:rep.impl [
+    config:rep.type "openrdf:SailRepository" ;
+    config:sail.impl [
+      config:sail.type "openrdf:LuceneSail" ;
+      config:lucene.indexDir "books" ;
+      config:delegate [ config:sail.type "openrdf:MemoryStore" ]
+    ]
+  ] .
+```
+
+The query must be a string: over HTTP, RDF4J does not evaluate a search whose
+query is a variable, even one bound by `VALUES`. Other databases reject
+`textSearch()` in TypeScript and when the query is generated, since on another
+store the pattern would match nothing.
+
+### GeoSPARQL functions
+
+`geof` holds the 35 [GeoSPARQL functions](https://rdf4j.org/documentation/programming/geosparql/)
+RDF4J implements: `distance` and `buffer` with a unit of measure, the geometry
+operations `convexHull`, `envelope`, `boundary`, `intersection`, `union`,
+`difference` and `symDifference`, `getSRID`, `relate` with a DE-9IM pattern, and
+the Simple Features (`sf*`), Egenhofer (`eh*`) and RCC8 (`rcc8*`) relations. Calls
+print with full IRIs. Relations select as booleans, distances as numbers and
+geometries as their WKT text.
+
+A string where a geometry is expected is sent as a `geo:wktLiteral`, since RDF4J
+ignores plain strings. Units are `'metre'`, `'degree'`, `'radian'` or `'unity'`,
+or an IRI; `uom` holds the four as IRIs. RDF4J reads WKT as longitude-latitude and
+does not evaluate WKT that starts with a coordinate reference system IRI.
+
+```ts
+import { SparqlDatabase, as, filter, geof, lt, triples } from 'sparkql/rdf4j';
+
+const db = SparqlDatabase.create();
+const [place, wkt, metres] = ['place', 'wkt', 'metres'].map(name => db.variable(name));
+const asWKT = db.iri('http://www.opengis.net/ont/geosparql#asWKT');
+
+const distance = geof.distance(wkt, 'POINT(4.9 52.37)', 'metre');
+const query = db
+  .select({ place, metres: as(distance, metres) })
+  .where(triples(place, asWKT, wkt), filter(lt(distance, 10000)))
+  .orderBy(metres);
+```
+
+### The `rdf4j:nil` graph
+
+RDF4J's default graph is the union of all graphs. `rdf4jNil` is RDF4J's name for
+the statements outside every named graph: use it in `.from()` to query only those,
+or in `graph()` to match them inside a `GRAPH` pattern.
+
+```ts
+import { SparqlDatabase, rdf4jNil, triples } from 'sparkql/rdf4j';
+
+const db = SparqlDatabase.create();
+const [s, p, o] = [db.variable('s'), db.variable('p'), db.variable('o')];
+const ungrouped = db
+  .select()
+  .from(rdf4jNil)
+  .where(triples(s, p, o));
+```
+
+### Query plans
+
+`db.explain(query, level?)` takes a SELECT, ASK, CONSTRUCT or DESCRIBE builder and
+sends it with the `explain` parameter of RDF4J's REST API. It resolves to RDF4J's
+plan as text, which is not parsed:
+
+| Level                   | Runs the query | Reports                                  |
+| ----------------------- | -------------- | ---------------------------------------- |
+| `'Unoptimized'`         | no             | the plan as parsed                       |
+| `'Optimized'` (default) | no             | the plan RDF4J would run, with estimates |
+| `'Executed'`            | yes            | plus the actual result size of each step |
+| `'Timed'`               | yes            | plus the time spent in each step         |
+| `'Telemetry'`           | yes            | plus call counts and other counters      |
+
+```ts
+import { SparqlDatabase, triples } from 'sparkql/rdf4j';
+
+const db = SparqlDatabase.create({
+  connection: 'http://localhost:8080/rdf4j-server/repositories/people',
+});
+const [s, p, o] = [db.variable('s'), db.variable('p'), db.variable('o')];
+
+const plan: string = await db.explain(db.select().where(triples(s, p, o)), 'Executed');
+```
+
+Explain adds a URL parameter to the request, so it needs the built-in HTTP session
+or a custom session whose `raw()` supports `parameters`. Other protocol
+parameters, such as `infer=false` or `timeout`, can go in the endpoint URL, as in
+`http://localhost:8080/rdf4j-server/repositories/people?infer=false`.
+
 ## The dialect contract
 
 `defineDialect<Input, Output>()` couples three responsibilities:
