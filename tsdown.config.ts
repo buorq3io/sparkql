@@ -10,6 +10,7 @@ export default defineConfig({
     virtuoso: 'src/virtuoso/index.ts',
     oxigraph: 'src/oxigraph/index.ts',
     rdf4j: 'src/rdf4j/index.ts',
+    qlever: 'src/qlever/index.ts',
   },
   format: ['cjs', 'esm'],
   unbundle: true,

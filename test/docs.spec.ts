@@ -25,6 +25,7 @@ const options: ts.CompilerOptions = {
     'sparkql/virtuoso': ['./src/virtuoso/index.ts'],
     'sparkql/oxigraph': ['./src/oxigraph/index.ts'],
     'sparkql/rdf4j': ['./src/rdf4j/index.ts'],
+    'sparkql/qlever': ['./src/qlever/index.ts'],
   },
 };
 

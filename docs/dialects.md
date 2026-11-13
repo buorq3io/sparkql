@@ -605,6 +605,180 @@ or a custom session whose `raw()` supports `parameters`. Other protocol
 parameters, such as `infer=false` or `timeout`, can go in the endpoint URL, as in
 `http://localhost:8080/rdf4j-server/repositories/people?infer=false`.
 
+## QLever
+
+Import `sparkql/qlever` for QLever's text, path and spatial search, row numbers,
+and its GeoSPARQL and `ql:` functions. Its `SparqlDatabase.create()` configures
+`qleverDialect`, which is also exported for the standard factory, and the entry
+point re-exports the standard helpers. Every QLever pattern stands for ordinary
+triples or a `SERVICE` block that only QLever evaluates, written with full IRIs,
+so the standard generator prints them. Other databases reject the patterns in
+TypeScript and when the query is generated. See the
+[QLever documentation](https://docs.qlever.dev/).
+
+Updates on QLever need its access token, for example as a header:
+`connection: { endpointUrl, headers: { authorization: 'Bearer <token>' } }`.
+
+### Text search
+
+Text search needs a server started with a text index. `containsWord(text, words)`
+and `containsEntity(text, entity)` print `ql:contains-word` and
+`ql:contains-entity`: the first matches text records holding all the words (a
+trailing `*` matches a prefix), the second the entities those records mention.
+
+`textSearch(text, ...searches)` uses the `textSearch:` service instead, which can
+bind a `score` per search and the word a prefix completed (`prefixMatch`). Each
+search is either `{ word }`, one word or prefix, or `{ entity }`; QLever needs at
+least one word search, and sparkql checks that and QLever's other rules before
+sending the query.
+
+```ts
+import { SparqlDatabase, textSearch } from 'sparkql/qlever';
+
+const db = SparqlDatabase.create();
+const [text, score, completion, entity] = ['text', 'score', 'completion', 'entity'].map(name =>
+  db.variable(name)
+);
+
+const query = db
+  .select({ completion, entity, score })
+  .where(textSearch(text, { word: 'light*', score, prefixMatch: completion }, { entity }));
+```
+
+### Path search
+
+`pathSearch(options, ...edges)` returns every path between nodes, one row per
+edge: `path` numbers the path and `edge` the position on it. The edge patterns
+must bind the `start` and `end` variables for each edge. `source` and `target`
+take one node or several; `maxDepth`, `numPathsPerTarget`, `cartesian` and
+`edgeProperties` map to QLever's parameters of the same names.
+
+```ts
+import { SparqlDatabase, pathSearch, triples } from 'sparkql/qlever';
+
+const db = SparqlDatabase.create();
+const [start, end, path, edge] = ['start', 'end', 'path', 'edge'].map(name => db.variable(name));
+const knows = db.iri('http://xmlns.com/foaf/0.1/knows');
+
+const query = db.select({ path, edge, start, end }).where(
+  pathSearch(
+    {
+      source: new URL('https://example.org/alice'),
+      target: new URL('https://example.org/dave'),
+      start,
+      end,
+      path,
+      edge,
+    },
+    triples(start, knows, end)
+  )
+);
+```
+
+### Spatial search
+
+`spatialSearch(options, ...right)` joins geometries with QLever's `qlss:`
+service. `left` must be bound before it; the patterns after the options bind
+`right`. Choose an `algorithm` and one search instruction:
+
+| Algorithm          | Geometries             | Search instructions                                                |
+| ------------------ | ---------------------- | ------------------------------------------------------------------ |
+| `'s2'`             | points                 | `numNearestNeighbors`, `maxDistance`                               |
+| `'baseline'`       | all except collections | `numNearestNeighbors`, `maxDistance`                               |
+| `'libspatialjoin'` | all                    | `joinType`, with `maxDistance` or `de9imFilter` where it needs one |
+
+`bindDistance` receives the distance, in `distanceUnit` (a QUDT name such as
+`'M'` or `'KiloM'`). `payload` keeps variables of the right patterns, or `'all'`.
+sparkql rejects option combinations QLever documents as errors.
+
+```ts
+import { SparqlDatabase, spatialSearch, triples } from 'sparkql/qlever';
+
+const db = SparqlDatabase.create();
+const [restaurant, here, station, there, metres] = [
+  'restaurant',
+  'here',
+  'station',
+  'there',
+  'metres',
+].map(name => db.variable(name));
+const location = db.iri('https://example.org/location');
+
+const query = db.select({ restaurant, station, metres }).where(
+  triples(restaurant, location, here),
+  spatialSearch(
+    {
+      algorithm: 's2',
+      left: here,
+      right: there,
+      numNearestNeighbors: 2,
+      bindDistance: metres,
+      distanceUnit: 'M',
+      payload: [station],
+    },
+    triples(station, location, there)
+  )
+);
+```
+
+### Row numbers
+
+`rowNumber(bind, subquery, { offset })` numbers the rows of an ordered subquery
+with QLever's `rn:` service, from `offset` (default 0). The subquery needs an
+`orderBy()` and must not select `bind`; sparkql checks both. Joining two
+numbered copies of a query compares each row with the next, which stands in for
+window functions.
+
+```ts
+import { SparqlDatabase, rowNumber, triples } from 'sparkql/qlever';
+
+const db = SparqlDatabase.create();
+const [person, name, rank] = ['person', 'name', 'rank'].map(name => db.variable(name));
+const nameOf = db.iri('http://xmlns.com/foaf/0.1/name');
+
+const names = db
+  .select({ name })
+  .where(triples(person, nameOf, name))
+  .orderBy(name)
+  .as();
+const query = db.select({ rank, name }).where(rowNumber(rank, names, { offset: 1 }));
+```
+
+### `geof:` and `ql:` functions
+
+`geof` holds the GeoSPARQL functions QLever documents: distances, lengths and
+areas with QUDT units (`geof.distance` without a unit is in kilometres), the
+`metric*` variants in metres, coordinates and bounding boxes, `centroid`,
+`envelope`, `geometryType`, `numGeometries`, `geometryN`, `asGeoJSON`, and the
+`sf*` and `relate` relations. A string geometry is sent as a `geo:wktLiteral`.
+QLever only evaluates the relations inside `filter()`, between two variables or
+a variable and a literal. The set and the units differ from `geof` in
+`sparkql/rdf4j`.
+
+`ql` holds QLever's own functions: `toEpoch` (seconds since 1970, for comparing
+date-times across timezones), `isGeoPoint`, `envelopeLowerLeft`,
+`envelopeUpperRight` and `simplifyGeometry`.
+
+```ts
+import { SparqlDatabase, as, filter, geof, lte, ql, triples } from 'sparkql/qlever';
+
+const db = SparqlDatabase.create();
+const [place, wkt, km, opened, epoch] = ['place', 'wkt', 'km', 'opened', 'epoch'].map(name =>
+  db.variable(name)
+);
+const asWKT = db.iri('http://www.opengis.net/ont/geosparql#asWKT');
+const openedOn = db.iri('https://schema.org/foundingDate');
+
+const distance = geof.distance(wkt, 'POINT(7.85 47.99)');
+const query = db
+  .select({ place, km: as(distance, km), epoch: as(ql.toEpoch(opened), epoch) })
+  .where(triples(place, asWKT, wkt), triples(place, openedOn, opened), filter(lte(distance, 5)));
+```
+
+QLever's named subqueries (`WITH %name AS { ... }`) are not supported; they
+expand like macros, so reusing a subquery builder in JavaScript does the same.
+Materialized views are not supported either.
+
 ## The dialect contract
 
 `defineDialect<Input, Output>()` couples three responsibilities:

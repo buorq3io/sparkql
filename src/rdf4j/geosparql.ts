@@ -6,13 +6,13 @@ import type {
   ExpressionInput,
   TermVariableTransform,
 } from '../helpers/types.js';
+import { wktGeometry } from '../helpers/wkt.js';
 import { transformBoolean, transformNumber, transformString } from '../structures/expression.js';
 
 /** The namespace of the GeoSPARQL functions, written `geof:`. */
 export const GEOF_NAMESPACE = 'http://www.opengis.net/def/function/geosparql/';
 /** The namespace of the OGC units of measure, written `uom:`. */
 export const UOM_NAMESPACE = 'http://www.opengis.net/def/uom/OGC/1.0/';
-const WKT_LITERAL = 'http://www.opengis.net/ont/geosparql#wktLiteral';
 
 const loc = { sourceLocationType: 'autoGenerate' } as const;
 
@@ -48,16 +48,7 @@ export type GeometryInput = ExpressionInput;
 /** A call to a GeoSPARQL function; `T` is what its result selects as. */
 export type GeofCall<T> = ExpressionFunctionCallInput<T>;
 
-function geometry(value: GeometryInput): ExpressionInput {
-  if (typeof value !== 'string') return value;
-  return {
-    type: 'term',
-    subType: 'literal',
-    loc,
-    value,
-    langOrIri: iri(WKT_LITERAL),
-  } as AST.TermLiteral;
-}
+const geometry = (value: GeometryInput): ExpressionInput => wktGeometry(value);
 
 function unit(value: UnitInput): ExpressionInput {
   if (typeof value !== 'string') return value;

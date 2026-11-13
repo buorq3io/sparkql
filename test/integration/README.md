@@ -22,7 +22,7 @@ The unit suite (`pnpm test`) skips this directory.
 | graphdb    | SPARQL 1.1, GraphDB  | `http://localhost:17200/repositories/sparkql`              |
 | rdf4j      | SPARQL 1.1, RDF4J    | `http://localhost:18080/rdf4j-server/repositories/sparkql` |
 | oxigraph   | SPARQL 1.1, Oxigraph | `http://localhost:17878/query`                             |
-| qlever     | SPARQL 1.1           | `http://localhost:17001/`                                  |
+| qlever     | SPARQL 1.1, QLever   | `http://localhost:17001/`                                  |
 | blazegraph | SPARQL 1.1           | `http://localhost:19999/bigdata/namespace/kb/sparql`       |
 | stardog    | SPARQL 1.1, Stardog  | `http://localhost:15820/sparkql/query`                     |
 
@@ -58,7 +58,8 @@ runs one job per open source engine.
 ## How it works
 
 - [`compose.yaml`](compose.yaml) only starts the servers. QLever is the
-  exception: it also builds its index from the dataset at startup.
+  exception: it also builds its index, with a text index of every literal,
+  from the dataset at startup.
 - [`setup.ts`](setup.ts) is the Vitest global setup. It waits for each engine,
   then calls the engine's `load()`, which creates the repository if needed and
   resets the store to exactly `sample.ttl`. Loading over HTTP each run means a

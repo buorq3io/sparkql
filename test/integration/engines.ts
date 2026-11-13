@@ -12,7 +12,8 @@ export type DialectName =
   | 'virtuoso'
   | 'graphdb'
   | 'oxigraph'
-  | 'rdf4j';
+  | 'rdf4j'
+  | 'qlever';
 
 /** A triple store started by `compose.yaml`. */
 export interface Engine {
@@ -176,7 +177,7 @@ export const engines: readonly Engine[] = [
   },
   {
     name: 'qlever',
-    dialects: [],
+    dialects: ['qlever'],
     connection: { endpointUrl: at(17001, '/'), headers: qleverAuth },
     ready: () => answers(at(17001, '/?query=ASK%7B%7D')),
     async load(data) {

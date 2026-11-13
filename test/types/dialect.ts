@@ -19,6 +19,14 @@ import {
   lateral as oxigraphLateral,
 } from '../../src/oxigraph/index.js';
 import {
+  containsWord,
+  SparqlDatabase as QleverDatabase,
+  qleverDialect,
+  geof as qleverGeof,
+  rowNumber,
+  spatialSearch,
+} from '../../src/qlever/index.js';
+import {
   geof,
   SparqlDatabase as Rdf4jDatabase,
   rdf4jDialect,
@@ -103,6 +111,37 @@ expectTypeOf(rdf4j.explain(rdf4j.describe(variable).where())).resolves.toEqualTy
 expectTypeOf(geof.sfWithin(variable, 'POINT(0 0)').transform).returns.toEqualTypeOf<boolean>();
 // @ts-expect-error The distance needs a unit.
 geof.distance(variable, variable);
+
+// QLever databases accept QLever patterns at any depth; other databases reject them.
+const qlever = QleverDatabase.create();
+const words = containsWord(variable, 'light*');
+qlever.select().where(words, optional(group(containsWord(variable, 'x'))));
+SparqlDatabase.create({ dialect: qleverDialect }).ask().where(words);
+// @ts-expect-error QLever text search is a QLever extension.
+standard.select().where(words);
+// @ts-expect-error The RDF4J dialect does not include QLever patterns.
+rdf4j.select().where(words);
+// @ts-expect-error RDF4J text search is not QLever's.
+qlever.select().where(search);
+// @ts-expect-error The algorithm is required.
+spatialSearch({ left: variable, right: variable, maxDistance: 1 }, words);
+const nearJoin = {
+  algorithm: 'libspatialjoin',
+  left: variable,
+  right: variable,
+  joinType: 'near',
+} as const;
+// @ts-expect-error Only the documented join types.
+spatialSearch(nearJoin, words);
+// @ts-expect-error Row numbers need a subquery group.
+rowNumber(variable, words);
+// @ts-expect-error QUDT unit names only.
+qleverGeof.distance(variable, variable, 'metre');
+// @ts-expect-error Areas take area units.
+qleverGeof.area(variable, 'M');
+expectTypeOf(
+  qleverGeof.sfWithin(variable, 'POINT(0 0)').transform
+).returns.toEqualTypeOf<boolean>();
 
 // @ts-expect-error `$dynamic()` lifts clause restrictions, not dialect checks.
 standard.select().$dynamic().where(letValue);
