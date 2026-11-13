@@ -274,21 +274,26 @@ const query = db
 ### Full-text search
 
 `textContains(text, query, { score })` prints the `bif:contains` predicate:
-`?text bif:contains "query" OPTION (score ?score)`. The literals bound to `text`
+`?text bif:contains "query" OPTION (score ?rank)`. The literals bound to `text`
 must be in Virtuoso's full-text index. The query uses Virtuoso's text syntax:
 quote words and phrases that contain spaces or other non-alphanumeric characters,
-and add `*` after a word prefix.
+and add `*` after a word prefix of at least four characters (`'Lovel*'`; Virtuoso
+rejects `'Ada*'`). Virtuoso refuses some variable names in full-text patterns
+because its SQL gives them a meaning: `score`, `score_limit`, `ranges`,
+`main_ranges`, `attr_ranges`, `offband`, `descending`, `start_id` and `end_id`, in
+any case. `textContains` throws for them, so name the score variable `?rank` or
+similar.
 
 ```ts
 import { SparqlDatabase, desc, textContains, triples } from 'sparkql/virtuoso';
 
 const db = SparqlDatabase.create();
-const [s, p, o, score] = ['s', 'p', 'o', 'score'].map(name => db.variable(name));
+const [s, p, o, rank] = ['s', 'p', 'o', 'rank'].map(name => db.variable(name));
 
 const query = db
   .select({ s })
-  .where(triples(s, p, o), textContains(o, '"New York" AND city', { score }))
-  .orderBy(desc(score))
+  .where(triples(s, p, o), textContains(o, '"New York" AND city', { score: rank }))
+  .orderBy(desc(rank))
   .limit(10);
 ```
 

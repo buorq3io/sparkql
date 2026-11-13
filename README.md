@@ -92,7 +92,7 @@ const db = SparqlDatabase.create();
 const [s, p, o] = [db.variable('s'), db.variable('p'), db.variable('o')];
 const query = db
   .select()
-  .where(define('input:inference', 'people-rules'), triples(s, p, o), textContains(o, '"Ada*"'));
+  .where(define('input:inference', 'people-rules'), triples(s, p, o), textContains(o, '"Lovel*"'));
 ```
 
 See the [dialect guide](docs/dialects.md) for configuration and custom extensions.

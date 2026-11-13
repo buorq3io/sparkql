@@ -109,17 +109,25 @@ describe('Virtuoso DEFINE pragmas', () => {
 
 describe('Virtuoso full-text matches', () => {
   test('print bif:contains with an optional score', () => {
-    const score = db.variable('score');
+    const score = db.variable('rank');
     const query = db
       .select({ s })
       .where(triples(s, p, o), textContains(o, '"New York" AND city', { score }), triples(s, p, o))
       .orderBy(desc(score));
     expect(compact(query.toSPARQL())).toBe(
-      'SELECT ?s WHERE { ?s ?p ?o . ?o bif:contains "\\"New York\\" AND city" OPTION (score ?score) . ?s ?p ?o . } ORDER BY DESC ( ?score )'
+      'SELECT ?s WHERE { ?s ?p ?o . ?o bif:contains "\\"New York\\" AND city" OPTION (score ?rank) . ?s ?p ?o . } ORDER BY DESC ( ?rank )'
     );
     expect(compact(db.ask().where(textContains(o, 'rich*')).toSPARQL())).toBe(
       'ASK WHERE { ?o bif:contains "rich*" . }'
     );
+  });
+
+  test('reject variable names Virtuoso reserves', () => {
+    expect(() => textContains(db.variable('Score'), 'ada')).toThrow('rename the text variable');
+    expect(() => textContains(o, 'ada', { score: db.variable('offband') })).toThrow(
+      'rename the score variable'
+    );
+    expect(() => textContains(o, 'ada', { score: db.variable('scores') })).not.toThrow();
   });
 
   test('reject empty queries', () => {
