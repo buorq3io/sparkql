@@ -6,12 +6,18 @@ import {
   lateral,
   letBinding,
 } from '../../src/arq/index.js';
-import { group, optional, SparqlDatabase, union } from '../../src/index.js';
+import { group, optional, SparqlDatabase, triples, union } from '../../src/index.js';
 import {
   SparqlDatabase as NeptuneDatabase,
   neptuneDialect,
   queryHint,
 } from '../../src/neptune/index.js';
+import {
+  adjust,
+  SparqlDatabase as OxigraphDatabase,
+  oxigraphDialect,
+  lateral as oxigraphLateral,
+} from '../../src/oxigraph/index.js';
 import { SparqlDatabase as StardogDatabase } from '../../src/stardog/index.js';
 
 const standard = SparqlDatabase.create();
@@ -52,6 +58,23 @@ queryHint('Group', 'useDFE', true);
 queryHint('Query', 'joinOrder', 'Unordered');
 // @ts-expect-error queryTimeout takes milliseconds as a number.
 queryHint('Query', 'queryTimeout', '100');
+
+// Oxigraph databases accept LATERAL at any depth, but not ARQ's LET.
+const oxigraph = OxigraphDatabase.create();
+const oxigraphGroup = oxigraphLateral(triples(variable, variable, variable));
+oxigraph.select().where(oxigraphGroup, optional(group(oxigraphLateral(oxigraphGroup))));
+SparqlDatabase.create({ dialect: oxigraphDialect }).ask().where(oxigraphGroup);
+arq.select().where(oxigraphGroup);
+// @ts-expect-error LATERAL is not SPARQL 1.1.
+standard.select().where(oxigraphGroup);
+// @ts-expect-error Oxigraph does not have LET.
+oxigraph.select().where(letValue);
+// @ts-expect-error Not even inside LATERAL.
+oxigraphLateral(letValue);
+// @ts-expect-error ARQ's LATERAL may hold LET, so it is typed as an ARQ pattern.
+oxigraph.select().where(lateral(letValue));
+// @ts-expect-error ADJUST needs a timezone.
+adjust(variable);
 
 // @ts-expect-error `$dynamic()` lifts clause restrictions, not dialect checks.
 standard.select().$dynamic().where(letValue);

@@ -21,7 +21,7 @@ The unit suite (`pnpm test`) skips this directory.
 | virtuoso   | SPARQL 1.1, Virtuoso | `http://localhost:18890/sparql`                            |
 | graphdb    | SPARQL 1.1, GraphDB  | `http://localhost:17200/repositories/sparkql`              |
 | rdf4j      | SPARQL 1.1           | `http://localhost:18080/rdf4j-server/repositories/sparkql` |
-| oxigraph   | SPARQL 1.1           | `http://localhost:17878/query`                             |
+| oxigraph   | SPARQL 1.1, Oxigraph | `http://localhost:17878/query`                             |
 | qlever     | SPARQL 1.1           | `http://localhost:17001/`                                  |
 | blazegraph | SPARQL 1.1           | `http://localhost:19999/bigdata/namespace/kb/sparql`       |
 | stardog    | SPARQL 1.1, Stardog  | `http://localhost:15820/sparkql/query`                     |

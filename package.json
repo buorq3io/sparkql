@@ -119,6 +119,16 @@
         "types": "./dist/virtuoso.d.cts",
         "default": "./dist/virtuoso.cjs"
       }
+    },
+    "./oxigraph": {
+      "import": {
+        "types": "./dist/oxigraph.d.mts",
+        "default": "./dist/oxigraph.mjs"
+      },
+      "require": {
+        "types": "./dist/oxigraph.d.cts",
+        "default": "./dist/oxigraph.cjs"
+      }
     }
   },
   "imports": {

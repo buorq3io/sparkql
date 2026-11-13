@@ -5,7 +5,7 @@ import type { SparqlConnectionOptions } from '#src/index.js';
  * A dialect a spec targets. `sparql11` is plain SPARQL 1.1 and runs on every
  * engine; the others only run where the extension is evaluated.
  */
-export type DialectName = 'sparql11' | 'arq' | 'stardog' | 'virtuoso' | 'graphdb';
+export type DialectName = 'sparql11' | 'arq' | 'stardog' | 'virtuoso' | 'graphdb' | 'oxigraph';
 
 /** A triple store started by `compose.yaml`. */
 export interface Engine {
@@ -146,7 +146,7 @@ export const engines: readonly Engine[] = [
   },
   {
     name: 'oxigraph',
-    dialects: [],
+    dialects: ['oxigraph'],
     connection: { endpointUrl: at(17878, '/query'), updateUrl: at(17878, '/update') },
     ready: () => answers(at(17878, '/')),
     async load(data) {

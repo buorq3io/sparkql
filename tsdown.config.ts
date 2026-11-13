@@ -8,6 +8,7 @@ export default defineConfig({
     neptune: 'src/neptune/index.ts',
     graphdb: 'src/graphdb/index.ts',
     virtuoso: 'src/virtuoso/index.ts',
+    oxigraph: 'src/oxigraph/index.ts',
   },
   format: ['cjs', 'esm'],
   unbundle: true,

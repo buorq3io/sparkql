@@ -14,6 +14,7 @@ const intendedOverrides: Record<string, readonly string[]> = {
   'src/neptune/index.ts': ['SparqlDatabase', 'SparqlDatabaseOptions'],
   'src/graphdb/index.ts': ['SparqlDatabase', 'SparqlDatabaseOptions'],
   'src/virtuoso/index.ts': ['SparqlDatabase', 'SparqlDatabaseOptions'],
+  'src/oxigraph/index.ts': ['SparqlDatabase', 'SparqlDatabaseOptions'],
 };
 
 interface Conflict {

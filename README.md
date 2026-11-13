@@ -19,7 +19,7 @@ pnpm add sparkql
 - **Pluggable execution** - Built-in HTTP client, or [bring your own client or session](#connecting)
 - **Path Expressions** - Property path support
 - **Functions** - Comprehensive SPARQL function support
-- **Custom dialects** - [Type-safe graph pattern extensions](docs/dialects.md), plus built-in LET/LATERAL, MOD/IDIV, and collation support through `sparkql/arq`, Neptune query hints through `sparkql/neptune`, and GraphDB pseudo-graphs, `ofn:` functions and query plans through `sparkql/graphdb`, and Virtuoso `DEFINE` pragmas, full-text search, transitive subqueries and `bif:` functions through `sparkql/virtuoso`
+- **Custom dialects** - [Type-safe graph pattern extensions](docs/dialects.md), plus built-in LET/LATERAL, MOD/IDIV, and collation support through `sparkql/arq`, Neptune query hints through `sparkql/neptune`, and GraphDB pseudo-graphs, `ofn:` functions and query plans through `sparkql/graphdb`, Virtuoso `DEFINE` pragmas, full-text search, transitive subqueries and `bif:` functions through `sparkql/virtuoso`, and Oxigraph's `LATERAL` and `ADJUST` through `sparkql/oxigraph`
 - **Raw SPARQL** - A [`sparql` template tag](docs/raw-sparql.md) for one-off fragments, with interpolated values escaped as RDF terms
 
 ## ARQ
@@ -93,6 +93,21 @@ const [s, p, o] = [db.variable('s'), db.variable('p'), db.variable('o')];
 const query = db
   .select()
   .where(define('input:inference', 'people-rules'), triples(s, p, o), textContains(o, '"Lovel*"'));
+```
+
+## Oxigraph
+
+Use the Oxigraph entry point for [`LATERAL` and `ADJUST`](docs/dialects.md#oxigraph):
+
+```typescript
+import { SparqlDatabase, adjust, as, lateral, triples } from 'sparkql/oxigraph';
+
+const db = SparqlDatabase.create();
+const [s, p, o] = [db.variable('s'), db.variable('p'), db.variable('o')];
+const local = db.variable('local');
+const query = db
+  .select({ local: as(adjust(o, 'PT2H'), local) })
+  .where(triples(s, p, db.variable('x')), lateral(triples(s, p, o)));
 ```
 
 See the [dialect guide](docs/dialects.md) for configuration and custom extensions.

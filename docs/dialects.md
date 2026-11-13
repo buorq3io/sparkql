@@ -372,6 +372,80 @@ const query = db
 // Awaited: { place: ..., km: number }[]
 ```
 
+## Oxigraph
+
+Import `sparkql/oxigraph` for the SPARQL 1.2 proposals Oxigraph evaluates:
+[`LATERAL`](https://github.com/w3c-cg/sparql-dev/blob/main/SEP/SEP-0006/sep-0006.md)
+and [`ADJUST`](https://github.com/w3c-cg/sparql-dev/blob/main/SEP/SEP-0002/sep-0002.md).
+Its `SparqlDatabase.create()` configures `oxigraphDialect`, which is also exported
+for the standard factory, and the entry point re-exports the standard helpers.
+
+### LATERAL
+
+`lateral(...patterns)` adds a `LATERAL` group. Oxigraph evaluates it once for each
+solution of the patterns before it, so a subquery inside sees their bindings, as
+long as it projects the shared variables:
+
+```ts
+import { SparqlDatabase, lateral, triples } from 'sparkql/oxigraph';
+
+const db = SparqlDatabase.create();
+const [person, friend, name] = ['person', 'friend', 'name'].map(name => db.variable(name));
+const knows = db.iri('http://xmlns.com/foaf/0.1/knows');
+const nameOf = db.iri('http://xmlns.com/foaf/0.1/name');
+
+const oneName = db
+  .select({ person, name })
+  .where(triples(person, nameOf, name))
+  .limit(1)
+  .as();
+const query = db.select({ person, name }).where(triples(person, knows, friend), lateral(oneName));
+```
+
+The group prints like ARQ's `LATERAL`, and ARQ databases accept it too. Oxigraph
+has no `LET`, so the Oxigraph dialect rejects `letBinding()` from `sparkql/arq`, in
+TypeScript and when the query is generated.
+
+### ADJUST
+
+`adjust(value, timezone)` moves an `xsd:date`, `xsd:time` or `xsd:dateTime` to
+another timezone and keeps its datatype. A value with a timezone is converted; one
+without gets the timezone attached. A string timezone such as `'PT2H'` or
+`'-PT5H30M'` is sent as an `xsd:dayTimeDuration`; other strings throw. Any other
+expression, such as a variable, is passed through. Oxigraph requires the timezone,
+so the SEP's one-argument form that removes it is not offered. The result selects
+as an RDF literal, since an `xsd:time` has no JavaScript `Date`.
+
+```ts
+import { SparqlDatabase, adjust, as, triples } from 'sparkql/oxigraph';
+
+const db = SparqlDatabase.create();
+const [event, start, local] = ['event', 'start', 'local'].map(name => db.variable(name));
+const startDate = db.iri('https://schema.org/startDate');
+
+const query = db
+  .select({ local: as(adjust(start, 'PT2H'), local) })
+  .where(triples(event, startDate, start));
+// "2020-01-01T00:00:00Z" becomes "2020-01-01T02:00:00+02:00"
+```
+
+### Union default graph
+
+Oxigraph's server takes a `union-default-graph` query parameter that makes the
+default graph the union of all graphs. It is part of the protocol, not of the
+query, so put it in the endpoint URL:
+
+```ts
+import { SparqlDatabase } from 'sparkql/oxigraph';
+
+const db = SparqlDatabase.create({
+  connection: {
+    endpointUrl: 'http://localhost:7878/query?union-default-graph',
+    updateUrl: 'http://localhost:7878/update',
+  },
+});
+```
+
 ## The dialect contract
 
 `defineDialect<Input, Output>()` couples three responsibilities:

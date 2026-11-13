@@ -23,6 +23,7 @@ const options: ts.CompilerOptions = {
     'sparkql/neptune': ['./src/neptune/index.ts'],
     'sparkql/graphdb': ['./src/graphdb/index.ts'],
     'sparkql/virtuoso': ['./src/virtuoso/index.ts'],
+    'sparkql/oxigraph': ['./src/oxigraph/index.ts'],
   },
 };
 

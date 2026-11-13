@@ -35,6 +35,7 @@ try {
     'sparkql/neptune',
     'sparkql/graphdb',
     'sparkql/virtuoso',
+    'sparkql/oxigraph',
   ];
   for (const format of ['cjs', 'esm']) {
     const load = format === 'cjs' ? 'require(specifier)' : 'await import(specifier)';
