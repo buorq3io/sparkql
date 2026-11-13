@@ -1,0 +1,62 @@
+# Sample dataset for the integration tests.
+#
+# Every engine loads this file into its default graph (Virtuoso into the graph
+# <https://example.org/sparkql/graph>, which its default dataset includes). Keep
+# it small and deterministic: expected results in the specs are written by hand
+# against it, so a change here usually means updating test/integration/*.spec.ts.
+
+@prefix ex:   <https://example.org/sparkql/> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# People
+
+ex:alice a foaf:Person ;
+  foaf:name "Alice" ;
+  foaf:age 34 ;
+  ex:height 1.68 ;
+  ex:active true ;
+  ex:born "1990-04-12"^^xsd:date ;
+  foaf:knows ex:bob , ex:carol .
+
+ex:bob a foaf:Person ;
+  foaf:name "Bob" ;
+  foaf:age 27 ;
+  ex:height 1.82 ;
+  ex:active false ;
+  ex:born "1997-09-30"^^xsd:date ;
+  foaf:knows ex:carol .
+
+ex:carol a foaf:Person ;
+  foaf:name "Carol" ;
+  foaf:age 45 ;
+  ex:height 1.60 ;
+  ex:active true ;
+  ex:born "1979-01-05"^^xsd:date ;
+  foaf:knows ex:dave .
+
+ex:dave a foaf:Person ;
+  foaf:name "Dave" ;
+  ex:active false .
+
+# Books
+
+ex:book1 a ex:Book ;
+  rdfs:label "The Lighthouse"@en , "Le Phare"@fr ;
+  ex:author ex:alice ;
+  ex:pages 320 ;
+  ex:price 19.99 .
+
+ex:book2 a ex:Book ;
+  rdfs:label "Rivers"@en ;
+  ex:author ex:alice , ex:bob ;
+  ex:pages 210 ;
+  ex:price 12.50 .
+
+ex:book3 a ex:Book ;
+  rdfs:label "Old Roads"@en , "Alte Straßen"@de ;
+  ex:author ex:carol ;
+  ex:pages 512 ;
+  ex:price 31.00 .

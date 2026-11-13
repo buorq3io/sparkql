@@ -119,3 +119,5 @@ local/
 .vscode/
 .fleet/
 .idea/
+# Stardog license key for the integration tests
+test/integration/docker/stardog-license-key.bin

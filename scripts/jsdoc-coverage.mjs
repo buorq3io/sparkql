@@ -2,7 +2,7 @@
 // Usage: node scripts/jsdoc-coverage.mjs [files...]   (default: every src/**/*.ts)
 import { readdirSync, readFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
-import ts from 'typescript';
+import ts from '@typescript/typescript6';
 
 const root = resolve(import.meta.dirname, '..');
 
