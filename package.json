@@ -99,6 +99,16 @@
         "types": "./dist/neptune.d.cts",
         "default": "./dist/neptune.cjs"
       }
+    },
+    "./graphdb": {
+      "import": {
+        "types": "./dist/graphdb.d.mts",
+        "default": "./dist/graphdb.mjs"
+      },
+      "require": {
+        "types": "./dist/graphdb.d.cts",
+        "default": "./dist/graphdb.cjs"
+      }
     }
   },
   "imports": {

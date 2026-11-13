@@ -19,7 +19,7 @@ pnpm add sparkql
 - **Pluggable execution** - Built-in HTTP client, or [bring your own client or session](#connecting)
 - **Path Expressions** - Property path support
 - **Functions** - Comprehensive SPARQL function support
-- **Custom dialects** - [Type-safe graph pattern extensions](docs/dialects.md), plus built-in LET/LATERAL, MOD/IDIV, and collation support through `sparkql/arq`, and Neptune query hints through `sparkql/neptune`
+- **Custom dialects** - [Type-safe graph pattern extensions](docs/dialects.md), plus built-in LET/LATERAL, MOD/IDIV, and collation support through `sparkql/arq`, Neptune query hints through `sparkql/neptune`, and GraphDB pseudo-graphs, `ofn:` functions and query plans through `sparkql/graphdb`
 - **Raw SPARQL** - A [`sparql` template tag](docs/raw-sparql.md) for one-off fragments, with interpolated values escaped as RDF terms
 
 ## ARQ
@@ -65,13 +65,30 @@ const [s, p, o] = [db.variable('s'), db.variable('p'), db.variable('o')];
 const query = db.select().where(queryHint('Query', 'joinOrder', 'Ordered'), triples(s, p, o));
 ```
 
+## Ontotext GraphDB
+
+Use the GraphDB entry point for [pseudo-graphs, `ofn:` functions and query plans](docs/dialects.md#ontotext-graphdb):
+
+```typescript
+import { SparqlDatabase, as, ofn, ontoGraphs, triples } from 'sparkql/graphdb';
+
+const db = SparqlDatabase.create();
+const [s, p, o] = [db.variable('s'), db.variable('p'), db.variable('o')];
+const query = db
+  .select({ root: as(ofn.sqrt(o), db.variable('root')) })
+  .from(ontoGraphs.explicit)
+  .where(triples(s, p, o));
+const plan = await db.explain(query); // GraphDB's plan as text
+```
+
 See the [dialect guide](docs/dialects.md) for configuration and custom extensions.
 
 ## Top-level query extensions
 
 ARQ databases also provide `json(projection)` and `constructQuads(...templates)`.
 Import `SparqlDatabase` from `sparkql/stardog` for a typed `paths()` builder with
-START, END, VIA, and path-specific modifiers. Each query form has its own AST and
+START, END, VIA, and path-specific modifiers, and GraphDB databases provide
+`explain(query)` and `measure(query)`. Each query form has its own AST and
 result decoder. See [top-level query modules](docs/query-modules.md) for examples
 and instructions for registering your own forms.
 
@@ -287,7 +304,7 @@ the rejected node. A build-only database rejects with a plain `SparkqlError`.
 the error comes from a different copy of sparkql (the CommonJS and ESM builds,
 or two versions in one dependency tree). The `is(value, Class)` helper does the
 same check. Every entry point (`sparkql`, `sparkql/arq`, `sparkql/stardog`,
-`sparkql/neptune`)
+`sparkql/neptune`, `sparkql/graphdb`)
 exports them.
 
 ## Building Queries

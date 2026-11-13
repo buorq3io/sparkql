@@ -129,6 +129,111 @@ another store a hint would be an ordinary triple pattern that matches nothing,
 which would silently empty the results. Hints normalize to standard triple
 patterns, so the dialect reuses the standard generator.
 
+## Ontotext GraphDB
+
+Import `sparkql/graphdb` for GraphDB's query controls. Its `SparqlDatabase.create()`
+configures `graphdbDialect`, which is also exported for the standard factory, and the
+entry point re-exports the standard helpers. See the
+[GraphDB documentation](https://graphdb.ontotext.com/documentation/11.5/).
+
+### Pseudo-graphs
+
+`ontoGraphs` holds GraphDB's pseudo-graph IRIs for `.from()` and `.fromNamed()`.
+GraphDB reads them as switches rather than as graphs:
+
+| Member                  | IRI                                               | Effect in `FROM`                                                     |
+| ----------------------- | ------------------------------------------------- | -------------------------------------------------------------------- |
+| `explicit`              | `http://www.ontotext.com/explicit`                | only asserted statements                                             |
+| `implicit`              | `http://www.ontotext.com/implicit`                | only inferred statements                                             |
+| `disableSameAs`         | `http://www.ontotext.com/disable-sameAs`          | no `owl:sameAs` expansion: one result per equivalence class          |
+| `skipRedundantImplicit` | `http://www.ontotext.com/skip-redundant-implicit` | leave out inferred statements that are also asserted in that context |
+
+`historyAt(timestamp)` returns the history pseudo-graph
+`http://www.ontotext.com/at/<timestamp>`, which shows the data as it was at that
+time. The timestamp is `yyyy[MM[dd[HH[mm[ss]]]]]` in the server's time zone; other
+forms throw. History is only kept while GraphDB's history plugin is enabled.
+
+```ts
+import { SparqlDatabase, historyAt, ontoGraphs, triples } from 'sparkql/graphdb';
+
+const db = SparqlDatabase.create();
+const [s, p, o] = [db.variable('s'), db.variable('p'), db.variable('o')];
+
+const asserted = db
+  .select()
+  .from(ontoGraphs.explicit)
+  .where(triples(s, p, o));
+const lastYear = db
+  .select()
+  .from(historyAt('20250101'))
+  .where(triples(s, p, o));
+```
+
+Like any `FROM` clause, a pseudo-graph replaces the default dataset. GraphDB
+documents the filters for its default graph only. Test before relying on how they
+combine with ordinary `FROM` graphs.
+
+### Query plans
+
+`db.explain(query)` and `db.measure(query)` take a SELECT builder and send it with
+`FROM onto:explain` or `FROM onto:measure` before its other dataset clauses. The
+wrapped query is not changed. `explain` asks GraphDB for its plan with estimated
+iterations without running the query. `measure` runs it and reports actual
+iterations and timings. Both resolve to the plan text, which GraphDB returns as
+literal bindings instead of the query's solutions.
+
+```ts
+import { SparqlDatabase, triples } from 'sparkql/graphdb';
+
+const db = SparqlDatabase.create({ connection: 'http://localhost:7200/repositories/people' });
+const [s, p, o] = [db.variable('s'), db.variable('p'), db.variable('o')];
+
+const query = db
+  .select({ o })
+  .where(triples(s, p, o))
+  .limit(10);
+const plan: string = await db.explain(query);
+```
+
+GraphDB documents query plans for SELECT only, so other query forms are rejected
+in TypeScript. The plan's layout is GraphDB's and is not parsed.
+
+### `ofn:` functions
+
+`ofn` holds GraphDB's own functions from
+`http://www.ontotext.com/sparql/functions/`. Each member prints the full function
+IRI, so no prefix is needed, and selects as `number`:
+
+- math, returning `xsd:double`: `acos`, `asin`, `atan`, `atan2`, `cbrt`,
+  `copySign`, `cos`, `cosh`, `e`, `exp`, `expm1`, `floorDiv`, `floorMod`,
+  `getExponent`, `hypot`, `IEEEremainder`, `log`, `log10`, `log1p`, `max`, `min`,
+  `nextAfter`, `nextDown`, `nextUp`, `pi`, `pow`, `rint`, `scalb`, `signum`, `sin`,
+  `sinh`, `sqrt`, `tan`, `tanh`, `toDegrees`, `toRadians`, `ulp`;
+- durations, returning `xsd:long`: `yearsFromDuration` … `millisFromDuration`
+  (GraphDB's `years-from-duration` and so on) and `asWeeks` … `asMillis`;
+- date differences, returning `xsd:long`: `weeksBetween`, `daysBetween`,
+  `hoursBetween`, `minutesBetween`, `secondsBetween`, `millisBetween`.
+
+```ts
+import { SparqlDatabase, as, ofn, triples } from 'sparkql/graphdb';
+
+const db = SparqlDatabase.create();
+const [membership, start, end, days] = ['membership', 'start', 'end', 'days'].map(name =>
+  db.variable(name)
+);
+const startDate = db.iri('https://schema.org/startDate');
+const endDate = db.iri('https://schema.org/endDate');
+
+const query = db
+  .select({ days: as(ofn.daysBetween(start, end), days) })
+  .where(triples(membership, startDate, start), triples(membership, endDate, end));
+// Awaited: { days: number }[]
+```
+
+GraphDB's plugin predicates (full-text search, geo-spatial, RDF Rank, similarity,
+connectors) and RDF-star are not modelled yet. Plugin predicates are standard
+triple patterns and can be written with `triples()`.
+
 ## The dialect contract
 
 `defineDialect<Input, Output>()` couples three responsibilities:

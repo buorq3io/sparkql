@@ -28,7 +28,13 @@ try {
     { cwd: temporary, stdio: 'inherit' }
   );
 
-  const specifiers = ['sparkql', 'sparkql/arq', 'sparkql/stardog', 'sparkql/neptune'];
+  const specifiers = [
+    'sparkql',
+    'sparkql/arq',
+    'sparkql/stardog',
+    'sparkql/neptune',
+    'sparkql/graphdb',
+  ];
   for (const format of ['cjs', 'esm']) {
     const load = format === 'cjs' ? 'require(specifier)' : 'await import(specifier)';
     const fixture = `

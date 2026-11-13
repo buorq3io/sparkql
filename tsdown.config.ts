@@ -6,6 +6,7 @@ export default defineConfig({
     arq: 'src/arq/index.ts',
     stardog: 'src/stardog/index.ts',
     neptune: 'src/neptune/index.ts',
+    graphdb: 'src/graphdb/index.ts',
   },
   format: ['cjs', 'esm'],
   unbundle: true,
