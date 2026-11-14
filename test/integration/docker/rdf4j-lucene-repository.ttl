@@ -1,0 +1,14 @@
+# Repository config for RDF4J Server: an in-memory store wrapped in a LuceneSail,
+# so the RDF4J text search specs have a full-text index. The plain `sparkql`
+# repository stays a plain store for the SPARQL 1.1 specs.
+@prefix config: <tag:rdf4j.org,2023:config/> .
+[] a config:Repository ;
+  config:rep.id "sparkql-lucene" ;
+  config:rep.impl [
+    config:rep.type "openrdf:SailRepository" ;
+    config:sail.impl [
+      config:sail.type "openrdf:LuceneSail" ;
+      config:lucene.indexDir "sparkql-lucene" ;
+      config:delegate [ config:sail.type "openrdf:MemoryStore" ]
+    ]
+  ] .

@@ -3,6 +3,27 @@ import * as AST from '@traqula/rules-sparql-1-1';
 import { sparkqlGeneratorBuilder } from '../database/generator.js';
 import type { ArqPattern, ArqQuery } from './types.js';
 
+type GeneratorHelpers = Parameters<
+  AST.SparqlGeneratorRule<'generatePattern', AST.Pattern>['gImpl']
+>[0];
+
+/**
+ * @internal Prints a `LATERAL` group. Shared by every dialect that has `LATERAL`, such as ARQ
+ * and Oxigraph.
+ */
+export function printLateral(
+  helpers: GeneratorHelpers,
+  node: { patterns: unknown[]; loc: AST.Pattern['loc'] },
+  context: AST.SparqlGeneratorContext
+): void {
+  // Print the group like OPTIONAL does, so nesting and indentation match.
+  helpers.PRINT_WORD('LATERAL');
+  helpers.SUBRULE(
+    AST.gram.groupGraphPattern,
+    context.astFactory.patternGroup(node.patterns as AST.Pattern[], node.loc)
+  );
+}
+
 const standardPattern = sparkqlGeneratorBuilder.getRule('generatePattern');
 const arqPattern: AST.SparqlGeneratorRule<'generatePattern', ArqPattern> = {
   name: 'generatePattern',
@@ -17,12 +38,7 @@ const arqPattern: AST.SparqlGeneratorRule<'generatePattern', ArqPattern> = {
         helpers.SUBRULE(AST.gram.expression, node.expression);
         helpers.PRINT(')');
       } else if (node.type === 'pattern' && node.subType === 'lateral') {
-        // Print the group like OPTIONAL does, so nesting and indentation match.
-        helpers.PRINT_WORD('LATERAL');
-        helpers.SUBRULE(
-          AST.gram.groupGraphPattern,
-          context.astFactory.patternGroup(node.patterns as unknown as AST.Pattern[], node.loc)
-        );
+        printLateral(helpers, node, context);
       } else {
         // Traqula's existing rule signatures still describe the standard AST.
         // Nested calls dispatch to the patched generatePattern implementation.

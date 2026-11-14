@@ -68,15 +68,16 @@ services:
       - "17878:7878"
 
   # QLever builds its index ahead of time, so the dataset is loaded at startup.
-  # Apache-2.0.
+  # -W also builds a text index from every literal, for the text search specs;
+  # -t loads it. Apache-2.0.
   qlever:
     image: adfreiburg/qlever:commit-0998359ab0
     entrypoint: ["/bin/bash", "-c"]
     command:
       - >-
         cd /tmp &&
-        qlever-index -i sample -f /seed/sample.ttl -F ttl &&
-        exec qlever-server -i sample -p 7001 -a sparkql -m 1G -c 512M
+        qlever-index -i sample -f /seed/sample.ttl -F ttl -W &&
+        exec qlever-server -i sample -p 7001 -a sparkql -t -m 1G -c 512M
     volumes:
       - ./data:/seed:ro
     ports:

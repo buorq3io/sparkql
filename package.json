@@ -119,6 +119,36 @@
         "types": "./dist/virtuoso.d.cts",
         "default": "./dist/virtuoso.cjs"
       }
+    },
+    "./oxigraph": {
+      "import": {
+        "types": "./dist/oxigraph.d.mts",
+        "default": "./dist/oxigraph.mjs"
+      },
+      "require": {
+        "types": "./dist/oxigraph.d.cts",
+        "default": "./dist/oxigraph.cjs"
+      }
+    },
+    "./rdf4j": {
+      "import": {
+        "types": "./dist/rdf4j.d.mts",
+        "default": "./dist/rdf4j.mjs"
+      },
+      "require": {
+        "types": "./dist/rdf4j.d.cts",
+        "default": "./dist/rdf4j.cjs"
+      }
+    },
+    "./qlever": {
+      "import": {
+        "types": "./dist/qlever.d.mts",
+        "default": "./dist/qlever.mjs"
+      },
+      "require": {
+        "types": "./dist/qlever.d.cts",
+        "default": "./dist/qlever.cjs"
+      }
     }
   },
   "imports": {

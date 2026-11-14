@@ -36,7 +36,10 @@ export interface SparqlConnectionOptions {
 }
 
 type RawClient = SparqlHttpClient & {
-  postDirect(query: string, options?: { headers?: HeadersInit }): Promise<Response>;
+  postDirect(
+    query: string,
+    options?: { headers?: HeadersInit; parameters?: Readonly<Record<string, string>> }
+  ): Promise<Response>;
 };
 
 /** The default session: SPARQL 1.1 Protocol over HTTP through `sparql-http-client`. */
@@ -208,8 +211,10 @@ export class HttpSparqlSession<C extends SparqlHttpClient = SparqlHttpClient>
   /**
    * Returns the undecoded response to a direct POST.
    *
+   * `options.parameters` are added to the endpoint URL's query string.
+   *
    * @param sparql - The SPARQL query.
-   * @param options - The requested response format.
+   * @param options - The requested response format and extra URL parameters.
    *
    * @example
    * Request a raw boolean response as JSON.
@@ -221,7 +226,10 @@ export class HttpSparqlSession<C extends SparqlHttpClient = SparqlHttpClient>
    */
   async raw(sparql: string, options: SparqlRawOptions): Promise<Response> {
     const client = (await this.queryClient()) as RawClient;
-    return client.postDirect(sparql, { headers: { accept: options.accept } });
+    return client.postDirect(sparql, {
+      headers: { accept: options.accept },
+      parameters: options.parameters,
+    });
   }
 
   private async queryClient(): Promise<C> {

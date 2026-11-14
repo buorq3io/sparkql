@@ -15,6 +15,13 @@ export interface SparqlQuadsOptions {
 export interface SparqlRawOptions {
   /** Media type the caller will decode. */
   accept: string;
+  /**
+   * Extra query string parameters for the request URL, such as RDF4J's `explain`.
+   *
+   * A session that cannot send them must reject rather than drop them, since they can change
+   * what the endpoint returns.
+   */
+  parameters?: Readonly<Record<string, string>>;
 }
 
 /**
